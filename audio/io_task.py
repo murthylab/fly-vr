@@ -11,7 +11,7 @@ from PyDAQmx.DAQmxFunctions import *
 import numpy as np
 
 from common.concurrent_task import ConcurrentTask
-from audio.stimuli import SinStim, AudioStimPlaylist
+from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from common.plot_task import plot_task_main
 from common.log_task import log_audio_task_main
 
@@ -68,6 +68,25 @@ class IOTask(daq.Task):
                 data_rec.finish()
                 data_rec.close()
 
+    @property
+    def data_generator(self):
+        """
+        Get the data generator for output
+
+        :return: A generator of 1D numpy.ndarray of data.
+        """
+        return self.data_gen
+
+    @data_generator.setter
+    def data(self, data_generator):
+        """
+        Set the data generator for the audio stimulus directly.
+
+        :param data_generator: A generator function of audio data.
+        """
+        with self._data_lock:
+            self.data_gen = data_generator
+
     # FIX: different functions for AI and AO task types instead of in-function switching?
     #      or maybe pass function handle?
     def EveryNCallback(self):
@@ -94,38 +113,44 @@ class IOTask(daq.Task):
 
 def io_task_main(message_pipe):
 
-    print('initing')
-    taskAO = IOTask(cha_name=["ao1"])
-    taskAI = IOTask(cha_name=["ai0", "ai1", "ai4"])
-    print('inited')
     while True:
         # CONFIGURABLE
         RUN = False
-        print('listening')
         while RUN is False:
             if message_pipe.poll(0.1):
                 try:
                     msg = message_pipe.recv()
-                    print(msg)
-                    if msg[0:5] == "START":
-                        RUN = True
-                        savefilename = msg[6:]
+
+                    # If we have received a stimulus object, feed this object to output task for playback
+                    if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
+                        taskAO.data_generator = msg.data_generator
+                    elif isinstance(msg, list):
+                        command = msg[0]
+                        options = msg[1]
+                        args = msg[2]
+                        if command == "START":
+                            RUN = True
                 except:
                     pass
 
-        disp_task = ConcurrentTask(task=plot_task_main, comms="pipe")
+        # Get the input and output channels from the options
+        output_chans = ["ao" + str(s) for s in options.analog_out_channels]
+        input_chans = ["ai" + str(s) for s in options.analog_in_channels]
+
+        taskAO = IOTask(cha_name=output_chans)
+        taskAI = IOTask(cha_name=input_chans)
+
+        disp_task = ConcurrentTask(task=plot_task_main, comms="pipe", taskinitargs=[int(options.display_input_channel)])
         disp_task.start()
-        save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[savefilename, 3])
+        save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[options.record_file, len(input_chans)])
         save_task.start()
 
         taskAI.data_rec = [disp_task, save_task]
 
-        stim = SinStim(230, 2.0, 0.0, 40000, 200, 0, 0)
-        taskAO.data_gen = stim.data_generator
-
         # Connect AO start to AI start
         taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
+        sys.stdout.write("Starting DAQ Tasks ... ")
         # Arm the AO task
         # It won't start until the start trigger signal arrives from the AI task
         taskAO.StartTask()
@@ -133,72 +158,27 @@ def io_task_main(message_pipe):
         # Start the AI task
         # This generates the AI start trigger signal and triggers the AO task
         taskAI.StartTask()
+        print("Done")
 
         while RUN:
             time.sleep(1)
             if message_pipe.poll(0.1):
                 try:
                     msg = message_pipe.recv()
-                    print(msg)
                     if msg == "STOP":
                         RUN = False
+
+                    # If we have received a stimulus object, feed this object to output task for playback
+                    if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
+                        taskAO.data_generator = msg.data_generator
                 except:
                     pass
 
         # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
         taskAO.StopTask()
-        print('\n   stoppedAO')
         taskAO.stop()
         taskAI.StopTask()
-        print('\n   stoppedAI')
         taskAI.stop()
 
     taskAO.ClearTask()
     taskAI.ClearTask()
-
-def audio_output_task_main(message_pipe):
-    print('initing')
-    taskAO = IOTask(cha_name=["ao1"])
-    print('inited')
-
-    while True:
-        # CONFIGURABLE
-        RUN = False
-        print('listening')
-        while RUN is False:
-            if message_pipe.poll(0.1):
-                try:
-                    msg = message_pipe.recv()
-                    print(msg)
-                    if msg[0:5] == "START":
-                        RUN = True
-                except:
-                    pass
-
-        stim1 = SinStim(230, 2.0, 0.0, 40000, 200, 0, 0)
-        stim2 = SinStim(330, 2.0, 0.0, 40000, 200, 0, 0)
-        stim3 = SinStim(430, 2.0, 0.0, 40000, 200, 0, 0)
-        stimPlaylist = AudioStimPlaylist([stim1, stim2, stim3])
-
-        taskAO.data_gen = stimPlaylist.data_generator
-
-        # Start the output task
-        taskAO.StartTask()
-
-        while RUN:
-            time.sleep(1)
-            if message_pipe.poll(0.1):
-                try:
-                    msg = message_pipe.recv()
-                    print(msg)
-                    if msg == "STOP":
-                        RUN = False
-                except:
-                    pass
-
-        # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
-        taskAO.StopTask()
-        print('\n   stoppedAO')
-        taskAO.stop()
-
-    taskAO.ClearTask()

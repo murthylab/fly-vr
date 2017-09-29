@@ -3,7 +3,7 @@ import numpy as np
 
 plt.ion()
 
-def plot_task_main(disp_queue):
+def plot_task_main(disp_queue, channel):
     '''
     Coroutine for plotting fast, realtime as per: https://gist.github.com/pklaus/62e649be55681961f6c4. This is used
     as the main function of a thread to display streaming data from a process.
@@ -26,9 +26,8 @@ def plot_task_main(disp_queue):
                 # print("    plotting {0}".format(data[0].shape))
                 fig.canvas.restore_region(bgrd)  # restore background
                 # for chn in range(data[0].shape[1]):
-                for chn in range(2, 3):
-                    points.set_data(np.arange(10000), data[0][:10000, chn])
-                    ax.draw_artist(points)           # redraw just the points
+                points.set_data(np.arange(10000), data[0][:10000, channel])
+                ax.draw_artist(points)           # redraw just the points
                 fig.canvas.blit(ax.bbox)         # fill in the axes rectangle
                 #ax.relim()
                 #ax.autoscale_view()                 # rescale the y-axis
@@ -37,5 +36,5 @@ def plot_task_main(disp_queue):
             else:
                 RUN = False
     # clean up
-    print("   closing plot")
+   # print("   closing plot")
     plt.close(fig)

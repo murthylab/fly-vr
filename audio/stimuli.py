@@ -2,6 +2,8 @@ import abc
 import numpy as np
 import scipy
 from scipy import io
+import pandas as pd
+import os.path
 
 
 class AudioStim(object):
@@ -14,7 +16,7 @@ class AudioStim(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sample_rate, duration, pre_silence = 0, post_silence = 0):
+    def __init__(self, sample_rate, duration, pre_silence = 0, post_silence = 0, attenuator=None, frequency=None):
         """
         Create an audio stimulus object that encapsulates the generation of the underlying audio
         data.
@@ -28,6 +30,8 @@ class AudioStim(object):
         self.__pre_silence = pre_silence
         self.__post_silence = post_silence
         self.__data = []
+        self.__attenuator = attenuator
+        self.__frequency = frequency
 
     def _gen_silence(self, silence_duration):
         """
@@ -79,6 +83,11 @@ class AudioStim(object):
 
         :param numpy.ndarray data: The raw audio signal data representing this stimulus.
         """
+
+        # If the user provided an attenuator, attenuate the signal
+        if self.__attenuator is not None:
+            data = self.__attenuator.attenuate(data, self.__frequency)
+
         self.__data = self._add_silence(data)
 
     @property
@@ -170,59 +179,24 @@ class AudioStim(object):
         self.__post_silence = post_silence
         self.data = self._generate_data()
 
-class AudioStimPlaylist:
-    """A simple class that provides a generator for a sequence of AudioStim objects."""
-    def __init__(self, stims, shuffle_playback=False):
-        self._stims = stims
-        self._shuffle_playback = shuffle_playback
-        self._playback_order = np.arange(len(self._stims))
-
-        # If we want to shuffle things, get a random permutation.
-        if (self._shuffle_playback):
-            self._playback_order = np.random.permutation(len(self._stims))
-
     @property
-    def data_generator(self):
+    def attenuator(self):
         """
-        Return a generator that yields each AudioStim in the playlist in succession. If shuffle_playback is set to true
-        then we will get a non-repeating randomized sequence of all stimuli, then they will be shuffled, and the process
-        repeated.
-        :return: A generator that yields an array containing the sample data.
+        Get the attenuator object used to attenuate the sin signal.
+
+        :return: The attenuator object used to attenuate the sin signal.
+        :rtype: audio.attenuation.Attenuator
         """
+        return self.__attenuator
 
-        stim_idx = 0
+    @attenuator.setter
+    def attenuator(self, attenuator):
+        """
+        Set the attenuator object used to attenuate the sin signal.
 
-        # Now, go through the list one at a time
-        while True:
-            yield self._stims[self._playback_order[stim_idx]].data
-
-            stim_idx = stim_idx + 1;
-
-            # If we are at the end, then either go back to beginning or reshuffle
-            if(stim_idx == len(self._stims)):
-                stim_idx = 0
-
-                if(self._shuffle_playback):
-                    self._playback_order = np.random.permutation(len(self._stims))
-
-
-class SinStim(AudioStim):
-    """
-       The SinStim class provides a simple interface for generating sinusoidal audio stimulus data
-       appropriate for feeding directly as voltage signals to a DAQ for playback. It allows parameterization
-       of the sinusoid as well as attenuation by a custom attenuation object.
-    """
-
-    def __init__(self, frequency, amplitude, phase, sample_rate, duration, pre_silence=0, post_silence=0, attenuator=None):
-
-        # Initiatialize the base class members
-        super(SinStim, self).__init__(sample_rate, duration, pre_silence, post_silence)
-
-        self.__frequency = frequency
-        self.__amplitude = amplitude
-        self.__phase = phase
+        :param audio.stimuli.Attenuator attenuator: The attenuator object used to attenuate the sin signal.
+        """
         self.__attenuator = attenuator
-
         self.data = self._generate_data()
 
     @property
@@ -243,6 +217,79 @@ class SinStim(AudioStim):
         :param float frequency: The frequency of the sin signal in Hz.
         """
         self.__frequency = frequency
+        self.data = self._generate_data()
+
+class AudioStimPlaylist:
+    """A simple class that provides a generator for a sequence of AudioStim objects."""
+    def __init__(self, stims, shuffle_playback=False):
+        self.stims = stims
+        self._shuffle_playback = shuffle_playback
+        self._playback_order = np.arange(len(self.stims))
+
+        # If we want to shuffle things, get a random permutation.
+        if (self._shuffle_playback):
+            self._playback_order = np.random.permutation(len(self.stims))
+
+    @classmethod
+    def fromfilename(cls, filename, shuffle_playback=False):
+
+        # Get the root directory of this file
+        local_dir = os.path.dirname(filename) + '/'
+
+        # Read the playlist file
+        data = pd.read_table(filename, sep="\t")
+
+        # Get the stimulus filenames and load each one into a stimulus object
+        row = 0
+        stims = []
+        for filename in data['stimFileName']:
+            print "Loading " + local_dir + filename
+            stim = MATFileStim(local_dir+filename, data["freq (Hz)"][row], data["rate (Hz)"][row], data["silencePre (ms)"][row], data["silencePost (ms)"][row])
+            stims.append(stim)
+            row = row + 1
+
+        return cls(stims, shuffle_playback)
+
+    @property
+    def data_generator(self):
+        """
+        Return a generator that yields each AudioStim in the playlist in succession. If shuffle_playback is set to true
+        then we will get a non-repeating randomized sequence of all stimuli, then they will be shuffled, and the process
+        repeated.
+        :return: A generator that yields an array containing the sample data.
+        """
+
+        stim_idx = 0
+
+        # Now, go through the list one at a time
+        while True:
+            yield self.stims[self._playback_order[stim_idx]].data
+
+            stim_idx = stim_idx + 1;
+
+            # If we are at the end, then either go back to beginning or reshuffle
+            if(stim_idx == len(self.stims)):
+                stim_idx = 0
+
+                if(self._shuffle_playback):
+                    self._playback_order = np.random.permutation(len(self.stims))
+
+
+class SinStim(AudioStim):
+    """
+       The SinStim class provides a simple interface for generating sinusoidal audio stimulus data
+       appropriate for feeding directly as voltage signals to a DAQ for playback. It allows parameterization
+       of the sinusoid as well as attenuation by a custom attenuation object.
+    """
+
+    def __init__(self, frequency, amplitude, phase, sample_rate, duration, pre_silence=0, post_silence=0, attenuator=None):
+
+        # Initiatialize the base class members
+        super(SinStim, self).__init__(sample_rate, duration, pre_silence, post_silence, attenuator, frequency)
+
+        self.__amplitude = amplitude
+        self.__phase = phase
+
         self.data = self._generate_data()
 
     @property
@@ -285,26 +332,6 @@ class SinStim(AudioStim):
         self.__phase = phase
         self.data = self._generate_data()
 
-    @property
-    def attenuator(self):
-        """
-        Get the attenuator object used to attenuate the sin signal.
-
-        :return: The attenuator object used to attenuate the sin signal.
-        :rtype: audio.attenuation.Attenuator
-        """
-        return self.__phase
-
-    @attenuator.setter
-    def attenuator(self, attenuator):
-        """
-        Set the attenuator object used to attenuate the sin signal.
-
-        :param audio.stimuli.Attenuator attenuator: The attenuator object used to attenuate the sin signal.
-        """
-        self.__attenuator = attenuator
-        self.data = self._generate_data()
-
     def _generate_data(self):
         """
         Generate the sin sample data according to the parameters. Also attenuatte the signal if an attenuator
@@ -318,10 +345,6 @@ class SinStim(AudioStim):
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
         data = self.amplitude * np.sin(2 * np.pi * self.frequency * T + self.phase)
 
-        # If the user provided an attenuator, attenuate the signal
-        if self.__attenuator is not None:
-            data = self.__attenuator.attenuate(data, self.__frequency)
-
         return data
 
 class MATFileStim(AudioStim):
@@ -329,16 +352,12 @@ class MATFileStim(AudioStim):
     significant number of pre-generated audio stimulus patterns stored as MAT files. This class allows
     loading of these data files and playing them through the DAQ."""
 
-    def __init__(self, filename, frequency, sample_rate, duration, pre_silence=0, post_silence=0, attenuator=None):
+    def __init__(self, filename, frequency, sample_rate, pre_silence=0, post_silence=0, attenuator=None):
 
         # Initiatialize the base class members
-        super(MATFileStim, self).__init__(sample_rate, duration, pre_silence, post_silence)
+        super(MATFileStim, self).__init__(sample_rate, None, pre_silence, post_silence, attenuator, frequency)
 
-        self.__frequency = frequency
         self.__filename = filename
-        self.__frequency = frequency
-        self.__attenuator = attenuator
-
         self.data = self._generate_data()
 
     @property
@@ -359,45 +378,6 @@ class MATFileStim(AudioStim):
         :param str filename: The name of the file that stores the audio stimulus data.
         """
         self.__filename = filename
-        self.data = self._generate_data()
-
-    @property
-    def frequency(self):
-        """
-        Get the frequency of the sin signal in Hz.
-
-        :return: The frequency of the sin signal in Hz.
-        :rtype: float
-        """
-        return self.__frequency
-
-    @frequency.setter
-    def frequency(self, frequency):
-        """
-        Set the frequency of the sin signal in Hz.
-
-        :param float frequency: The frequency of the sin signal in Hz.
-        """
-        self.__frequency = frequency
-
-    @property
-    def attenuator(self):
-        """
-        Get the attenuator object used to attenuate the sin signal.
-
-        :return: The attenuator object used to attenuate the sin signal.
-        :rtype: audio.attenuation.Attenuator
-        """
-        return self.__phase
-
-    @attenuator.setter
-    def attenuator(self, attenuator):
-        """
-        Set the attenuator object used to attenuate the sin signal.
-
-        :param audio.stimuli.Attenuator attenuator: The attenuator object used to attenuate the sin signal.
-        """
-        self.__attenuator = attenuator
         self.data = self._generate_data()
 
     def _generate_data(self):
