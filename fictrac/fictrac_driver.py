@@ -72,6 +72,8 @@ class FicTracDriver:
                     old_frame_count = new_frame_count
                     self.track_change_callback(data)
 
+            print("FicTrac exited with return code " + str(fictrac_process.returncode))
+
 def tracking_update_stub(data):
     shmem_transfer_data.print_fictrac_state(data)
 
