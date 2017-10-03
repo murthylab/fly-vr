@@ -2,3 +2,6 @@
 .cache
 *.pyc
 data
+tests/test_data/fictrac/test.avi
+tests/test_data/fictrac/test.dat
+tests/test_data/fictrac/output.txt

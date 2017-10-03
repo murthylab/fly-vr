@@ -2,6 +2,10 @@ import ctypes
 import sys
 
 class SHMEMFicTracState(ctypes.Structure):
+    """
+    This class represents the FicTrac tracking state. These are the exact same values written to the output log file
+    when FicTrac is run. Please consult the FicTrac user documentation for their meaning.
+    """
     _fields_ = [
         ('frame_cnt', ctypes.c_int),
         ('del_rot_cam_vec', ctypes.c_double * 3),
