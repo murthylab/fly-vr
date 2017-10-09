@@ -12,7 +12,7 @@ class FicTracDriver:
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
     calls a callback function once for each time the tracking state of the insect is updated.
     """
-    def __init__(self, config_file, console_ouput_file, track_change_callback, pgr_enable=False):
+    def __init__(self, config_file, console_ouput_file, track_change_callback=None, pgr_enable=False):
         """
         Create the FicTrac driver object. This function will perform a check to see if the FicTrac program is present
         on the path. If it is not, it will throw an exception.

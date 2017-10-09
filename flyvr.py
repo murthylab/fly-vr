@@ -9,6 +9,7 @@ from audio.attenuation import Attenuator
 from audio.stimuli import SinStim, AudioStimPlaylist
 
 from common.concurrent_task import ConcurrentTask
+from fictrac.fictrac_driver import FicTracDriver
 
 savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
@@ -46,6 +47,16 @@ def main():
                       type="string",
                       help="File that stores output recorded on requested input channels. Default is file is Y%m%d_%H%M_daq.h5 where Y%m%d_%H%M is current timestamp.",
                       default=savefilename)
+    parser.add_option('-f', "--fictrac_config",
+                      type="string",
+                      help="File that specifies FicTrac configuration information.")
+    parser.add_option('-k', "--fictrac_callback",
+                      type="string",
+                      help="A callback function that will be called anytime FicTrac updates its state. It must take two " +
+                           "parameters; the FicTrac state, and an IOTask object for communicating with the daq.")
+    parser.add_option("-c", "--pgr_cam_enable", action="store_true",
+                      help="Enable Point Grey Camera support in FicTrac.",
+                      default=False)
     parser.add_option("-s", action="store_true", dest="shuffle",
                       help="Shuffle the playback of the playlist randomly.",
                       default=False)
@@ -73,6 +84,16 @@ def main():
     daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[])
     daqTask.start()
     print("Done.")
+
+    # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
+    if (options.fictrac_config is not None):
+        tracTask = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
+                                 options.fictrac_callback, options.pgr_enable)
+
+        # Run the task
+        sys.stdout.write("Starting FicTrac ... ")
+        tracTask.run()
+        print("Done")
 
     sys.stdout.write("Queing playlist ... ")
     time.sleep(1)
