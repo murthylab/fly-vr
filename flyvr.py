@@ -9,6 +9,7 @@ from common.build_arg_parser import parse_arguments
 
 from common.concurrent_task import ConcurrentTask
 from fictrac.fictrac_driver import FicTracDriver
+from fictrac.fictrac_driver import tracking_update_stub
 
 def main():
 
@@ -31,12 +32,17 @@ def main():
 
     # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
     if (options.fictrac_config is not None):
-        tracTask = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                 options.fictrac_callback, options.pgr_enable)
+
+        if options.fictrac_callback is None:
+            fictrac_callback = tracking_update_stub
+
+        tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
+                                 fictrac_callback, options.pgr_cam_enable)
 
         # Run the task
         sys.stdout.write("Starting FicTrac ... ")
-        tracTask.run()
+        trackTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[])
+
         print("Done")
 
     sys.stdout.write("Queing playlist ... ")
