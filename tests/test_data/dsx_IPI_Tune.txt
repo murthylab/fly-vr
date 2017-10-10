@@ -1,4 +1,4 @@
 stimFileName	rate (Hz)	trials	silencePre (ms)	silencePost (ms)	delayPost (ms)	intensity (au)	freq (Hz)	MODE
-pulseTrain_16IPI	10000	1	5000	10000	0	4	250	
-pulseTrain_36IPI	10000	1	5000	10000	0	4	250	
-pulseTrain_76IPI	10000	1	5000	10000	0	4	250	
+pulseTrain_16IPI	10000	1	2000	4000	0	4	250	
+pulseTrain_36IPI	10000	1	5000	4000	0	4	250	
+pulseTrain_76IPI	10000	1	5000	4000	0	4	250	

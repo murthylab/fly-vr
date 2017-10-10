@@ -18,7 +18,7 @@ def plot_task_main(disp_queue, channel):
     bgrd = fig.canvas.copy_from_bbox(ax.bbox)  # cache the background
     points = ax.plot(np.arange(10000), np.zeros((10000, 1)))[0]  # init plot content
     RUN = True
-    ax.axis([0, 10000, -25, 25])
+    ax.axis([0, 10000, -11, 11])
     while RUN:
         if disp_queue.poll(0.1):
             data = disp_queue.recv()

@@ -1,6 +1,8 @@
 .idea
 .cache
 *.pyc
+*.h5
+my_config.txt
 data
 tests/test_data/fictrac/test.avi
 tests/test_data/fictrac/test.dat

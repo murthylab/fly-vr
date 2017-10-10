@@ -16,7 +16,7 @@ def main():
 
     # If the user passed in an attenuation file function, apply it to the playlist
     attenuator = None
-    if (options.attenuation_file is not None):
+    if options.attenuation_file is not None:
         attenuator = Attenuator.load_from_file(options.attenuation_file)
     else:
         print("Warning: No attenuation file specified.")
@@ -46,15 +46,12 @@ def main():
     print("Done")
 
     # Start the playback and aquistion by sending a start signal.
-    daqTask.send(["START", options, options])
+    daqTask.send(["START", options])
 
     time.sleep(2)
 
     # Wait till the user presses enter to end playback
-    #raw_input("Press ENTER to end playback ... ")
-
-    while True:
-        pass
+    raw_input("Press ENTER to end playback ... ")
 
     sys.stdout.write("Shutting down ... ")
     daqTask.send("STOP")
