@@ -14,16 +14,15 @@ def main():
 
     options = parse_arguments()
 
-    # Read the playlist file and create and audio stimulus playlist object
-    stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle)
-
     # If the user passed in an attenuation file function, apply it to the playlist
-    if(options.attenuation_file is not None):
+    attenuator = None
+    if (options.attenuation_file is not None):
         attenuator = Attenuator.load_from_file(options.attenuation_file)
-        for stim in stimPlaylist.stims:
-            stim.attenuator = attenuator
     else:
         print("Warning: No attenuation file specified.")
+
+    # Read the playlist file and create and audio stimulus playlist object
+    stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
     sys.stdout.write("Initializing DAQ Tasks ... ")
     daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[])
@@ -52,7 +51,10 @@ def main():
     time.sleep(2)
 
     # Wait till the user presses enter to end playback
-    raw_input("Press ENTER to end playback ... ")
+    #raw_input("Press ENTER to end playback ... ")
+
+    while True:
+        pass
 
     sys.stdout.write("Shutting down ... ")
     daqTask.send("STOP")

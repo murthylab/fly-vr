@@ -25,6 +25,7 @@ class IOTask(daq.Task):
         daq.Task.__init__(self)
         assert isinstance(cha_name, list)
 
+        self.limits=limits
         self.read = daq.int32()
         self.read_float64 = daq.float64()
         cha_types = {"i": "input", "o": "output"}

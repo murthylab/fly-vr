@@ -16,7 +16,8 @@ class AudioStim(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence = 0, post_silence = 0, attenuator=None, frequency=None):
+    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence = 0, post_silence = 0, attenuator=None,
+                 frequency=None, max_value=10.0, min_value=-10.0):
         """
         Create an audio stimulus object that encapsulates the generation of the underlying audio
         data.
@@ -33,6 +34,8 @@ class AudioStim(object):
         self.__attenuator = attenuator
         self.__frequency = frequency
         self.__intensity = intensity
+        self.__max_value = max_value
+        self.__min_value = min_value
 
     def _gen_silence(self, silence_duration):
         """
@@ -89,10 +92,19 @@ class AudioStim(object):
         if self.__attenuator is not None:
             data = self.__attenuator.attenuate(data, self.__frequency)
 
-        self.__data = self._add_silence(data)
+        data = self._add_silence(data)
 
         # Multiply the signal by the intensity factor
-        self.__data = self.__data * self.__intensity
+        data = data * self.__intensity
+
+        # Perform limit check on data, make sure we are not exceeding
+        if data.max() > self.__max_value:
+            raise ValueError("Stimulus value exceeded max level!")
+
+        if data.min() < self.__min_value:
+            raise ValueError("Stimulus value lower than min level!")
+
+        self.__data = data
 
     @property
     def data_generator(self):
@@ -255,7 +267,7 @@ class AudioStimPlaylist:
             self._playback_order = np.random.permutation(len(self.stims))
 
     @classmethod
-    def fromfilename(cls, filename, shuffle_playback=False):
+    def fromfilename(cls, filename, shuffle_playback=False, attenuator=None):
 
         # Get the root directory of this file
         local_dir = os.path.dirname(filename) + '/'
@@ -268,7 +280,10 @@ class AudioStimPlaylist:
         stims = []
         for filename in data['stimFileName']:
             print "Loading " + local_dir + filename
-            stim = MATFileStim(local_dir+filename, data["freq (Hz)"][row], data["rate (Hz)"][row], data["silencePre (ms)"][row], data["silencePost (ms)"][row])
+            stim = MATFileStim(filename=local_dir+filename, frequency=data["freq (Hz)"][row],
+                               sample_rate=data["rate (Hz)"][row], intensity=data["intensity (au)"][row],
+                               pre_silence=data["silencePre (ms)"][row], post_silence=data["silencePost (ms)"][row],
+                               attenuator=attenuator)
             stims.append(stim)
             row = row + 1
 
