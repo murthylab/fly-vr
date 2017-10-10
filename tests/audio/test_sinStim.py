@@ -7,7 +7,7 @@ from audio.stimuli import AudioStim, SinStim
 def stim():
 
     # Create a sin stimulus
-    return SinStim(230, 2.0, 0.0, 40000, 200, 0, 0)
+    return SinStim(230, 2.0, 0.0, 40000, 200, 1.0, 0, 0)
 
 def test__generate_data(stim):
 
@@ -40,3 +40,9 @@ def test_presilence(stim):
     # Add some silence, make sure the data is regenerated and it works
     stim.pre_silence = 100
     assert stim.data[29] == 0.0
+
+def test_intensity(stim):
+    # Make sure intensity is working as a multiplicative factor
+    oldVal = stim.data[29]
+    stim.intensity = 10.0
+    assert stim.data[29] == oldVal*10.0

@@ -16,7 +16,7 @@ class AudioStim(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, sample_rate, duration, pre_silence = 0, post_silence = 0, attenuator=None, frequency=None):
+    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence = 0, post_silence = 0, attenuator=None, frequency=None):
         """
         Create an audio stimulus object that encapsulates the generation of the underlying audio
         data.
@@ -32,6 +32,7 @@ class AudioStim(object):
         self.__data = []
         self.__attenuator = attenuator
         self.__frequency = frequency
+        self.__intensity = intensity
 
     def _gen_silence(self, silence_duration):
         """
@@ -90,6 +91,9 @@ class AudioStim(object):
 
         self.__data = self._add_silence(data)
 
+        # Multiply the signal by the intensity factor
+        self.__data = self.__data * self.__intensity
+
     @property
     def data_generator(self):
         """
@@ -138,6 +142,26 @@ class AudioStim(object):
         :param int duration: The duration of the audio signal in milliseconds.
         """
         self.__duration = duration
+        self.data = self._generate_data()
+
+    @property
+    def intensity(self):
+        """
+        Get the intensity of the audio signal. This is a scalar multiplicative factor of the signal.
+
+        :return: A scalar multiplicative factor of the signal.
+        :rtype: double
+        """
+        return self.__intensity
+
+    @intensity.setter
+    def intensity(self, intensity):
+        """
+         Set the intensity of the audio signal. This is a scalar multiplicative factor of the signal.
+
+        :param double intensity: A scalar multiplicative factor of the signal.
+        """
+        self.__intensity = intensity
         self.data = self._generate_data()
 
     @property
@@ -282,10 +306,10 @@ class SinStim(AudioStim):
        of the sinusoid as well as attenuation by a custom attenuation object.
     """
 
-    def __init__(self, frequency, amplitude, phase, sample_rate, duration, pre_silence=0, post_silence=0, attenuator=None):
+    def __init__(self, frequency, amplitude, phase, sample_rate, duration, intensity=1.0, pre_silence=0, post_silence=0, attenuator=None):
 
         # Initiatialize the base class members
-        super(SinStim, self).__init__(sample_rate, duration, pre_silence, post_silence, attenuator, frequency)
+        super(SinStim, self).__init__(sample_rate, duration, intensity, pre_silence, post_silence, attenuator, frequency)
 
         self.__amplitude = amplitude
         self.__phase = phase
@@ -352,10 +376,10 @@ class MATFileStim(AudioStim):
     significant number of pre-generated audio stimulus patterns stored as MAT files. This class allows
     loading of these data files and playing them through the DAQ."""
 
-    def __init__(self, filename, frequency, sample_rate, pre_silence=0, post_silence=0, attenuator=None):
+    def __init__(self, filename, frequency, sample_rate, intensity=1.0, pre_silence=0, post_silence=0, attenuator=None):
 
         # Initiatialize the base class members
-        super(MATFileStim, self).__init__(sample_rate, None, pre_silence, post_silence, attenuator, frequency)
+        super(MATFileStim, self).__init__(sample_rate, None, intensity, pre_silence, post_silence, attenuator, frequency)
 
         self.__filename = filename
         self.data = self._generate_data()
