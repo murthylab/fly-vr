@@ -97,14 +97,14 @@ class AudioStim(object):
         # Multiply the signal by the intensity factor
         data = data * self.__intensity
 
+        self.__data = data
+
         # Perform limit check on data, make sure we are not exceeding
         if data.max() > self.__max_value:
-            raise ValueError("Stimulus value exceeded max level!")
+            raise ValueError("Audio stimulus value exceeded max level!")
 
         if data.min() < self.__min_value:
-            raise ValueError("Stimulus value lower than min level!")
-
-        self.__data = data
+            raise ValueError("Audio stimulus value lower than min level!")
 
     @property
     def data_generator(self):

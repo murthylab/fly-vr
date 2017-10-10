@@ -44,5 +44,5 @@ def test_presilence(stim):
 def test_intensity(stim):
     # Make sure intensity is working as a multiplicative factor
     oldVal = stim.data[29]
-    stim.intensity = 10.0
-    assert stim.data[29] == oldVal*10.0
+    stim.intensity = 2.0
+    assert stim.data[29] == oldVal*2.0
