@@ -8,6 +8,9 @@ import subprocess
 
 from common.tools import which
 
+def fictrac_poll_run_main(message_pipe, tracDrv, RUN):
+    tracDrv.run(message_pipe, RUN)
+
 class FicTracDriver:
     """
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
@@ -46,7 +49,7 @@ class FicTracDriver:
         if self.fictrac_bin_fullpath is None:
             raise RuntimeError("Could not find " + self.fictrac_bin + " on the PATH!")
 
-    def run(self):
+    def run(self, message_pipe=None, RUN=None):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
         changes in tracking data and invoke a callback function when they occur. FicTrac is assumed to exist on the
@@ -70,14 +73,23 @@ class FicTracDriver:
                 new_frame_count = data.frame_cnt
 
                 if old_frame_count != new_frame_count:
+
+                    if new_frame_count - old_frame_count != 1 and RUN.value != 1:
+                        fictrac_process.terminate()
+                        raise ValueError("Missed frame from FicTrac shared memory streaming! oldFrame = " +
+                                         str(old_frame_count) + ", newFrame = " + str(new_frame_count))
+
                     old_frame_count = new_frame_count
                     self.track_change_callback(data)
+
+                # If we detect it is time to shutdown, kill the FicTrac process
+                if RUN.value == 0:
+                    fictrac_process.terminate()
 
             print("FicTrac exited with return code " + str(fictrac_process.returncode))
 
 def tracking_update_stub(data):
-    shmem_transfer_data.print_fictrac_state(data)
+    pass
 
-if __name__ == '__main__':
-    tracTask = FicTracDriver('tests/test_data/fictrac/config.txt', 'tests/test_data/fictrac/output.txt', tracking_update_stub)
-    tracTask.run()
+def tracking_update_print_stub(data):
+    shmem_transfer_data.print_fictrac_state(data)

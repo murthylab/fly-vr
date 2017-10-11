@@ -127,16 +127,18 @@ def data(channels=1):
     except GeneratorExit:
         print("   cleaning up datagen.")
 
-def io_task_main(message_pipe):
+def io_task_main(message_pipe, RUN):
 
     # If we receive a data denerator before created the tasks, lets cache it so we
     # can set it.
     cached_data_generator = None
 
-    while True:
-        # CONFIGURABLE
-        RUN = False
-        while RUN is False:
+    # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
+    while RUN.value != 0:
+
+        # Message loop that waits for start signal
+        wait_for_start = True
+        while wait_for_start and RUN.value != 0:
             if message_pipe.poll(0.1):
                 try:
                     msg = message_pipe.recv()
@@ -148,7 +150,7 @@ def io_task_main(message_pipe):
                         command = msg[0]
                         options = msg[1]
                         if command == "START":
-                            RUN = True
+                            wait_for_start = False
                 except:
                     print("Bad message!")
                     pass
@@ -160,7 +162,8 @@ def io_task_main(message_pipe):
         taskAO = IOTask(cha_name=output_chans)
         taskAI = IOTask(cha_name=input_chans)
 
-        disp_task = ConcurrentTask(task=plot_task_main, comms="pipe", taskinitargs=[int(options.display_input_channel)])
+        disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
+                                   taskinitargs=[input_chans,10000,10])
         disp_task.start()
         save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[options.record_file, len(input_chans)])
         save_task.start()
@@ -185,13 +188,10 @@ def io_task_main(message_pipe):
 
         print("Done")
 
-        while RUN:
-            time.sleep(1)
+        while RUN.value != 0:
             if message_pipe.poll(0.1):
                 try:
                     msg = message_pipe.recv()
-                    if msg == "STOP":
-                        RUN = False
 
                     # If we have received a stimulus object, feed this object to output task for playback
                     if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
@@ -203,70 +203,6 @@ def io_task_main(message_pipe):
         taskAO.StopTask()
         taskAO.stop()
         taskAI.StopTask()
-        taskAI.stop()
-
-    taskAO.ClearTask()
-    taskAI.ClearTask()
-
-
-def runAcq(message_pipe):
-
-    print('initing')
-    taskAO = IOTask(cha_name=["ao0"])
-    taskAI = IOTask(cha_name=["ai0"])
-    print('inited')
-    while True:
-        # CONFIGURABLE
-        RUN = False
-        print('listening')
-        while RUN is False:
-            if message_pipe.poll(0.1):
-                try:
-                    msg = message_pipe.recv()
-                    print(msg)
-                    if msg[0:5] == "START":
-                        RUN = True
-                        savefilename = msg[6:]
-                except:
-                    pass
-
-        disp_task = ConcurrentTask(task=plot_task_main, comms="pipe", taskinitargs=[0])
-        disp_task.start()
-        save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[savefilename, 3])
-        save_task.start()
-
-        taskAI.data_rec = [disp_task, save_task]
-
-        taskAO.data_gen = data(channels=1)  # generator function that yields data upon request
-
-        # Connect AO start to AI start
-        taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
-
-        # Arm the AO task
-        # It won't start until the start trigger signal arrives from the AI task
-        taskAO.StartTask()
-
-        # Start the AI task
-        # This generates the AI start trigger signal and triggers the AO task
-        taskAI.StartTask()
-
-        while RUN:
-            time.sleep(1)
-            if message_pipe.poll(0.1):
-                try:
-                    msg = message_pipe.recv()
-                    print(msg)
-                    if msg == "STOP":
-                        RUN = False
-                except:
-                    pass
-
-        # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
-        taskAO.StopTask()
-        print('\n   stoppedAO')
-        taskAO.stop()
-        taskAI.StopTask()
-        print('\n   stoppedAI')
         taskAI.stop()
 
     taskAO.ClearTask()

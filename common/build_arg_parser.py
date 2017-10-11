@@ -28,13 +28,9 @@ def parse_arguments():
                         action=CommaListParser,
                         help="A comma separated list of numbers specifying the output channels. Default channel is 0.",
                         default=[0])
-    parser.add_argument('-d', "--display_input_channel",
-                        type=str,
-                        help="Input channel to display in realtime. Default is channel 0.",
-                        default=0)
     parser.add_argument('-l', "--record_file",
                         type=str,
-                        help="File that stores output recorded on requested input channels. Default is file is Y%m%d_%H%M_daq.h5 where Y%m%d_%H%M is current timestamp.",
+                        help="File that stores output recorded on requested input channels. Default is file is Ymd_HM_daq.h5 where Ymd_HM is current timestamp.",
                         default=savefilename)
     parser.add_argument('-f', "--fictrac_config",
                         type=str,
