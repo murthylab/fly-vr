@@ -8,6 +8,8 @@ from PyDAQmx.DAQmxCallBack import *
 from PyDAQmx.DAQmxConstants import *
 from PyDAQmx.DAQmxFunctions import *
 
+from  itertools import chain, islice
+
 import numpy as np
 
 import common.tools
@@ -17,50 +19,105 @@ from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from common.plot_task import plot_task_main
 from common.log_task import log_audio_task_main
 
-class IOTask(daq.Task):
+class IODigitalTask(daq.Task):
     """
-    IOTask encapsulates the an input-output task that communicates with the NIDAQ. It works with a list of input or
-    output channel names.
+        IODigitalTask encapsulates an input-output task that communicates with the NIDAQ using digital.
     """
-    def __init__(self, dev_name="Dev1", cha_name=["ai0"], limits=10.0, rate=10000.0):
-        # check inputs
+    def __init__(self, dev_name="Dev1", cha_name=["port0/line0"], cha_type = "output",
+                 num_samples_per_chan=10000, num_samples_per_event=10000):
         daq.Task.__init__(self)
         assert isinstance(cha_name, list)
 
-        self.limits=limits
-        self.read = daq.int32()
-        self.read_float64 = daq.float64()
-        cha_types = {"i": "input", "o": "output"}
-        self.cha_type = [cha_types[cha[1]] for cha in cha_name]
-        self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
-        self.cha_string = ", ".join(self.cha_name)
         self.num_channels = len(cha_name)
-
-        clock_source = None  # use internal clock
-        # FIX: input and output tasks can have different sizes
+        self.num_samples_per_event = num_samples_per_event
+        self.num_samples_per_chan = num_samples_per_chan
         self.callback = None
         self.data_gen = None  # called at start of callback
         self.data_rec = None  # called at end of callback
-        if self.cha_type[0] is "input":
-            self.num_samples_per_chan = 10000
-            self.num_samples_per_event = 10000  # self.num_samples_per_chan*self.num_channels
-            self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
-            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
-            self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
-        elif self.cha_type[0] is "output":
-            self.num_samples_per_chan = 5000
-            self.num_samples_per_event = 50  # determines shortest interval at which new data can be generated
-            self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
+
+        self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
+        self.cha_string = ", ".join(self.cha_name)
+
+        if cha_type == "output":
+            self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
             self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
             self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
-            # ensures continuous output and avoids collision of old and new data in buffer
             self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
+        elif cha_type == "input":
+            self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
+            self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
+        else:
+            raise ValueError("IODigitalTask cha_type parameter must be either input or output.")
+
         self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
         self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
         self.AutoRegisterDoneEvent(0)
         self._data_lock = threading.Lock()
         self._newdata_event = threading.Event()
         if self.cha_type[0] is "output":
+            self.EveryNCallback()  # fill buffer on init
+
+
+
+class IOTask(daq.Task):
+    """
+    IOTask encapsulates the an input-output task that communicates with the NIDAQ. It works with a list of input or
+    output channel names.
+    """
+    def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
+                 num_samples_per_chan=10000, num_samples_per_event=10000, digital=False):
+        # check inputs
+        daq.Task.__init__(self)
+        assert isinstance(cha_name, list)
+
+        self.digital = digital
+
+        self.read = daq.int32()
+        self.read_float64 = daq.float64()
+
+        self.limits=limits
+        self.cha_type = cha_type
+        self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
+        self.cha_string = ", ".join(self.cha_name)
+        self.num_channels = len(cha_name)
+        self.num_samples_per_chan = num_samples_per_chan
+        self.num_samples_per_event = num_samples_per_event  # self.num_samples_per_chan*self.num_channels
+
+        clock_source = None  # use internal clock
+        # FIX: input and output tasks can have different sizes
+        self.callback = None
+        self.data_gen = None  # called at start of callback
+        self.data_rec = None  # called at end of callback
+        if self.cha_type is "input":
+            if not self.digital:
+                self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
+            else:
+                self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+
+            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
+            self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
+        elif self.cha_type is "output":
+            if not self.digital:
+                self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
+            else:
+                self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+
+            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
+            self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
+            # ensures continuous output and avoids collision of old and new data in buffer
+            self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
+
+        if not digital:
+            self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
+        else:
+            self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.uint8)
+
+        self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
+        self.AutoRegisterDoneEvent(0)
+        self._data_lock = threading.Lock()
+        self._newdata_event = threading.Event()
+        if self.cha_type is "output":
             self.EveryNCallback()  # fill buffer on init
 
     def stop(self):
@@ -78,6 +135,7 @@ class IOTask(daq.Task):
         :param data_generator: A generator function of audio data.
         """
         with self._data_lock:
+            #chunked_gen = chunks(data_generator, size=self.num_samples_per_chan)
             self.data_gen = data_generator
 
     # FIX: different functions for AI and AO task types instead of in-function switching?
@@ -87,16 +145,30 @@ class IOTask(daq.Task):
             systemtime = time.clock()
             if self.data_gen is not None:
                 self._data = self.data_gen.next()  # get data from data generator
-            if self.cha_type[0] is "input":
-                self.ReadAnalogF64(DAQmx_Val_Auto, 1.0, DAQmx_Val_GroupByScanNumber,
+
+            if self.cha_type is "input":
+                if not self.digital:
+                    self.ReadAnalogF64(DAQmx_Val_Auto, 1.0, DAQmx_Val_GroupByScanNumber,
                                    self._data, self.num_samples_per_chan * self.num_channels, daq.byref(self.read), None)
-            elif self.cha_type[0] is "output":
-                self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel,
+                else:
+                    numBytesPerSamp = daq.int32()
+                    self.ReadDigitalLines(self.num_samples_per_chan, 1.0, DAQmx_Val_GroupByScanNumber,
+                                          self._data, self.num_samples_per_chan * self.num_channels,
+                                          byref(self.read),  byref(numBytesPerSamp), None)
+
+            elif self.cha_type is "output":
+                if not self.digital:
+                    self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel,
                                     self._data, daq.byref(self.read), None)
+                else:
+                    self.WriteDigitalLines(self.num_samples_per_chan, False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, self._data, None, None)
+
+            # Send the data to a callback if requested.
             if self.data_rec is not None:
                 for data_rec in self.data_rec:
                     if self._data is not None:
                         data_rec.send((self._data, systemtime))
+
             self._newdata_event.set()
         return 0  # The function should return an integer
 
@@ -104,19 +176,31 @@ class IOTask(daq.Task):
         print("Done status", status)
         return 0  # The function should return an integer
 
-
+# A function that takes a generator and yields another generator that returns fixed size chunks from it.
+# This will allow us to chunk a generator that a user passes for playback that does not reuturn the right number
+# of samples per chunk.
+def chunks(iterable, size=5000):
+    iterator = iter(iterable)
+    for first in iterator:
+        yield chain([first], islice(iterator, size - 1))
 
 @common.tools.coroutine
-def data(channels=1):
+def data(channels=1, num_samples=10000, dtype=np.float64):
     '''generator yields next chunk of data for output'''
     # generate all stimuli
+
+    max_value = 5
+
+    if dtype == np.uint8:
+        max_value = 1
+
     data = list()
     for ii in range(2):
         # t = np.arange(0, 1, 1.0 / max(100.0 ** ii, 100))
         # tmp = np.tile(0.2 * np.sin(5000 * t).astype(np.float64), (channels, 1)).T
 
         # simple ON/OFF pattern
-        tmp = 5 * ii * np.ones((channels, 10000)).astype(np.float64).T
+        tmp = max_value * ii * np.ones((channels, num_samples)).astype(dtype).T
         data.append(np.ascontiguousarray(tmp))  # `ascont...` necessary since `.T` messes up internal array format
     count = 0  # init counter
     try:
@@ -145,7 +229,7 @@ def io_task_main(message_pipe, RUN):
 
                     # If we have received a stimulus object, feed this object to output task for playback
                     if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                        cached_data_generator = msg.data_generator
+                        cached_data_generator = msg.data_generator()
                     elif isinstance(msg, list):
                         command = msg[0]
                         options = msg[1]
@@ -159,11 +243,11 @@ def io_task_main(message_pipe, RUN):
         output_chans = ["ao" + str(s) for s in options.analog_out_channels]
         input_chans = ["ai" + str(s) for s in options.analog_in_channels]
 
-        taskAO = IOTask(cha_name=output_chans)
-        taskAI = IOTask(cha_name=input_chans)
+        taskAO = IOTask(cha_name=output_chans, cha_type="output", num_samples_per_chan=5000, num_samples_per_event=50)
+        taskAI = IOTask(cha_name=input_chans, cha_type="input", num_samples_per_chan=10000, num_samples_per_event=10000)
 
         disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
-                                   taskinitargs=[input_chans,10000,10])
+                                   taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
         disp_task.start()
         save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[options.record_file, len(input_chans)])
         save_task.start()
@@ -195,7 +279,7 @@ def io_task_main(message_pipe, RUN):
 
                     # If we have received a stimulus object, feed this object to output task for playback
                     if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                        taskAO.data_generator = msg.data_generator
+                        taskAO.set_data_generator(msg.data_generator())
                 except:
                     pass
 
@@ -207,3 +291,29 @@ def io_task_main(message_pipe, RUN):
 
     taskAO.ClearTask()
     taskAI.ClearTask()
+
+
+
+def main():
+    input_channels = ["port0/line0"]
+    output_channels = ["port0/line1"]
+    num_output_samples = 100
+    taskDI = IOTask(digital=True, cha_name=input_channels, cha_type="input", num_samples_per_chan=5000, num_samples_per_event=5000)
+    taskDO = IOTask(digital=True, cha_name=output_channels, cha_type="output", num_samples_per_chan=num_output_samples, num_samples_per_event=50)
+    #disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
+    #                           taskinitargs=[input_channels, taskDI.num_samples_per_chan, 10])
+    #disp_task.start()
+
+    taskDO.data_gen = data(channels=1, num_samples=num_output_samples, dtype=np.uint8)
+    #taskDI.data_rec = [disp_task]
+
+    taskDO.StartTask()
+
+    # Start the AI task
+    taskDI.StartTask()
+
+    while True:
+        time.sleep(0.1)
+
+if __name__ == "__main__":
+    main()

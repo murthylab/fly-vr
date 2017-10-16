@@ -106,7 +106,6 @@ class AudioStim(object):
         if data.min() < self.__min_value:
             raise ValueError("Audio stimulus value lower than min level!")
 
-    @property
     def data_generator(self):
         """
         Return a generator that yields the data member when next is called on it. Simply provides another interface to
@@ -289,7 +288,6 @@ class AudioStimPlaylist:
 
         return cls(stims, shuffle_playback)
 
-    @property
     def data_generator(self):
         """
         Return a generator that yields each AudioStim in the playlist in succession. If shuffle_playback is set to true

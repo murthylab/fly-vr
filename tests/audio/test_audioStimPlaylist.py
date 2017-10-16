@@ -12,7 +12,7 @@ def test_generator():
     stimList = AudioStimPlaylist(stims, shuffle_playback=False)
 
     # Get the generator
-    playGen = stimList.data_generator
+    playGen = stimList.data_generator()
 
     # See if we can do looping sequential playback
     for i in range(0,5):
@@ -22,7 +22,7 @@ def test_generator():
     stimList = AudioStimPlaylist([stim1, stim2, stim3], shuffle_playback=True)
 
     # Get the generator
-    playGen = stimList.data_generator
+    playGen = stimList.data_generator()
 
     # Get the shuffle order
     order = stimList._playback_order

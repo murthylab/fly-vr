@@ -68,11 +68,11 @@ def main():
 
     # Wait until all the tasks are finnished.
     while daqTask._process.is_alive():
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     if trackTask is not None:
         while trackTask._process.is_alive():
-            time.sleep(0.5)
+            time.sleep(0.1)
 
     print("Goodbye")
 
