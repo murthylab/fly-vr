@@ -87,3 +87,4 @@ class ConcurrentTask():
         if self._receiver is not None:
             self._receiver.close()
             del self._receiver
+

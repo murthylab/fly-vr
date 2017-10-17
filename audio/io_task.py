@@ -19,57 +19,18 @@ from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from common.plot_task import plot_task_main
 from common.log_task import log_audio_task_main
 
-class IODigitalTask(daq.Task):
-    """
-        IODigitalTask encapsulates an input-output task that communicates with the NIDAQ using digital.
-    """
-    def __init__(self, dev_name="Dev1", cha_name=["port0/line0"], cha_type = "output",
-                 num_samples_per_chan=10000, num_samples_per_event=10000):
-        daq.Task.__init__(self)
-        assert isinstance(cha_name, list)
-
-        self.num_channels = len(cha_name)
-        self.num_samples_per_event = num_samples_per_event
-        self.num_samples_per_chan = num_samples_per_chan
-        self.callback = None
-        self.data_gen = None  # called at start of callback
-        self.data_rec = None  # called at end of callback
-
-        self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
-        self.cha_string = ", ".join(self.cha_name)
-
-        if cha_type == "output":
-            self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
-            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
-            self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
-            self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
-        elif cha_type == "input":
-            self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
-            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
-            self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
-        else:
-            raise ValueError("IODigitalTask cha_type parameter must be either input or output.")
-
-        self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
-        self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
-        self.AutoRegisterDoneEvent(0)
-        self._data_lock = threading.Lock()
-        self._newdata_event = threading.Event()
-        if self.cha_type[0] is "output":
-            self.EveryNCallback()  # fill buffer on init
-
-
-
 class IOTask(daq.Task):
     """
     IOTask encapsulates the an input-output task that communicates with the NIDAQ. It works with a list of input or
     output channel names.
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
-                 num_samples_per_chan=10000, num_samples_per_event=10000, digital=False):
+                 num_samples_per_chan=10000, num_samples_per_event=10000, digital=False, has_callback=True):
         # check inputs
         daq.Task.__init__(self)
-        assert isinstance(cha_name, list)
+
+        if not isinstance(cha_name, list):
+            cha_name = [cha_name]
 
         self.digital = digital
 
@@ -85,40 +46,45 @@ class IOTask(daq.Task):
         self.num_samples_per_event = num_samples_per_event  # self.num_samples_per_chan*self.num_channels
 
         clock_source = None  # use internal clock
-        # FIX: input and output tasks can have different sizes
         self.callback = None
         self.data_gen = None  # called at start of callback
         self.data_rec = None  # called at end of callback
+
         if self.cha_type is "input":
             if not self.digital:
                 self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
             else:
                 self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
-            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
-            self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
+            if has_callback:
+                self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
+                self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
+
         elif self.cha_type is "output":
             if not self.digital:
                 self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
             else:
                 self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
-            self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
-            self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
-            # ensures continuous output and avoids collision of old and new data in buffer
-            self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
+            if has_callback:
+                self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
+                self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
+
+                # ensures continuous output and avoids collision of old and new data in buffer
+                self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
 
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
         else:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.uint8)
 
-        self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
-        self.AutoRegisterDoneEvent(0)
-        self._data_lock = threading.Lock()
-        self._newdata_event = threading.Event()
-        if self.cha_type is "output":
-            self.EveryNCallback()  # fill buffer on init
+        if has_callback:
+            self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
+            self.AutoRegisterDoneEvent(0)
+            self._data_lock = threading.Lock()
+            self._newdata_event = threading.Event()
+            if self.cha_type is "output":
+                self.EveryNCallback()  # fill buffer on init
 
     def stop(self):
         if self.data_gen is not None:
@@ -137,6 +103,14 @@ class IOTask(daq.Task):
         with self._data_lock:
             #chunked_gen = chunks(data_generator, size=self.num_samples_per_chan)
             self.data_gen = data_generator
+
+    def send(self, data):
+        if self.cha_type == "input":
+            raise ValueError("Cannot send on an input channel, it must be an output channel.")
+        if self.digital:
+            self.WriteDigitalLines(data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, None, None)
+        else:
+            self.WriteAnalogF64(data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, daq.byref(self.read), None)
 
     # FIX: different functions for AI and AO task types instead of in-function switching?
     #      or maybe pass function handle?
@@ -161,7 +135,7 @@ class IOTask(daq.Task):
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel,
                                     self._data, daq.byref(self.read), None)
                 else:
-                    self.WriteDigitalLines(self.num_samples_per_chan, False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, self._data, None, None)
+                    self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, self._data, None, None)
 
             # Send the data to a callback if requested.
             if self.data_rec is not None:
@@ -211,7 +185,7 @@ def data(channels=1, num_samples=10000, dtype=np.float64):
     except GeneratorExit:
         print("   cleaning up datagen.")
 
-def io_task_main(message_pipe, RUN):
+def io_task_main(message_pipe, RUN, DAQ_READY):
 
     # If we receive a data denerator before created the tasks, lets cache it so we
     # can set it.
@@ -260,8 +234,6 @@ def io_task_main(message_pipe, RUN):
         # Connect AO start to AI start
         taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-        sys.stdout.write("Starting DAQ Tasks ... ")
-
         # Arm the AO task
         # It won't start until the start trigger signal arrives from the AI task
         taskAO.StartTask()
@@ -270,7 +242,8 @@ def io_task_main(message_pipe, RUN):
         # This generates the AI start trigger signal and triggers the AO task
         taskAI.StartTask()
 
-        print("Done")
+        # Signal that the DAQ is ready and aquiring samples
+        DAQ_READY.value = 1
 
         while RUN.value != 0:
             if message_pipe.poll(0.1):
@@ -292,28 +265,4 @@ def io_task_main(message_pipe, RUN):
     taskAO.ClearTask()
     taskAI.ClearTask()
 
-
-
-def main():
-    input_channels = ["port0/line0"]
-    output_channels = ["port0/line1"]
-    num_output_samples = 100
-    taskDI = IOTask(digital=True, cha_name=input_channels, cha_type="input", num_samples_per_chan=5000, num_samples_per_event=5000)
-    taskDO = IOTask(digital=True, cha_name=output_channels, cha_type="output", num_samples_per_chan=num_output_samples, num_samples_per_event=50)
-    #disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
-    #                           taskinitargs=[input_channels, taskDI.num_samples_per_chan, 10])
-    #disp_task.start()
-
-    taskDO.data_gen = data(channels=1, num_samples=num_output_samples, dtype=np.uint8)
-    #taskDI.data_rec = [disp_task]
-
-    taskDO.StartTask()
-
-    # Start the AI task
-    taskDI.StartTask()
-
-    while True:
-        time.sleep(0.1)
-
-if __name__ == "__main__":
-    main()
+    DAQ_READY.value = 0

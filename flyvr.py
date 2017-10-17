@@ -19,22 +19,13 @@ def main():
     # us to signal shutdown to multiple processes.
     RUN = Value('i', 1)
 
+    # Create a thread safe Value to signal when the DAQ is aquiring samples.
+    DAQ_READY = Value('i', 0)
+
+    # Thread safe Value to signal when FicTrac is running an processing frames.
+    FICTRAC_READY = Value('i', 0)
+
     options = parse_arguments()
-
-    # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
-    if (options.fictrac_config is not None):
-
-        if options.fictrac_callback is None:
-            fictrac_callback = tracking_update_stub
-
-        tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                 fictrac_callback, options.pgr_cam_enable)
-
-        # Run the task
-        print("Starting FicTrac ... ")
-        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, RUN])
-        trackTask.start()
-        time.sleep(2)
 
     # If the user passed in an attenuation file function, apply it to the playlist
     attenuator = None
@@ -47,18 +38,41 @@ def main():
     stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
     sys.stdout.write("Initializing DAQ Tasks ... ")
-    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[RUN])
+    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[RUN, DAQ_READY])
     daqTask.start()
     print("Done.")
 
-    sys.stdout.write("Queing playlist ... ")
-    daqTask.send(stimPlaylist)
-    print("Done")
-
     # Start the playback and aquistion by sending a start signal.
+    sys.stdout.write("Starting acquisition ... ")
     daqTask.send(["START", options])
 
-    time.sleep(2)
+    # Wait until we get a ready message from the DAQ task
+    while DAQ_READY.value == 0:
+        time.sleep(0.2)
+
+    print("Done")
+
+    # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
+    if (options.fictrac_config is not None):
+
+        if options.fictrac_callback is None:
+            fictrac_callback = tracking_update_stub
+
+        tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
+                                fictrac_callback, options.pgr_cam_enable)
+
+        # Run the task
+        print("Starting FicTrac ... ")
+        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, RUN, FICTRAC_READY])
+        trackTask.start()
+
+        # Wait till FicTrac is processing frames
+        while FICTRAC_READY.value == 0:
+            time.sleep(0.2)
+
+    sys.stdout.write("Starting playlist ... ")
+    daqTask.send(stimPlaylist)
+    print("Done")
 
     # Wait till the user presses enter to end session
     raw_input("Press ENTER to end session ... ")

@@ -5,11 +5,14 @@ import os
 import mmap
 import ctypes
 import subprocess
+import numpy as np
+
+from audio.io_task import IOTask
 
 from common.tools import which
 
-def fictrac_poll_run_main(message_pipe, tracDrv, RUN):
-    tracDrv.run(message_pipe, RUN)
+def fictrac_poll_run_main(message_pipe, tracDrv, RUN, FICTRAC_READY):
+    tracDrv.run(message_pipe, RUN, FICTRAC_READY)
 
 class FicTracDriver:
     """
@@ -49,7 +52,7 @@ class FicTracDriver:
         if self.fictrac_bin_fullpath is None:
             raise RuntimeError("Could not find " + self.fictrac_bin + " on the PATH!")
 
-    def run(self, message_pipe=None, RUN=None):
+    def run(self, message_pipe, RUN, FICTRAC_READY):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
         changes in tracking data and invoke a callback function when they occur. FicTrac is assumed to exist on the
@@ -61,11 +64,28 @@ class FicTracDriver:
         # Open or create the shared memory region for accessing FicTrac's state
         shmem = mmap.mmap(-1, ctypes.sizeof(shmem_transfer_data.SHMEMFicTracState), "FicTracStateSHMEM")
 
+        # Create and start a task for sending a digital signal to the DAQ for every frame counter increment we
+        # detect.
+        fictrac_to_daq_task = IOTask(digital=True, cha_name='port0/line3', cha_type='output', has_callback=False)
+        fictrac_to_daq_task.StartTask()
+
+        # A signal to send to the DAQ before starting FicTrac, this lets us know that this is the start of a FicTrac
+        # session.
+        new_session_signal_data = np.ones((10,1), dtype=np.uint8)
+
+        # The signal to send to the DAQ when we encounter a new frame is a single digital pulse of two samples
+        next_frame_signal_data = np.ones((2,1), dtype=np.uint8)
+
         # Start FicTrac
         with open(self.console_output_file, "wb") as out:
+
+            # New session started, send special signal to the DAQ
+            fictrac_to_daq_task.send(new_session_signal_data)
+
             fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out, stderr=subprocess.STDOUT)
 
             data = shmem_transfer_data.SHMEMFicTracState.from_buffer(shmem)
+            first_frame_count = data.frame_cnt
             old_frame_count = data.frame_cnt
             print("Waiting for FicTrac updates in shared memory ... ")
             while fictrac_process.poll() is None:
@@ -74,10 +94,18 @@ class FicTracDriver:
 
                 if old_frame_count != new_frame_count:
 
+                    # If this is our first frame incremented, then send a signal to the
+                    # that we have started processing frames
+                    if old_frame_count == first_frame_count:
+                        FICTRAC_READY.value = 1
+
                     if new_frame_count - old_frame_count != 1 and RUN.value != 1:
                         fictrac_process.terminate()
                         raise ValueError("Missed frame from FicTrac shared memory streaming! oldFrame = " +
                                          str(old_frame_count) + ", newFrame = " + str(new_frame_count))
+
+                    # Send a signal to the DAQ
+                    fictrac_to_daq_task.send(next_frame_signal_data)
 
                     old_frame_count = new_frame_count
                     self.track_change_callback(data)
@@ -87,6 +115,11 @@ class FicTracDriver:
                     fictrac_process.terminate()
 
             print("FicTrac exited with return code " + str(fictrac_process.returncode))
+
+        fictrac_to_daq_task.StopTask()
+
+        FICTRAC_READY.value = 0
+
 
 def tracking_update_stub(data):
     pass
