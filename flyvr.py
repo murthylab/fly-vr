@@ -25,6 +25,8 @@ def main():
     # Thread safe Value to signal when FicTrac is running an processing frames.
     FICTRAC_READY = Value('i', 0)
 
+    FICTRAC_FRAME_NUM = Value('i', 0)
+
     options = parse_arguments()
 
     # If the user passed in an attenuation file function, apply it to the playlist
@@ -38,7 +40,7 @@ def main():
     stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
     sys.stdout.write("Initializing DAQ Tasks ... ")
-    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[RUN, DAQ_READY])
+    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[RUN, DAQ_READY, FICTRAC_FRAME_NUM])
     daqTask.start()
     print("Done.")
 
@@ -63,7 +65,7 @@ def main():
 
         # Run the task
         print("Starting FicTrac ... ")
-        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, RUN, FICTRAC_READY])
+        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, RUN, FICTRAC_READY, FICTRAC_FRAME_NUM])
         trackTask.start()
 
         # Wait till FicTrac is processing frames

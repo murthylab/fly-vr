@@ -8,7 +8,9 @@ from PyDAQmx.DAQmxCallBack import *
 from PyDAQmx.DAQmxConstants import *
 from PyDAQmx.DAQmxFunctions import *
 
-from  itertools import chain, islice
+from itertools import chain, islice
+
+import math
 
 import numpy as np
 
@@ -25,12 +27,16 @@ class IOTask(daq.Task):
     output channel names.
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
-                 num_samples_per_chan=10000, num_samples_per_event=10000, digital=False, has_callback=True):
+                 num_samples_per_chan=10000, num_samples_per_event=None, digital=False, has_callback=True,
+                 fictrac_frame_num=None):
         # check inputs
         daq.Task.__init__(self)
 
         if not isinstance(cha_name, list):
             cha_name = [cha_name]
+
+
+        self.fictrac_frame_num = fictrac_frame_num
 
         self.digital = digital
 
@@ -44,6 +50,9 @@ class IOTask(daq.Task):
         self.num_channels = len(cha_name)
         self.num_samples_per_chan = num_samples_per_chan
         self.num_samples_per_event = num_samples_per_event  # self.num_samples_per_chan*self.num_channels
+
+        if self.num_samples_per_event is None:
+            self.num_samples_per_event = num_samples_per_chan
 
         clock_source = None  # use internal clock
         self.callback = None
@@ -66,25 +75,34 @@ class IOTask(daq.Task):
             else:
                 self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
-            if has_callback:
-                self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
-                self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
-
-                # ensures continuous output and avoids collision of old and new data in buffer
-                self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
-
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
         else:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.uint8)
 
+        self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
+        self.AutoRegisterDoneEvent(0)
+
         if has_callback:
-            self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
-            self.AutoRegisterDoneEvent(0)
             self._data_lock = threading.Lock()
             self._newdata_event = threading.Event()
             if self.cha_type is "output":
+
+                self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
+                # ensures continuous output and avoids collision of old and new data in buffer
+                self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
+                self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
+                self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
+
                 self.EveryNCallback()  # fill buffer on init
+        else:
+            self.SetWriteRegenMode(DAQmx_Val_AllowRegen)
+            self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
+
+        # if self.cha_type == "output":
+        #     tranCond = daq.int32()
+        #     self.GetAODataXferReqCond(self.cha_name[0], daq.byref(tranCond))
+        #     print("Channel Type:" + self.cha_type + ", Transfer Cond: " + str(tranCond))
 
     def stop(self):
         if self.data_gen is not None:
@@ -101,8 +119,8 @@ class IOTask(daq.Task):
         :param data_generator: A generator function of audio data.
         """
         with self._data_lock:
-            #chunked_gen = chunks(data_generator, size=self.num_samples_per_chan)
-            self.data_gen = data_generator
+            chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_chan)
+            self.data_gen = chunked_gen
 
     def send(self, data):
         if self.cha_type == "input":
@@ -150,16 +168,8 @@ class IOTask(daq.Task):
         print("Done status", status)
         return 0  # The function should return an integer
 
-# A function that takes a generator and yields another generator that returns fixed size chunks from it.
-# This will allow us to chunk a generator that a user passes for playback that does not reuturn the right number
-# of samples per chunk.
-def chunks(iterable, size=5000):
-    iterator = iter(iterable)
-    for first in iterator:
-        yield chain([first], islice(iterator, size - 1))
-
 @common.tools.coroutine
-def data(channels=1, num_samples=10000, dtype=np.float64):
+def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
     '''generator yields next chunk of data for output'''
     # generate all stimuli
 
@@ -185,7 +195,7 @@ def data(channels=1, num_samples=10000, dtype=np.float64):
     except GeneratorExit:
         print("   cleaning up datagen.")
 
-def io_task_main(message_pipe, RUN, DAQ_READY):
+def io_task_main(message_pipe, RUN, DAQ_READY, FICTRAC_FRAME_NUM):
 
     # If we receive a data denerator before created the tasks, lets cache it so we
     # can set it.
@@ -217,8 +227,11 @@ def io_task_main(message_pipe, RUN, DAQ_READY):
         output_chans = ["ao" + str(s) for s in options.analog_out_channels]
         input_chans = ["ai" + str(s) for s in options.analog_in_channels]
 
-        taskAO = IOTask(cha_name=output_chans, cha_type="output", num_samples_per_chan=5000, num_samples_per_event=50)
-        taskAI = IOTask(cha_name=input_chans, cha_type="input", num_samples_per_chan=10000, num_samples_per_event=10000)
+        taskAO = IOTask(cha_name=output_chans, cha_type="output",
+                        num_samples_per_chan=50, num_samples_per_event=50,
+                        fictrac_frame_num=FICTRAC_FRAME_NUM)
+        taskAI = IOTask(cha_name=input_chans, cha_type="input",
+                        num_samples_per_chan=10000, num_samples_per_event=10000)
 
         disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
                                    taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
@@ -266,3 +279,74 @@ def io_task_main(message_pipe, RUN, DAQ_READY):
     taskAI.ClearTask()
 
     DAQ_READY.value = 0
+
+
+def chunker(gen, chunk_size=100):
+    next_chunk = None
+    curr_data_sample = 0
+    curr_chunk_sample = 0
+    data = None
+    num_samples = 0
+    while True:
+
+        if curr_data_sample == num_samples:
+            data = gen.next()
+            curr_data_sample = 0
+            num_samples = data.shape[0]
+
+            # If this is our first chunk, use its dimensions to figure out the number of columns
+            if next_chunk is None:
+                chunk_shape = list(data.shape)
+                chunk_shape[0] = chunk_size
+                next_chunk = np.zeros(tuple(chunk_shape), dtype=data.dtype)
+
+        # We want to add at most chunk_size samples to a chunk. We need to see if the current data will fit. If it does,
+        # copy the whole thing. If it doesn't, just copy what will fit.
+        sz = min(chunk_size-curr_chunk_sample, num_samples-curr_data_sample)
+        if data.ndim == 1:
+            next_chunk[curr_chunk_sample:(curr_chunk_sample + sz)] = data[curr_data_sample:(curr_data_sample + sz)]
+        else:
+            next_chunk[curr_chunk_sample:(curr_chunk_sample+sz), :] = data[curr_data_sample:(curr_data_sample + sz), :]
+
+        curr_chunk_sample = curr_chunk_sample + sz
+        curr_data_sample = curr_data_sample + sz
+
+        if curr_chunk_sample == chunk_size:
+            curr_chunk_sample = 0
+            yield next_chunk.copy()
+
+
+def test_hardware_singlepoint(rate=1000.0, chunk_size=100):
+    taskHandle = TaskHandle()
+    samplesPerChannelWritten = daq.int32()
+    isLate = daq.c_uint32()
+
+    stim = SinStim(frequency=250, amplitude=1, phase=0, sample_rate=rate, duration=2000, pre_silence=300, post_silence=300)
+    chunk_gen = chunker(stim.data_generator(), 100)
+
+    try:
+        DAQmxCreateTask("", byref(taskHandle))
+        DAQmxCreateAOVoltageChan(taskHandle, "/Dev1/ao0", "", -10.0, 10.0, DAQmx_Val_Volts, None)
+        DAQmxCfgSampClkTiming(taskHandle, "", rate, DAQmx_Val_Rising, DAQmx_Val_HWTimedSinglePoint, stim.data.shape[0])
+
+        DAQmxStartTask(taskHandle)
+
+        for i in xrange(stim.data.shape[0]/chunk_size):
+            DAQmxWriteAnalogF64(taskHandle, chunk_size, 1, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel,
+                                chunk_gen.next(), daq.byref(samplesPerChannelWritten), None)
+            DAQmxWaitForNextSampleClock(taskHandle, 10, daq.byref(isLate))
+            assert isLate.value == 0, "%d" % isLate.value
+
+    except DAQError as err:
+        print "DAQmx Error: %s" % err
+    finally:
+        if taskHandle:
+            # DAQmx Stop Code
+            DAQmxStopTask(taskHandle)
+            DAQmxClearTask(taskHandle)
+
+def main():
+   pass
+
+if __name__ == "__main__":
+    main()

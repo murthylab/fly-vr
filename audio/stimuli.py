@@ -115,6 +115,7 @@ class AudioStim(object):
         while True:
             yield self.data
 
+
     @property
     def sample_rate(self):
         """
