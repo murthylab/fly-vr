@@ -11,8 +11,8 @@ from audio.io_task import IOTask, data_generator_test
 
 from common.tools import which
 
-def fictrac_poll_run_main(message_pipe, tracDrv, RUN, FICTRAC_READY, FICTRAC_FRAME_NUM):
-    tracDrv.run(message_pipe, RUN, FICTRAC_READY, FICTRAC_FRAME_NUM)
+def fictrac_poll_run_main(message_pipe, tracDrv, state):
+    tracDrv.run(message_pipe, state)
 
 class FicTracDriver:
     """
@@ -52,7 +52,7 @@ class FicTracDriver:
         if self.fictrac_bin_fullpath is None:
             raise RuntimeError("Could not find " + self.fictrac_bin + " on the PATH!")
 
-    def run(self, message_pipe, RUN, FICTRAC_READY, FICTRAC_FRAME_NUM):
+    def run(self, message_pipe, state):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
         changes in tracking data and invoke a callback function when they occur. FicTrac is assumed to exist on the
@@ -82,27 +82,27 @@ class FicTracDriver:
                     # If this is our first frame incremented, then send a signal to the
                     # that we have started processing frames
                     if old_frame_count == first_frame_count:
-                        FICTRAC_READY.value = 1
+                        state.FICTRAC_READY.value = 1
 
-                    if new_frame_count - old_frame_count != 1 and RUN.value != 1:
+                    if new_frame_count - old_frame_count != 1 and state.RUN.value != 1:
                         fictrac_process.terminate()
                         print("Missed frame from FicTrac shared memory streaming! oldFrame = " +
                                          str(old_frame_count) + ", newFrame = " + str(new_frame_count))
 
                     old_frame_count = new_frame_count
-                    FICTRAC_FRAME_NUM.value = new_frame_count
+                    state.FICTRAC_FRAME_NUM.value = new_frame_count
 
                     self.track_change_callback(data)
 
                 # If we detect it is time to shutdown, kill the FicTrac process
-                if RUN.value == 0:
+                if state.RUN.value == 0:
                     fictrac_process.terminate()
 
             print("FicTrac exited with return code " + str(fictrac_process.returncode))
 
         #fictrac_to_daq_task.StopTask()
 
-        FICTRAC_READY.value = 0
+        state.FICTRAC_READY.value = 0
 
 
 def tracking_update_stub(data):

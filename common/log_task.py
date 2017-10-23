@@ -2,15 +2,46 @@ import h5py
 import numpy as np
 import sys
 
-def log_audio_task_main(frame_queue, filename, num_channels=1, sizeincrement=100):
+def recursively_save_dict_contents_to_group(h5file, path, dic):
+    """
+    Saves dictionary to an HDF5 files, calls itself recursively if items in
+    dictionary are not np.ndarray, np.int64, np.float64, str, bytes. Objects
+    must be iterable.
+    """
+    for key, item in dic.items():
+        if item is None:
+            h5file[path + key] = ""
+        elif isinstance(item, bool):
+            h5file[path + key] = int(item)
+        elif isinstance(item, list):
+            h5file[path + key] = np.asarray(item)
+        elif isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
+            h5file[path + key] = item
+        elif isinstance(item, dict):
+            recursively_save_dict_contents_to_group(h5file, path + key + '/', item)
+        else:
+            raise ValueError('Cannot save %s type'%type(item))
 
+def log_audio_task_main(frame_queue, state, sizeincrement=100):
+
+    # Get the output log file name from the options
+    filename = state.options.record_file
+
+    # Get the number of channels
+    num_channels = len(state.options.analog_in_channels)
+
+    # Open the HDF5 file for writing
     f = h5py.File(filename, "w")
 
     dset_samples = f.create_dataset("samples", shape=[sizeincrement, num_channels],
                                     maxshape=[None, num_channels], dtype=np.float64)
     dset_systemtime = f.create_dataset("systemtime", shape=[sizeincrement, 1],
                                        maxshape=[None, 1], dtype=np.float64)
-#    print("opened file \"{0}\".".format(filename))
+
+    # Lets add options meta-data to samples dataset as attributes
+    grp = f.create_group('options')
+    recursively_save_dict_contents_to_group(grp, '/options/', state.options.__dict__)
+
     framecount = 0
     RUN = True
     while RUN:

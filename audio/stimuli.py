@@ -262,6 +262,10 @@ class AudioStimPlaylist:
         self._shuffle_playback = shuffle_playback
         self._playback_order = np.arange(len(self.stims))
 
+        # We want to keep a playback history. This history will be updated with each call to the data generator
+        self.num_samples_generated = 0
+        self.history = list()
+
         # If we want to shuffle things, get a random permutation.
         if (self._shuffle_playback):
             self._playback_order = np.random.permutation(len(self.stims))
@@ -301,7 +305,14 @@ class AudioStimPlaylist:
 
         # Now, go through the list one at a time
         while True:
-            yield self.stims[self._playback_order[stim_idx]].data
+
+            play_idx = self._playback_order[stim_idx]
+
+            # Update the history
+            #self.num_samples_generated = self.num_samples_generated + self.stims[play_idx].data.shape[0]
+            #self.history = self.history.append(play_idx)
+
+            yield self.stims[play_idx].data
 
             stim_idx = stim_idx + 1;
 

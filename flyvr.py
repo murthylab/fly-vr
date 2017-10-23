@@ -3,6 +3,9 @@ import sys
 from multiprocessing import freeze_support
 from multiprocessing import Value, Array
 
+import h5py
+
+
 from audio import io_task
 from audio.attenuation import Attenuator
 from audio.stimuli import SinStim, AudioStimPlaylist
@@ -13,21 +16,41 @@ from fictrac.fictrac_driver import FicTracDriver
 from fictrac.fictrac_driver import fictrac_poll_run_main
 from fictrac.fictrac_driver import tracking_update_stub
 
+
+
+class SharedState:
+    """
+    A class to represent the shared state between our concurrent tasks. We can add values to this shared state and they
+    will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
+    """
+    def __init__(self, options):
+
+        # Lets store the options passed to the program. This does not need to be stored in a thread
+        # safe manner.
+        self.options = options
+
+        # Create a thread safe Value that specifies the current run state. This will allow
+        # us to signal shutdown to multiple processes.
+        self.RUN = Value('i', 1)
+
+        # Create a thread safe Value to signal when the DAQ is aquiring samples.
+        self.DAQ_READY = Value('i', 0)
+
+        # Thread safe Value to signal when FicTrac is running an processing frames.
+        self.FICTRAC_READY = Value('i', 0)
+
+        # Current FicTrac frame number
+        self.FICTRAC_FRAME_NUM = Value('i', 0)
+
+from common.log_task import recursively_save_dict_contents_to_group
+
 def main():
 
-    # Create a thread safe Value that specifies the current run state. This will allow
-    # us to signal shutdown to multiple processes.
-    RUN = Value('i', 1)
-
-    # Create a thread safe Value to signal when the DAQ is aquiring samples.
-    DAQ_READY = Value('i', 0)
-
-    # Thread safe Value to signal when FicTrac is running an processing frames.
-    FICTRAC_READY = Value('i', 0)
-
-    FICTRAC_FRAME_NUM = Value('i', 0)
-
+    # Get the argumnets passed
     options = parse_arguments()
+
+    # Initialize shared state between processes we are going to spawn
+    state = SharedState(options=options)
 
     # If the user passed in an attenuation file function, apply it to the playlist
     attenuator = None
@@ -40,7 +63,7 @@ def main():
     stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
     sys.stdout.write("Initializing DAQ Tasks ... ")
-    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[RUN, DAQ_READY, FICTRAC_FRAME_NUM])
+    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
     daqTask.start()
     print("Done.")
 
@@ -49,7 +72,7 @@ def main():
     daqTask.send(["START", options])
 
     # Wait until we get a ready message from the DAQ task
-    while DAQ_READY.value == 0:
+    while state.DAQ_READY.value == 0:
         time.sleep(0.2)
 
     print("Done")
@@ -65,11 +88,11 @@ def main():
 
         # Run the task
         print("Starting FicTrac ... ")
-        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, RUN, FICTRAC_READY, FICTRAC_FRAME_NUM])
+        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, state])
         trackTask.start()
 
         # Wait till FicTrac is processing frames
-        while FICTRAC_READY.value == 0:
+        while state.FICTRAC_READY.value == 0:
             time.sleep(0.2)
 
     sys.stdout.write("Starting playlist ... ")
@@ -80,7 +103,7 @@ def main():
     raw_input("Press ENTER to end session ... ")
 
     print("Shutting down ... ")
-    RUN.value = 0;
+    state.RUN.value = 0;
 
     # Wait until all the tasks are finnished.
     while daqTask._process.is_alive():

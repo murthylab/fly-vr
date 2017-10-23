@@ -28,16 +28,14 @@ class IOTask(daq.Task):
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
                  num_samples_per_chan=10000, num_samples_per_event=None, digital=False, has_callback=True,
-                 fictrac_frame_num=None):
+                 fictrac_frame_num=None, shared_state=None):
         # check inputs
         daq.Task.__init__(self)
 
         if not isinstance(cha_name, list):
             cha_name = [cha_name]
 
-
-        self.fictrac_frame_num = fictrac_frame_num
-
+        self.shared_state = shared_state
         self.digital = digital
 
         self.read = daq.int32()
@@ -90,7 +88,7 @@ class IOTask(daq.Task):
 
                 self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
                 # ensures continuous output and avoids collision of old and new data in buffer
-                self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
+                #self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
                 self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
                 self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
 
@@ -195,18 +193,18 @@ def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
     except GeneratorExit:
         print("   cleaning up datagen.")
 
-def io_task_main(message_pipe, RUN, DAQ_READY, FICTRAC_FRAME_NUM):
+def io_task_main(message_pipe, state):
 
     # If we receive a data denerator before created the tasks, lets cache it so we
     # can set it.
     cached_data_generator = None
 
     # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
-    while RUN.value != 0:
+    while state.RUN.value != 0:
 
         # Message loop that waits for start signal
         wait_for_start = True
-        while wait_for_start and RUN.value != 0:
+        while wait_for_start and state.RUN.value != 0:
             if message_pipe.poll(0.1):
                 try:
                     msg = message_pipe.recv()
@@ -229,14 +227,15 @@ def io_task_main(message_pipe, RUN, DAQ_READY, FICTRAC_FRAME_NUM):
 
         taskAO = IOTask(cha_name=output_chans, cha_type="output",
                         num_samples_per_chan=50, num_samples_per_event=50,
-                        fictrac_frame_num=FICTRAC_FRAME_NUM)
+                        shared_state=state)
         taskAI = IOTask(cha_name=input_chans, cha_type="input",
-                        num_samples_per_chan=10000, num_samples_per_event=10000)
+                        num_samples_per_chan=10000, num_samples_per_event=10000,
+                        shared_state=state)
 
         disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
                                    taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
         disp_task.start()
-        save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[options.record_file, len(input_chans)])
+        save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[state])
         save_task.start()
 
         taskAI.data_rec = [disp_task, save_task]
@@ -256,9 +255,9 @@ def io_task_main(message_pipe, RUN, DAQ_READY, FICTRAC_FRAME_NUM):
         taskAI.StartTask()
 
         # Signal that the DAQ is ready and aquiring samples
-        DAQ_READY.value = 1
+        state.DAQ_READY.value = 1
 
-        while RUN.value != 0:
+        while state.RUN.value != 0:
             if message_pipe.poll(0.1):
                 try:
                     msg = message_pipe.recv()
@@ -278,7 +277,7 @@ def io_task_main(message_pipe, RUN, DAQ_READY, FICTRAC_FRAME_NUM):
     taskAO.ClearTask()
     taskAI.ClearTask()
 
-    DAQ_READY.value = 0
+    state.DAQ_READY.value = 0
 
 
 def chunker(gen, chunk_size=100):
