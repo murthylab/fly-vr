@@ -1,4 +1,5 @@
 import pytest
+import mock
 import math
 
 from audio.stimuli import AudioStim, MATFileStim
@@ -12,3 +13,16 @@ def test__generate_data():
 
     assert len(stim.data) == 40320
     assert abs(stim.data[49] - 0.287053808324911) < 1e-08
+
+def test_callbacks():
+
+    my_callback_mock = mock.Mock()
+
+    stim = stim = MATFileStim('tests/audio/pulseTrain_16IPI.mat', frequency=250, sample_rate=10000,
+                              next_event_callbacks=my_callback_mock)
+
+    data_gen = stim.data_generator()
+
+    data_gen.next()
+
+    my_callback_mock.assert_called_with(stim)

@@ -16,6 +16,8 @@ import numpy as np
 
 import common.tools
 
+from common.tools import chunker
+
 from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from common.plot_task import plot_task_main
@@ -193,11 +195,23 @@ def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
     except GeneratorExit:
         print("   cleaning up datagen.")
 
+def setup_playback_callbacks(stim, log_task):
+    def make_log_stim_playback(log_task_msg_queue):
+        def callback(event_message):
+            log_task_msg_queue.send(event_message)
+
+        return callback
+
+    if isinstance(stim, AudioStim):
+        stim.next_event_callbacks = make_log_stim_playback(log_task)
+    elif isinstance(stim, AudioStimPlaylist):
+        for s in stim.stims:
+            s.next_event_callbacks = make_log_stim_playback(log_task)
+
 def io_task_main(message_pipe, state):
 
-    # If we receive a data denerator before created the tasks, lets cache it so we
-    # can set it.
-    cached_data_generator = None
+    # Save a copy of the last audio stimulus or playlist object we received.
+    audio_stim = None
 
     # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
     while state.RUN.value != 0:
@@ -211,7 +225,7 @@ def io_task_main(message_pipe, state):
 
                     # If we have received a stimulus object, feed this object to output task for playback
                     if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                        cached_data_generator = msg.data_generator()
+                        audio_stim = msg
                     elif isinstance(msg, list):
                         command = msg[0]
                         options = msg[1]
@@ -240,8 +254,9 @@ def io_task_main(message_pipe, state):
 
         taskAI.data_rec = [disp_task, save_task]
 
-        if cached_data_generator is not None:
-            taskAO.set_data_generator(cached_data_generator)
+        if audio_stim is not None:
+            setup_playback_callbacks(audio_stim, save_task)
+            taskAO.set_data_generator(audio_stim.data_generator())
 
         # Connect AO start to AI start
         taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
@@ -264,6 +279,10 @@ def io_task_main(message_pipe, state):
 
                     # If we have received a stimulus object, feed this object to output task for playback
                     if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
+                        audio_stim = msg
+
+                        setup_playback_callbacks(audio_stim, save_task)
+
                         taskAO.set_data_generator(msg.data_generator())
                 except:
                     pass
@@ -278,42 +297,6 @@ def io_task_main(message_pipe, state):
     taskAI.ClearTask()
 
     state.DAQ_READY.value = 0
-
-
-def chunker(gen, chunk_size=100):
-    next_chunk = None
-    curr_data_sample = 0
-    curr_chunk_sample = 0
-    data = None
-    num_samples = 0
-    while True:
-
-        if curr_data_sample == num_samples:
-            data = gen.next()
-            curr_data_sample = 0
-            num_samples = data.shape[0]
-
-            # If this is our first chunk, use its dimensions to figure out the number of columns
-            if next_chunk is None:
-                chunk_shape = list(data.shape)
-                chunk_shape[0] = chunk_size
-                next_chunk = np.zeros(tuple(chunk_shape), dtype=data.dtype)
-
-        # We want to add at most chunk_size samples to a chunk. We need to see if the current data will fit. If it does,
-        # copy the whole thing. If it doesn't, just copy what will fit.
-        sz = min(chunk_size-curr_chunk_sample, num_samples-curr_data_sample)
-        if data.ndim == 1:
-            next_chunk[curr_chunk_sample:(curr_chunk_sample + sz)] = data[curr_data_sample:(curr_data_sample + sz)]
-        else:
-            next_chunk[curr_chunk_sample:(curr_chunk_sample+sz), :] = data[curr_data_sample:(curr_data_sample + sz), :]
-
-        curr_chunk_sample = curr_chunk_sample + sz
-        curr_data_sample = curr_data_sample + sz
-
-        if curr_chunk_sample == chunk_size:
-            curr_chunk_sample = 0
-            yield next_chunk.copy()
-
 
 def test_hardware_singlepoint(rate=1000.0, chunk_size=100):
     taskHandle = TaskHandle()

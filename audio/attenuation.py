@@ -5,6 +5,8 @@ import audio.stimuli
 
 class Attenuator(object):
     def __init__(self, attenuation_factors):
+        self.frequencies = attenuation_factors.keys()
+        self.factors = attenuation_factors.values()
         self.attenuation_factors = attenuation_factors
 
     @classmethod

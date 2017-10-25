@@ -1,4 +1,5 @@
 import pytest
+import mock
 import math
 
 from audio.stimuli import AudioStim, SinStim
@@ -6,8 +7,12 @@ from audio.stimuli import AudioStim, SinStim
 @pytest.fixture
 def stim():
 
+    stim = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
+                   duration=200, intensity=1.0, pre_silence=0, post_silence=0,
+                   attenuator=None)
+
     # Create a sin stimulus
-    return SinStim(230, 2.0, 0.0, 40000, 200, 1.0, 0, 0)
+    return stim
 
 def test__generate_data(stim):
 
@@ -46,3 +51,17 @@ def test_intensity(stim):
     oldVal = stim.data[29]
     stim.intensity = 2.0
     assert stim.data[29] == oldVal*2.0
+
+def test_callbacks(stim):
+
+    my_callback_mock = mock.Mock()
+
+    stim = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
+                   duration=200, intensity=1.0, pre_silence=0, post_silence=0,
+                   attenuator=None, next_event_callbacks=my_callback_mock)
+
+    data_gen = stim.data_generator()
+
+    data_gen.next()
+
+    my_callback_mock.assert_called_with(stim)

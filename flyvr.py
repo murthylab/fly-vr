@@ -17,7 +17,6 @@ from fictrac.fictrac_driver import fictrac_poll_run_main
 from fictrac.fictrac_driver import tracking_update_stub
 
 
-
 class SharedState:
     """
     A class to represent the shared state between our concurrent tasks. We can add values to this shared state and they
@@ -42,7 +41,6 @@ class SharedState:
         # Current FicTrac frame number
         self.FICTRAC_FRAME_NUM = Value('i', 0)
 
-from common.log_task import recursively_save_dict_contents_to_group
 
 def main():
 
@@ -59,13 +57,15 @@ def main():
     else:
         print("Warning: No attenuation file specified.")
 
-    # Read the playlist file and create and audio stimulus playlist object
-    stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
-
     sys.stdout.write("Initializing DAQ Tasks ... ")
     daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
     daqTask.start()
     print("Done.")
+
+    # Read the playlist file and create and audio stimulus playlist object. We pass a callback function to these
+    # underlying stimuli that is triggered anytime they generate data. The callback sends a log signal to the
+    # master logging process.
+    stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
     # Start the playback and aquistion by sending a start signal.
     sys.stdout.write("Starting acquisition ... ")
@@ -78,6 +78,7 @@ def main():
     print("Done")
 
     # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
+    trackTask = None
     if (options.fictrac_config is not None):
 
         if options.fictrac_callback is None:
