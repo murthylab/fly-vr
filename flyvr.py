@@ -17,7 +17,7 @@ from fictrac.fictrac_driver import fictrac_poll_run_main
 from fictrac.fictrac_driver import tracking_update_stub
 
 
-class SharedState:
+class SharedState(object):
     """
     A class to represent the shared state between our concurrent tasks. We can add values to this shared state and they
     will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
@@ -41,10 +41,12 @@ class SharedState:
         # Current FicTrac frame number
         self.FICTRAC_FRAME_NUM = Value('i', 0)
 
+        # Keep track of the current producer for each output channel
+        self.OUTPUT_PRODUCER_ID = Array('i', [0] * len(options.analog_out_channels))
 
 def main():
 
-    # Get the argumnets passed
+    # Get the arguments passed
     options = parse_arguments()
 
     # Initialize shared state between processes we are going to spawn

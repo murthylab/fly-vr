@@ -9,13 +9,15 @@ class Mixer(object):
     interface for applications to the DAQ IOTask class. It captures coarse grained history of stimuli\signal generation
     history.
     """
-    def __init__(self, channel_labels, data_producers):
+    def __init__(self, channel_labels, daq_channel_names, data_producers):
+        self.daq_channel_names = daq_channel_names
         self._producers = dict(zip(channel_labels, data_producers))
         self._lock = Lock()
 
     def set_channel_producer(self, channel_label, producer):
         """
         Set the producer for a particular channel. This method is thread safe.
+
         :param channel_label: The label of the channel to set the producer of.
         :param producer: The producer to use for assignment.
         :return:

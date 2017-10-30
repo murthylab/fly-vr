@@ -14,7 +14,7 @@ from common.tools import which
 def fictrac_poll_run_main(message_pipe, tracDrv, state):
     tracDrv.run(message_pipe, state)
 
-class FicTracDriver:
+class FicTracDriver(object):
     """
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
     calls a callback function once for each time the tracking state of the insect is updated.

@@ -5,7 +5,7 @@ from scipy import io
 import pandas as pd
 import os.path
 
-from audio.signal_producer import SignalProducer
+from audio.signal_producer import SignalProducer, SampleChunk
 
 class AudioStim(SignalProducer):
     """
@@ -133,12 +133,15 @@ class AudioStim(SignalProducer):
         """
         Return a generator that yields the data member when next is called on it. Simply provides another interface to
         the same data stored in the data member.
+
         :return: A generator that yields an array containing the sample data.
         """
         while True:
             self.num_samples_generated = self.num_samples_generated + self.data.shape[0]
             self.trigger_next_callback(self.event_message)
-            yield self.data
+
+
+            yield SampleChunk(data=self.data, producer_id=self.producer_id)
 
     @property
     def sample_rate(self):
@@ -482,7 +485,9 @@ class AudioStimPlaylist(SignalProducer):
 
             play_idx = self._playback_order[stim_idx]
 
-            data = data_gens[play_idx].next()
+            sample_chunk_obj = data_gens[play_idx].next()
+
+            data = sample_chunk_obj.data
 
             # Update the history
             self.num_samples_generated = self.num_samples_generated + data.shape[0]
@@ -491,7 +496,7 @@ class AudioStimPlaylist(SignalProducer):
             # We are about to yield, send an event to our callbacks
             self.trigger_next_callback(self.event_message)
 
-            yield data
+            yield sample_chunk_obj
 
             stim_idx = stim_idx + 1;
 

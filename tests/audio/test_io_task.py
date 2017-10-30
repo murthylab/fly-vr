@@ -3,6 +3,7 @@ import math
 import numpy as np
 
 from audio.io_task import chunker
+from audio.signal_producer import SampleChunk
 from audio.stimuli import SinStim
 
 def check_chunker(test_gen, chunk_size):
@@ -12,9 +13,9 @@ def check_chunker(test_gen, chunk_size):
     # Run the data iterator 10 times to get some data. Put it
     # all in one array.
     num_data_to_test = 10
-    test_data = data_gen_iter.next()
+    test_data = data_gen_iter.next().data
     for i in range(num_data_to_test - 1):
-        test_data = np.concatenate((test_data, data_gen_iter.next()), axis=0)
+        test_data = np.concatenate((test_data, data_gen_iter.next().data), axis=0)
 
     # Reset generator
     data_gen_iter = test_gen()
@@ -25,9 +26,9 @@ def check_chunker(test_gen, chunk_size):
     # Now walk the chunk generator enough to get enough chunks to compare to
     # test data that we generated above
     num_chunks = int(math.ceil(float(test_data.shape[0]) / float(chunk_size)))
-    chunk_test_data = chunk_gen.next()
+    chunk_test_data = chunk_gen.next().data
     for i in range(num_chunks - 1):
-        chunk_test_data = np.concatenate((chunk_test_data, chunk_gen.next()), axis=0)
+        chunk_test_data = np.concatenate((chunk_test_data, chunk_gen.next().data), axis=0)
 
     # Truncate the data since the chunk size will probably not be a factor
     # of test data size.
@@ -45,7 +46,7 @@ def test_chunker():
     def simple_gen():
         x = 0
         while True:
-            yield np.arange(x, x + 51)
+            yield SampleChunk(data=np.arange(x, x + 51), producer_id=1)
             x = x + 51
 
     # Test out the chunker on a very simple generator

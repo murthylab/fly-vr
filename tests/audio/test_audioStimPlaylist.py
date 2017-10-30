@@ -33,7 +33,7 @@ def test_generator(stim1, stim2, stim3):
 
     # See if we can do looping sequential playback
     for i in range(0,5):
-        assert (playGen.next() == stims[i % 3].data).all()
+        assert (playGen.next().data == stims[i % 3].data).all()
 
     # Now lets check if shuffle is working. Make sure no stimulus is repeating.
     stimList = AudioStimPlaylist([stim1, stim2, stim3], shuffle_playback=True)
@@ -45,7 +45,7 @@ def test_generator(stim1, stim2, stim3):
     order = stimList._playback_order
 
     for i in range(0,3):
-        assert (playGen.next() == stims[order[i]].data).all()
+        assert (playGen.next().data == stims[order[i]].data).all()
 
 def test_history(stim1, stim2, stim3):
 
@@ -59,7 +59,7 @@ def test_history(stim1, stim2, stim3):
     # See if we can do looping sequential playback
     num_samples_played = 0
     for i in range(0,5):
-        data = playGen.next()
+        data = playGen.next().data
         num_samples_played = num_samples_played + data.shape[0]
 
     assert(stimList.history == [0, 1, 2, 0, 1])
@@ -79,7 +79,7 @@ def test_callbacks(stim1, stim2, stim3):
 
     data_gen.next()
 
-    my_callback_mock.assert_called_with(stimList)
+    my_callback_mock.assert_called()
 
     # Now lets put a different callback on each stimuli
     callback1 = mock.Mock()
@@ -98,9 +98,9 @@ def test_callbacks(stim1, stim2, stim3):
 
     data_gen.next()
 
-    callback1.assert_called_once_with(s1)
+    callback1.assert_called_once()
 
     data_gen.next()
 
-    callback1.assert_called_once_with(s1)
-    callback2.assert_called_once_with(s2)
+    callback1.assert_called_once()
+    callback2.assert_called_once()

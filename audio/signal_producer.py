@@ -1,5 +1,6 @@
 import numpy as np
 import abc
+import copy
 
 class SignalNextEventData(object):
     """
@@ -11,6 +12,15 @@ class SignalNextEventData(object):
         self.metadata = metadata
         self.start_sample_num = start_sample_num
         self.channel = 0 # FIXME: We need to add support for arbiratry channels
+
+class SampleChunk(object):
+    """
+    A class that encapsulated numpy arrays containing sample data along with metadata information. This allows us to
+    record attributes like where the data was produced.
+    """
+    def __init__(self, data, producer_id):
+        self.data = data
+        self.producer_id = producer_id
 
 class SignalProducer(object):
     """
@@ -87,3 +97,50 @@ class SignalProducer(object):
 
         :return: A generator iterator that produces the signal data.
         """
+
+def chunker(gen, chunk_size=100):
+    """
+    A function that takes a generator function that outputs arbitrary size SampleChunk objects. These object contain
+    a numpy array of arbitrary size. This function can take SampleChunk objects and turn them into fix sized object or
+    arbitrary size. It does this by creating a new generator that chunks the numpy array and appends the rest of the
+    data and yields it.
+
+    :param gen: A generator function that returns SampleChunk objects.
+    :param chunk_size: The number of elements along the first dimension to include in each chunk.
+    :return: A generator function that returns chunks.
+    """
+    next_chunk = None
+    curr_data_sample = 0
+    curr_chunk_sample = 0
+    data = None
+    num_samples = 0
+    while True:
+
+        if curr_data_sample == num_samples:
+            sample_chunk_obj = gen.next()
+            data = sample_chunk_obj.data
+            curr_data_sample = 0
+            num_samples = data.shape[0]
+
+            # If this is our first chunk, use its dimensions to figure out the number of columns
+            if next_chunk is None:
+                chunk_shape = list(data.shape)
+                chunk_shape[0] = chunk_size
+                next_chunk = np.zeros(tuple(chunk_shape), dtype=data.dtype)
+
+        # We want to add at most chunk_size samples to a chunk. We need to see if the current data will fit. If it does,
+        # copy the whole thing. If it doesn't, just copy what will fit.
+        sz = min(chunk_size-curr_chunk_sample, num_samples-curr_data_sample)
+        if data.ndim == 1:
+            next_chunk[curr_chunk_sample:(curr_chunk_sample + sz)] = data[curr_data_sample:(curr_data_sample + sz)]
+        else:
+            next_chunk[curr_chunk_sample:(curr_chunk_sample+sz), :] = data[curr_data_sample:(curr_data_sample + sz), :]
+
+        curr_chunk_sample = curr_chunk_sample + sz
+        curr_data_sample = curr_data_sample + sz
+
+        if curr_chunk_sample == chunk_size:
+            curr_chunk_sample = 0
+            sample_chunk_obj = copy.copy(sample_chunk_obj)
+            sample_chunk_obj.data = next_chunk.copy()
+            yield sample_chunk_obj

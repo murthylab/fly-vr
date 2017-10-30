@@ -64,4 +64,4 @@ def test_callbacks(stim):
 
     data_gen.next()
 
-    my_callback_mock.assert_called_with(stim)
+    my_callback_mock.assert_called()
