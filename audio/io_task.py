@@ -32,7 +32,7 @@ class IOTask(daq.Task):
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
                  num_samples_per_chan=10000, num_samples_per_event=None, digital=False, has_callback=True,
-                 shared_state=None):
+                 shared_state=None, done_callback=None):
         # check inputs
         daq.Task.__init__(self)
 
@@ -323,6 +323,11 @@ def io_task_main(message_pipe, state):
                         taskAO.set_data_generator(msg.data_generator())
                 except:
                     pass
+
+        # We have reached the end. If we are using 2P control. Make sure a stop signal is sent.
+        if two_photon_control is not None:
+            two_photon_control.send_stop_trigger = True
+            time.sleep(2)
 
         # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
         taskAO.StopTask()

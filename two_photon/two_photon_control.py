@@ -65,7 +65,6 @@ class TwoPhotonController(SignalProducer):
 
     def turn_off_triggers(self):
         self.send_start_trigger = False
-        self.send_stop_trigger = False
         self.send_next_trigger = False
 
     def data_generator(self):
