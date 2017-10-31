@@ -47,63 +47,85 @@ class SharedState(object):
         # Keep track of the current producer for each output channel
         self.OUTPUT_PRODUCER_ID = Array('i', [0] * len(options.analog_out_channels))
 
+        # A value to indicate a runtime error occurred and the program should close. This allows sub-processes to signal
+        # to everyone that they have reached an unrepairable state and things need to shutdown.
+        self.RUNTIME_ERROR = Value('i', 0)
+
+    def is_running_well(self):
+        return self.RUNTIME_ERROR.value == 0 and self.RUN.value != 0
+
+    def runtime_error(self, excep, error_code):
+        sys.stderr.write("RUNTIME ERROR - Unhandled Exception: \n" + str(excep) + "\n")
+        self.RUN.value = 0
+        self.RUNTIME_ERROR.value = -1
+
+
 def main():
 
-    # Get the arguments passed
-    options = parse_arguments()
+    try:
+        # Get the arguments passed
+        options = parse_arguments()
 
-    # Initialize shared state between processes we are going to spawn
-    state = SharedState(options=options)
+        # Initialize shared state between processes we are going to spawn
+        state = SharedState(options=options)
 
-    print("Initializing DAQ Tasks ... ")
-    daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
-    daqTask.start()
+        print("Initializing DAQ Tasks ... ")
+        daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
+        daqTask.start()
 
-    # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
-    fictrac_task = None
-    if (options.fictrac_config is not None):
+        # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
+        fictrac_task = None
+        if (options.fictrac_config is not None):
 
-        if options.fictrac_callback is None:
-            fictrac_callback = tracking_update_stub
+            if options.fictrac_callback is None:
+                fictrac_callback = tracking_update_stub
+            else:
+                fictrac_callback = options.fictrac_callback
 
-        tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                fictrac_callback, options.pgr_cam_enable)
+            tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
+                                    fictrac_callback, options.pgr_cam_enable)
 
-        # Run the task
-        print("Starting FicTrac ... ")
-        fictrac_task = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, state])
-        fictrac_task.start()
+            # Run the task
+            print("Starting FicTrac ... ")
+            fictrac_task = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, state])
+            fictrac_task.start()
 
-        # Wait till FicTrac is processing frames
-        while state.FICTRAC_READY.value == 0:
-            time.sleep(0.2)
+            # Wait till FicTrac is processing frames
+            while state.FICTRAC_READY.value == 0 and state.is_running_well():
+                time.sleep(0.2)
 
+        if state.is_running_well():
+            # Send a signal to the DAQ to start playback and acquisition
+            sys.stdout.write("Starting playback and acquisition ... \n")
+            state.START_DAQ.value = 1
 
-    # Send a signal to the DAQ to start playback and acquisition
-    sys.stdout.write("Starting playback and acquisition ... ")
-    state.START_DAQ.value = 1
+            # Wait until we get a ready message from the DAQ task
+            while state.DAQ_READY.value == 0 and state.is_running_well():
+                time.sleep(0.2)
 
-    # Wait until we get a ready message from the DAQ task
-    while state.DAQ_READY.value == 0:
-        time.sleep(0.2)
+            # Wait till the user presses enter to end session
+            if state.is_running_well():
+                raw_input("Press ENTER to end session ... ")
 
-    print("Done")
+    except Exception, e:
+        state.runtime_error(e, -1)
 
-    # Wait till the user presses enter to end session
-    raw_input("Press ENTER to end session ... ")
+    finally:
+        print("Shutting down ... ")
+        state.RUN.value = 0
 
-    print("Shutting down ... ")
-    state.RUN.value = 0
-
-    # Wait until all the tasks are finnished.
-    while daqTask._process.is_alive():
-        time.sleep(0.1)
-
-    if fictrac_task is not None:
-        while fictrac_task._process.is_alive():
+        # Wait until all the tasks are finnished.
+        while daqTask._process.is_alive():
             time.sleep(0.1)
 
-    print("Goodbye")
+        if fictrac_task is not None:
+            while fictrac_task._process.is_alive():
+                time.sleep(0.1)
+
+        print("Goodbye")
+
+        # Return the RUNTIME_ERROR code as our return value
+        return(state.RUNTIME_ERROR.value)
 
 if __name__ == '__main__':
     freeze_support()

@@ -98,9 +98,10 @@ class FicTracDriver(object):
                 if state.RUN.value == 0:
                     fictrac_process.terminate()
 
-            print("FicTrac exited with return code " + str(fictrac_process.returncode))
-
-        #fictrac_to_daq_task.StopTask()
+            if fictrac_process.returncode < 0:
+                state.RUN.value = 0
+                state.RUNTIME_ERROR = -1
+                raise RuntimeError("Fictrac could not start because of an application error. Consult the FicTrac console ouput file.")
 
         state.FICTRAC_READY.value = 0
 

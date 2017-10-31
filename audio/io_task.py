@@ -230,125 +230,133 @@ def setup_playback_callbacks(stim, log_task):
 
 def io_task_main(message_pipe, state):
 
-    options = state.options
+    try:
 
-    # If the user passed in an attenuation file function, apply it to the playlist
-    attenuator = None
-    if state.options.attenuation_file is not None:
-        attenuator = Attenuator.load_from_file(options.attenuation_file)
-    else:
-        print("\nWarning: No attenuation file specified.")
+        options = state.options
 
-    # Read the playlist file and create and audio stimulus playlist object. We will pass a callback function to these
-    # underlying stimuli that is triggered anytime they generate data. The callback sends a log signal to the
-    # master logging process.
-    audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
+        # If the user passed in an attenuation file function, apply it to the playlist
+        attenuator = None
+        if state.options.attenuation_file is not None:
+            attenuator = Attenuator.load_from_file(options.attenuation_file)
+        else:
+            print("\nWarning: No attenuation file specified.")
 
-    # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
-    while state.RUN.value != 0:
+        # Read the playlist file and create and audio stimulus playlist object. We will pass a callback function to these
+        # underlying stimuli that is triggered anytime they generate data. The callback sends a log signal to the
+        # master logging process.
+        audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
-        # Get the input and output channels from the options
-        output_chans = ["ao" + str(s) for s in options.analog_out_channels]
-        input_chans = ["ai" + str(s) for s in options.analog_in_channels]
+        # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
+        while state.is_running_well():
 
-        taskAO = IOTask(cha_name=output_chans, cha_type="output",
-                        num_samples_per_chan=NUM_OUTPUT_SAMPLES, num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
-                        shared_state=state)
-        taskAI = IOTask(cha_name=input_chans, cha_type="input",
-                        num_samples_per_chan=10000, num_samples_per_event=10000,
-                        shared_state=state)
+            # Get the input and output channels from the options
+            output_chans = ["ao" + str(s) for s in options.analog_out_channels]
+            input_chans = ["ai" + str(s) for s in options.analog_in_channels]
 
-        # Setup the two photon control if needed
-        two_photon_control = None
-        taskDO = None
-        if state.options.remote_2P_enable:
-            two_photon_controller = TwoPhotonController(start_channel_name=state.options.remote_start_2P_channel,
-                                                        stop_channel_name=state.options.remote_stop_2P_channel,
-                                                        next_file_channel_name=state.options.remote_next_2P_channel,
-                                                        audio_stim_playlist=audio_stim)
-            taskDO = IOTask(cha_name=two_photon_controller.channel_names, cha_type="output", digital=True,
+            taskAO = IOTask(cha_name=output_chans, cha_type="output",
                             num_samples_per_chan=NUM_OUTPUT_SAMPLES, num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
                             shared_state=state)
+            taskAI = IOTask(cha_name=input_chans, cha_type="input",
+                            num_samples_per_chan=10000, num_samples_per_event=10000,
+                            shared_state=state)
 
-            taskDO.set_data_generator(two_photon_controller.data_generator())
+            # Setup the two photon control if needed
+            two_photon_control = None
+            taskDO = None
+            if state.options.remote_2P_enable:
+                two_photon_controller = TwoPhotonController(start_channel_name=state.options.remote_start_2P_channel,
+                                                            stop_channel_name=state.options.remote_stop_2P_channel,
+                                                            next_file_channel_name=state.options.remote_next_2P_channel,
+                                                            audio_stim_playlist=audio_stim)
+                taskDO = IOTask(cha_name=two_photon_controller.channel_names, cha_type="output", digital=True,
+                                num_samples_per_chan=NUM_OUTPUT_SAMPLES, num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
+                                shared_state=state)
 
-            # Connect DO start to AI start
-            taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
+                taskDO.set_data_generator(two_photon_controller.data_generator())
 
-        disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
-                                   taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
-        save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[state])
+                # Connect DO start to AI start
+                taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-        taskAI.data_rec = [disp_task, save_task]
+            disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
+                                       taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
+            save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[state])
 
-        setup_playback_callbacks(audio_stim, save_task)
-        taskAO.set_data_generator(audio_stim.data_generator())
+            taskAI.data_rec = [disp_task, save_task]
 
-        # Connect AO start to AI start
-        taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
+            setup_playback_callbacks(audio_stim, save_task)
+            taskAO.set_data_generator(audio_stim.data_generator())
 
-        # Message loop that waits for start signal
-        while state.START_DAQ.value == 0:
-            time.sleep(0.2)
+            # Connect AO start to AI start
+            taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-        # We received the start signal, lets set it back to 0
-        state.START_DAQ.value = 0
+            # Message loop that waits for start signal
+            while state.START_DAQ.value == 0 and state.is_running_well():
+                time.sleep(0.2)
 
-        # Start the display and logging tasks
-        disp_task.start()
-        save_task.start()
+            # We received the start signal, lets set it back to 0
+            state.START_DAQ.value = 0
 
-        # Arm the AO task
-        # It won't start until the start trigger signal arrives from the AI task
-        taskAO.StartTask()
+            # Start the display and logging tasks
+            disp_task.start()
+            save_task.start()
 
-        # Arm the DO task
-        # It won't start until the start trigger signal arrives from the AI task
-        taskDO.StartTask()
+            # Arm the AO task
+            # It won't start until the start trigger signal arrives from the AI task
+            taskAO.StartTask()
 
-        # Start the AI task
-        # This generates the AI start trigger signal and triggers the AO task
-        taskAI.StartTask()
+            # Arm the DO task
+            # It won't start until the start trigger signal arrives from the AI task
+            taskDO.StartTask()
 
-        # Signal that the DAQ is ready and acquiring samples
-        state.DAQ_READY.value = 1
+            # Start the AI task
+            # This generates the AI start trigger signal and triggers the AO task
+            taskAI.StartTask()
 
-        while state.RUN.value != 0:
-            if message_pipe.poll(0.1):
-                try:
-                    msg = message_pipe.recv()
+            # Signal that the DAQ is ready and acquiring samples
+            state.DAQ_READY.value = 1
 
-                    # If we have received a stimulus object, feed this object to output task for playback
-                    if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                        audio_stim = msg
+            while state.is_running_well():
+                if message_pipe.poll(0.1):
+                    try:
+                        msg = message_pipe.recv()
 
-                        setup_playback_callbacks(audio_stim, save_task)
+                        # If we have received a stimulus object, feed this object to output task for playback
+                        if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
+                            audio_stim = msg
 
-                        taskAO.set_data_generator(msg.data_generator())
-                    if isinstance(msg, str) and msg == "STOP":
-                        break
-                except:
-                    pass
+                            setup_playback_callbacks(audio_stim, save_task)
 
-        # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
-        taskAO.StopTask()
-        taskAO.stop()
+                            taskAO.set_data_generator(msg.data_generator())
+                        if isinstance(msg, str) and msg == "STOP":
+                            break
+                    except:
+                        pass
 
-        taskAI.StopTask()
-        taskAI.stop()
+            # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
+            taskAO.StopTask()
+            taskAO.stop()
 
-        # If we were doing digital output, end that too.
-        if taskDO is not None:
-            print("Sending 2P imaging stop signal ... ")
-            taskDO.StopTask()
-            taskDO.stop()
-            taskDO.ClearTask()
-            two_photon_controller.send_2P_stop_signal(dev_name=taskDO.dev_name)
+            taskAI.StopTask()
+            taskAI.stop()
 
-    taskAO.ClearTask()
-    taskAI.ClearTask()
+            # If we were doing digital output, end that too.
+            if taskDO is not None:
+                print("Sending 2P imaging stop signal ... ")
+                taskDO.StopTask()
+                taskDO.stop()
+                taskDO.ClearTask()
+                two_photon_controller.send_2P_stop_signal(dev_name=taskDO.dev_name)
 
-    state.DAQ_READY.value = 0
+        if taskAO is not None:
+            taskAO.ClearTask()
+
+        if taskAI is not None:
+            taskAI.ClearTask()
+
+        state.DAQ_READY.value = 0
+
+    except Exception, e:
+        state.runtime_error(e, -2)
 
 def test_hardware_singlepoint(rate=1000.0, chunk_size=100):
     taskHandle = TaskHandle()
