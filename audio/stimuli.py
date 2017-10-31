@@ -4,6 +4,7 @@ import scipy
 from scipy import io
 import pandas as pd
 import os.path
+import time
 
 from audio.signal_producer import SignalProducer, SampleChunk
 
@@ -428,8 +429,8 @@ class AudioStimPlaylist(SignalProducer):
         super(AudioStimPlaylist, self).__init__(next_event_callbacks)
 
         self.stims = stims
-        self._shuffle_playback = shuffle_playback
-        self._playback_order = np.arange(len(self.stims))
+        self.shuffle_playback = shuffle_playback
+        self.playback_order = np.arange(len(self.stims))
 
         # We want to keep a playback history. This history will be updated with each call to the data generator
         self.num_samples_generated = 0
@@ -441,8 +442,11 @@ class AudioStimPlaylist(SignalProducer):
                               "shuffle_playback" : shuffle_playback}
 
         # If we want to shuffle things, get a random permutation.
-        if (self._shuffle_playback):
-            self._playback_order = np.random.permutation(len(self.stims))
+        if (self.shuffle_playback):
+            self.random_seed = int(time.time())
+            self.rng = np.random.RandomState()
+            self.rng.seed(self.random_seed)
+            self.playback_order = self.rng.permutation(len(self.stims))
 
     @classmethod
     def fromfilename(cls, filename, shuffle_playback=False, attenuator=None, next_event_callbacks=None):
@@ -457,7 +461,6 @@ class AudioStimPlaylist(SignalProducer):
         row = 0
         stims = []
         for filename in data['stimFileName']:
-            print "Loading " + local_dir + filename
             stim = MATFileStim(filename=local_dir+filename, frequency=data["freq (Hz)"][row],
                                sample_rate=data["rate (Hz)"][row], intensity=data["intensity (au)"][row],
                                pre_silence=data["silencePre (ms)"][row], post_silence=data["silencePost (ms)"][row],
@@ -483,7 +486,7 @@ class AudioStimPlaylist(SignalProducer):
         # Now, go through the list one at a time, call next on each one of their generators
         while True:
 
-            play_idx = self._playback_order[stim_idx]
+            play_idx = self.playback_order[stim_idx]
 
             sample_chunk_obj = data_gens[play_idx].next()
 
@@ -498,11 +501,11 @@ class AudioStimPlaylist(SignalProducer):
 
             yield sample_chunk_obj
 
-            stim_idx = stim_idx + 1;
+            stim_idx = stim_idx + 1
 
             # If we are at the end, then either go back to beginning or reshuffle
             if(stim_idx == len(self.stims)):
                 stim_idx = 0
 
-                if(self._shuffle_playback):
-                    self._playback_order = np.random.permutation(len(self.stims))
+                if(self.shuffle_playback):
+                    self.playback_order = self.nrg.permutation(len(self.stims))

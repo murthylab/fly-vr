@@ -35,6 +35,9 @@ class SharedState(object):
         # Create a thread safe Value to signal when the DAQ is aquiring samples.
         self.DAQ_READY = Value('i', 0)
 
+        # A variable that communicates to the main DAQ thread to start playback and aquisition
+        self.START_DAQ = Value('i', 0)
+
         # Thread safe Value to signal when FicTrac is running an processing frames.
         self.FICTRAC_READY = Value('i', 0)
 
@@ -52,35 +55,12 @@ def main():
     # Initialize shared state between processes we are going to spawn
     state = SharedState(options=options)
 
-    # If the user passed in an attenuation file function, apply it to the playlist
-    attenuator = None
-    if options.attenuation_file is not None:
-        attenuator = Attenuator.load_from_file(options.attenuation_file)
-    else:
-        print("Warning: No attenuation file specified.")
-
-    sys.stdout.write("Initializing DAQ Tasks ... ")
+    print("Initializing DAQ Tasks ... ")
     daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
     daqTask.start()
-    print("Done.")
-
-    # Read the playlist file and create and audio stimulus playlist object. We pass a callback function to these
-    # underlying stimuli that is triggered anytime they generate data. The callback sends a log signal to the
-    # master logging process.
-    stimPlaylist = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
-
-    # Start the playback and aquistion by sending a start signal.
-    sys.stdout.write("Starting acquisition ... ")
-    daqTask.send(["START", options])
-
-    # Wait until we get a ready message from the DAQ task
-    while state.DAQ_READY.value == 0:
-        time.sleep(0.2)
-
-    print("Done")
 
     # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
-    trackTask = None
+    fictrac_task = None
     if (options.fictrac_config is not None):
 
         if options.fictrac_callback is None:
@@ -91,29 +71,36 @@ def main():
 
         # Run the task
         print("Starting FicTrac ... ")
-        trackTask = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, state])
-        trackTask.start()
+        fictrac_task = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, state])
+        fictrac_task.start()
 
         # Wait till FicTrac is processing frames
         while state.FICTRAC_READY.value == 0:
             time.sleep(0.2)
 
-    sys.stdout.write("Starting playlist ... ")
-    daqTask.send(stimPlaylist)
+
+    # Send a signal to the DAQ to start playback and acquisition
+    sys.stdout.write("Starting playback and acquisition ... ")
+    state.START_DAQ.value = 1
+
+    # Wait until we get a ready message from the DAQ task
+    while state.DAQ_READY.value == 0:
+        time.sleep(0.2)
+
     print("Done")
 
     # Wait till the user presses enter to end session
     raw_input("Press ENTER to end session ... ")
 
     print("Shutting down ... ")
-    state.RUN.value = 0;
+    state.RUN.value = 0
 
     # Wait until all the tasks are finnished.
     while daqTask._process.is_alive():
         time.sleep(0.1)
 
-    if trackTask is not None:
-        while trackTask._process.is_alive():
+    if fictrac_task is not None:
+        while fictrac_task._process.is_alive():
             time.sleep(0.1)
 
     print("Goodbye")

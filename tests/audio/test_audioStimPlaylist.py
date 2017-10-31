@@ -42,7 +42,7 @@ def test_generator(stim1, stim2, stim3):
     playGen = stimList.data_generator()
 
     # Get the shuffle order
-    order = stimList._playback_order
+    order = stimList.playback_order
 
     for i in range(0,3):
         assert (playGen.next().data == stims[order[i]].data).all()

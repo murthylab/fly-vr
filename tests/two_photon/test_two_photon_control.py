@@ -23,31 +23,32 @@ def stim3():
 
 
 def test_two_photon_control(stim1, stim2, stim3):
+    stims = [stim1, stim2, stim3]
+    stimList = AudioStimPlaylist(stims, shuffle_playback=False)
+
+
     two_photon_control = TwoPhotonController(start_channel_name="line0/port0",
                                              stop_channel_name="line0/por1",
                                              next_file_channel_name="line0/port2",
-                                             num_samples=50)
-
-    stims = [stim1, stim2, stim3]
-    stimList = AudioStimPlaylist(stims, shuffle_playback=False)
-    for stim in stimList.stims:
-        stim.next_event_callbacks = two_photon_control.make_next_signal_callback()
+                                             audio_stim_playlist=stimList)
 
     playGen = stimList.data_generator()
     play2P = two_photon_control.data_generator()
 
-    playGen.next()
-    data = play2P.next().data
-    assert( (two_photon_control.start_signal.data == data).all() )
-
-    data = play2P.next().data
-    assert ((two_photon_control.zero_signal.data == data).all())
+    N = two_photon_control.SIGNAL_LENGTH
 
     playGen.next()
     data = play2P.next().data
-    assert ((two_photon_control.next_signal.data == data).all())
+    assert( (two_photon_control.start_signal[0:N, :] == data[0:N, :]).all() )
 
     playGen.next()
     data = play2P.next().data
-    assert ((two_photon_control.next_signal.data == data).all())
+    assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())
 
+    playGen.next()
+    data = play2P.next().data
+    assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())
+
+    playGen.next()
+    data = play2P.next().data
+    assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())
