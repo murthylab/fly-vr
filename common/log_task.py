@@ -134,7 +134,7 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
             dset[hist_indices[channel], :] = [msg.producer_id, num_samples_out[channel]]
             hist_indices[channel] += 1
 
-            num_samples_out[channel] += msg.start_sample_num
+            num_samples_out[channel] += msg.num_samples
         elif isinstance(msg, tuple) and len(msg) == 2:
 
             fictrac_dset[fictrac_curr_idx, :] = [msg[0], msg[1]]

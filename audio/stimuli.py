@@ -139,7 +139,7 @@ class AudioStim(SignalProducer):
         """
         while True:
             self.num_samples_generated = self.num_samples_generated + self.data.shape[0]
-            self.trigger_next_callback(self.event_message)
+            self.trigger_next_callback(message_data=self.event_message, num_samples=self.data.shape[0])
 
 
             yield SampleChunk(data=self.data, producer_id=self.producer_id)
@@ -497,7 +497,7 @@ class AudioStimPlaylist(SignalProducer):
             self.history.append(play_idx)
 
             # We are about to yield, send an event to our callbacks
-            self.trigger_next_callback(self.event_message)
+            self.trigger_next_callback(message_data=self.event_message, num_samples=data.shape[0])
 
             yield sample_chunk_obj
 

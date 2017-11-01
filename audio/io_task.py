@@ -176,7 +176,6 @@ class IOTask(daq.Task):
                                                       self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value))
 
                 if not self.digital:
-                    print("Writing data")
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                     self._data, daq.byref(self.read), None)
 
@@ -185,7 +184,6 @@ class IOTask(daq.Task):
                         with self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.get_lock():
                             self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += self._data.shape[0]
                 else:
-                    print("Writing data")
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
             # Send the data to a callback if requested.

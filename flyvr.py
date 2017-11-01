@@ -62,6 +62,10 @@ class SharedState(object):
 def main():
 
     try:
+        state = None
+        daqTask = None
+        fictrac_task = None
+
         # Get the arguments passed
         options = parse_arguments()
 
@@ -111,11 +115,14 @@ def main():
 
     finally:
         print("Shutting down ... ")
-        state.RUN.value = 0
+
+        if state is not None:
+            state.RUN.value = 0
 
         # Wait until all the tasks are finnished.
-        while daqTask._process.is_alive():
-            time.sleep(0.1)
+        if daqTask is not None:
+            while daqTask._process.is_alive():
+                time.sleep(0.1)
 
         if fictrac_task is not None:
             while fictrac_task._process.is_alive():
@@ -124,7 +131,7 @@ def main():
         print("Goodbye")
 
         # Return the RUNTIME_ERROR code as our return value
-        return(state.RUNTIME_ERROR.value)
+        return(0)
 
 if __name__ == '__main__':
     freeze_support()

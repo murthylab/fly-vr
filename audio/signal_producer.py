@@ -7,10 +7,11 @@ class SignalNextEventData(object):
     A class that encapsulates all the data that SignalProducer's need to send to their callback
     functions when a next generator event occurs.
     """
-    def __init__(self, producer_id, channel, metadata, start_sample_num):
+    def __init__(self, producer_id, channel, metadata, num_samples, start_sample_num):
         self.producer_id = producer_id
         self.metadata = metadata
         self.start_sample_num = start_sample_num
+        self.num_samples = num_samples
         self.channel = 0 # FIXME: We need to add support for arbiratry channels
 
 class SampleChunk(object):
@@ -69,7 +70,7 @@ class SignalProducer(object):
         if next_event_callbacks is not None and not isinstance(next_event_callbacks, list):
             self._next_event_callbacks = [next_event_callbacks]
 
-    def trigger_next_callback(self, message_data, channel=0):
+    def trigger_next_callback(self, message_data, num_samples, channel=0):
         """
         Trigger any callbacks that have been assigned to this SignalProducer. This methods should be called before
         any yield of a generator created by the signal producer. This allows them to signal next events to other parts
@@ -80,8 +81,8 @@ class SignalProducer(object):
         """
 
         # Attach the event specific data to this event data. This is the producer and the start sample number
-        message = SignalNextEventData(producer_id=self.producer_id, channel=channel, metadata=message_data,
-                                            start_sample_num=self.num_samples_generated)
+        message = SignalNextEventData(producer_id=self.producer_id, num_samples=num_samples, channel=channel,
+                                      metadata=message_data, start_sample_num=self.num_samples_generated)
         message.producer_id = self.producer_id
         message.start_sample_num = self.num_samples_generated
 

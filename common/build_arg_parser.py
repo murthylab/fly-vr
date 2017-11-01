@@ -60,7 +60,7 @@ def parse_arguments():
     parser.add_argument("-g", "--pgr_cam_enable", action="store_true",
                         help="Enable Point Grey Camera support in FicTrac.",
                         default=False)
-    parser.add_argument("-s", action="store_true", dest="shuffle",
+    parser.add_argument("-s", "--shuffle", action="store_true", dest="shuffle",
                         help="Shuffle the playback of the playlist randomly.",
                         default=False)
     required = "stim_playlist".split()
