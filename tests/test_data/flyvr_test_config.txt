@@ -3,12 +3,12 @@
 stim_playlist=				tests/test_data/dsx_IPI_Tune.txt
 attenuation_file=			tests/audio/attenuation.txt 
 analog_out_channels=		0
-analog_in_channels=			0,1,4
+analog_in_channels=			0
 record_file=				data/test_out.h5
-remote_2P_enable=			True
+remote_2P_enable=			False
 remote_start_2P_channel=	port0/line0
 remote_stop_2P_channel=		port0/line1
 remote_next_2P_channel=		port0/line2
 fictrac_config=				tests/test_data/fictrac/config.txt
 fictrac_console_out=		tests/test_data/fictrac/output.txt
-pgr_cam_enable=				True
+#pgr_cam_enable=				True

@@ -63,6 +63,9 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
     # The output group will contain event data about samples written to the DAQ.
     output_grp = f.create_group('output')
 
+    # The output group will contain event data about samples written to the DAQ.
+    fictrac_grp = f.create_group('fictrac')
+
     # Add a group for each output channel
     channel_grps = [output_grp.create_group("ao" + str(channel)) for channel in state.options.analog_out_channels]
 
@@ -76,6 +79,12 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
 
     # Keep track of the current index for each channels events
     hist_indices = [0 for i in xrange(num_out_channels)]
+
+    # Create a dataset for fictrac history
+    fictrac_size_increment = 10000
+    fictrac_curr_idx = 0
+    fictrac_dset = fictrac_grp.create_dataset("frames_samples", shape=[fictrac_size_increment, 2],
+                               maxshape=[None, 2], dtype=np.int64)
 
     # A dictionary that stores data generation events we have received. We just want to keep track of unique
     # events.
@@ -126,6 +135,15 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
             hist_indices[channel] += 1
 
             num_samples_out[channel] += msg.start_sample_num
+        elif isinstance(msg, tuple) and len(msg) == 2:
+
+            fictrac_dset[fictrac_curr_idx, :] = [msg[0], msg[1]]
+            fictrac_curr_idx += 1
+
+            # Resize the dataset if needed.
+            if fictrac_curr_idx % fictrac_size_increment == fictrac_size_increment - 1:
+                f.flush()
+                fictrac_dset.resize(fictrac_dset.shape[0] + fictrac_size_increment, axis=0)
 
         else:
             raise ValueError("Bad message sent to logging thread.")
@@ -133,6 +151,8 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
     # Shrink the data sets if we didn't fill them up
     for i in xrange(num_out_channels):
         hist_dsets[i].resize(hist_indices[i], axis=0)
+
+    fictrac_dset.resize(fictrac_curr_idx, axis=0)
 
     f.flush()
     f.close()

@@ -44,8 +44,7 @@ class SharedState(object):
         # Current FicTrac frame number
         self.FICTRAC_FRAME_NUM = Value('i', 0)
 
-        # Keep track of the current producer for each output channel
-        self.OUTPUT_PRODUCER_ID = Array('i', [0] * len(options.analog_out_channels))
+        self.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN = Value('i', 0)
 
         # A value to indicate a runtime error occurred and the program should close. This allows sub-processes to signal
         # to everyone that they have reached an unrepairable state and things need to shutdown.

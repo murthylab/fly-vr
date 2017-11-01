@@ -32,7 +32,7 @@ class IOTask(daq.Task):
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
                  num_samples_per_chan=10000, num_samples_per_event=None, digital=False, has_callback=True,
-                 shared_state=None, done_callback=None):
+                 shared_state=None, done_callback=None, fictrac_frame_recorder=None):
         # check inputs
         daq.Task.__init__(self)
 
@@ -49,6 +49,11 @@ class IOTask(daq.Task):
 
         # A function to call on task completion
         self.done_callback = done_callback
+
+        # A task to send signals to everytime we write a chunk of samples. We will send the current sample number and
+        # the current FicTrac frame number
+        self.fictrac_frame_recorder = fictrac_frame_recorder
+
 
         # These are just some dummy values for pass by reference C functions that the NI DAQ api has.
         self.read = daq.int32()
@@ -153,6 +158,7 @@ class IOTask(daq.Task):
             if self.data_gen is not None:
                 self._sample_chunk = self.data_gen.next()
                 self._data = self._sample_chunk.data
+
             if self.cha_type is "input":
                 if not self.digital:
                     self.ReadAnalogF64(DAQmx_Val_Auto, 1.0, DAQmx_Val_GroupByScanNumber,
@@ -164,9 +170,18 @@ class IOTask(daq.Task):
                                           byref(self.read),  byref(numBytesPerSamp), None)
 
             elif self.cha_type is "output":
+
+                if self.fictrac_frame_recorder:
+                    self.fictrac_frame_recorder.send((self.shared_state.FICTRAC_FRAME_NUM.value,
+                                                      self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value))
+
                 if not self.digital:
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                     self._data, daq.byref(self.read), None)
+
+                    # Keep track of how many samples we have written out in a global variable
+                    with self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.get_lock():
+                        self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += self._data.shape[0]
                 else:
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
@@ -285,6 +300,7 @@ def io_task_main(message_pipe, state):
 
             setup_playback_callbacks(audio_stim, save_task)
             taskAO.set_data_generator(audio_stim.data_generator())
+            taskAO.fictrac_frame_recorder = save_task
 
             # Connect AO start to AI start
             taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
@@ -306,7 +322,8 @@ def io_task_main(message_pipe, state):
 
             # Arm the DO task
             # It won't start until the start trigger signal arrives from the AI task
-            taskDO.StartTask()
+            if taskDO is not None:
+                taskDO.StartTask()
 
             # Start the AI task
             # This generates the AI start trigger signal and triggers the AO task
