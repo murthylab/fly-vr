@@ -171,18 +171,21 @@ class IOTask(daq.Task):
 
             elif self.cha_type is "output":
 
-                if self.fictrac_frame_recorder:
+                if self.fictrac_frame_recorder is not None:
                     self.fictrac_frame_recorder.send((self.shared_state.FICTRAC_FRAME_NUM.value,
                                                       self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value))
 
                 if not self.digital:
+                    print("Writing data")
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                     self._data, daq.byref(self.read), None)
 
                     # Keep track of how many samples we have written out in a global variable
-                    with self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.get_lock():
-                        self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += self._data.shape[0]
+                    if self.shared_state is not None:
+                        with self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.get_lock():
+                            self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += self._data.shape[0]
                 else:
+                    print("Writing data")
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
             # Send the data to a callback if requested.
@@ -192,6 +195,7 @@ class IOTask(daq.Task):
                         data_rec.send((self._data, systemtime))
 
             self._newdata_event.set()
+
         return 0  # The function should return an integer
 
     def DoneCallback(self, status):
@@ -375,7 +379,7 @@ def io_task_main(message_pipe, state):
     except Exception, e:
         state.runtime_error(e, -2)
 
-def test_hardware_singlepoint(rate=1000.0, chunk_size=100):
+def test_hardware_singlepoint(rate=10000.0):
     taskHandle = TaskHandle()
     samplesPerChannelWritten = daq.int32()
     isLate = daq.c_uint32()
@@ -386,15 +390,21 @@ def test_hardware_singlepoint(rate=1000.0, chunk_size=100):
     try:
         DAQmxCreateTask("", byref(taskHandle))
         DAQmxCreateAOVoltageChan(taskHandle, "/Dev1/ao0", "", -10.0, 10.0, DAQmx_Val_Volts, None)
-        DAQmxCfgSampClkTiming(taskHandle, "", rate, DAQmx_Val_Rising, DAQmx_Val_HWTimedSinglePoint, stim.data.shape[0])
+        DAQmxCfgSampClkTiming(taskHandle, "", rate, DAQmx_Val_Rising, DAQmx_Val_HWTimedSinglePoint, 100)
 
         DAQmxStartTask(taskHandle)
 
-        for i in xrange(stim.data.shape[0]/chunk_size):
-            DAQmxWriteAnalogF64(taskHandle, chunk_size, 1, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel,
-                                chunk_gen.next(), daq.byref(samplesPerChannelWritten), None)
+        write_index = 0
+        while True:
+            DAQmxWriteAnalogScalarF64(taskHandle, 1, 10.0, stim.data[write_index], None)
             DAQmxWaitForNextSampleClock(taskHandle, 10, daq.byref(isLate))
+
             assert isLate.value == 0, "%d" % isLate.value
+
+            write_index += 1
+
+            if write_index > stim.data.shape[0]:
+                write_index = 0
 
     except DAQError as err:
         print "DAQmx Error: %s" % err
@@ -405,7 +415,15 @@ def test_hardware_singlepoint(rate=1000.0, chunk_size=100):
             DAQmxClearTask(taskHandle)
 
 def main():
-   pass
+    # taskDO = IOTask(cha_name=['port0/line0'], cha_type="output", digital=True,
+    #                 num_samples_per_chan=50, num_samples_per_event=50)
+    #
+    # taskDO.StartTask()
+    #
+    # while True:
+    #     time.sleep(0.2)
+
+    test_hardware_singlepoint(1000)
 
 if __name__ == "__main__":
     main()
