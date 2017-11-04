@@ -6,7 +6,7 @@ import mmap
 import ctypes
 import subprocess
 import numpy as np
-
+import signal
 from audio.io_task import IOTask, data_generator_test
 
 from common.tools import which
@@ -52,6 +52,9 @@ class FicTracDriver(object):
         if self.fictrac_bin_fullpath is None:
             raise RuntimeError("Could not find " + self.fictrac_bin + " on the PATH!")
 
+        self.fictrac_process = None
+        self.fictrac_signals = None
+
     def run(self, message_pipe, state):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
@@ -64,16 +67,21 @@ class FicTracDriver(object):
         # Open or create the shared memory region for accessing FicTrac's state
         shmem = mmap.mmap(-1, ctypes.sizeof(shmem_transfer_data.SHMEMFicTracState), "FicTracStateSHMEM")
 
+        # Open or create another shared memory region, this one lets us signal to fic trac to shutdown.
+        shmem_signals = mmap.mmap(-1, ctypes.sizeof(ctypes.c_int32), "FicTracStateSHMEM_SIGNALS")
+
+        self.fictrac_signals = shmem_transfer_data.SHMEMFicTracSignals.from_buffer(shmem_signals)
+
         # Start FicTrac
         with open(self.console_output_file, "wb") as out:
 
-            fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out, stderr=subprocess.STDOUT)
+            self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out, stderr=subprocess.STDOUT)
 
             data = shmem_transfer_data.SHMEMFicTracState.from_buffer(shmem)
             first_frame_count = data.frame_cnt
             old_frame_count = data.frame_cnt
             print("Waiting for FicTrac updates in shared memory ... ")
-            while fictrac_process.poll() is None:
+            while self.fictrac_process.poll() is None:
                 data = shmem_transfer_data.SHMEMFicTracState.from_buffer(shmem)
                 new_frame_count = data.frame_cnt
 
@@ -85,8 +93,8 @@ class FicTracDriver(object):
                         state.FICTRAC_READY.value = 1
 
                     if new_frame_count - old_frame_count != 1 and state.RUN.value != 1:
-                        fictrac_process.terminate()
-                        print("Missed frame from FicTrac shared memory streaming! oldFrame = " +
+                        self.fictrac_process.terminate()
+                        print("FicTrac frame counter jumped by more than 1! oldFrame = " +
                                          str(old_frame_count) + ", newFrame = " + str(new_frame_count))
 
                     old_frame_count = new_frame_count
@@ -96,15 +104,18 @@ class FicTracDriver(object):
 
                 # If we detect it is time to shutdown, kill the FicTrac process
                 if state.RUN.value == 0:
-                    fictrac_process.terminate()
+                    self.stop()
 
-            if fictrac_process.returncode < 0:
+            if self.fictrac_process.returncode < 0:
                 state.RUN.value = 0
                 state.RUNTIME_ERROR = -1
                 raise RuntimeError("Fictrac could not start because of an application error. Consult the FicTrac console ouput file.")
 
         state.FICTRAC_READY.value = 0
 
+    def stop(self):
+        # Send a signal to the underlying FicTrac task so it exits gracefully.
+        self.fictrac_signals.send_close()
 
 def tracking_update_stub(data):
     pass

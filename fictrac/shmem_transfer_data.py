@@ -24,6 +24,17 @@ class SHMEMFicTracState(ctypes.Structure):
         ('seq_num', ctypes.c_int),
     ]
 
+class SHMEMFicTracSignals(ctypes.Structure):
+    """
+    This class gives a set of variables used to send signals to the FicTrac program.
+    """
+    _fields_ = [
+        ('close_signal_var', ctypes.c_int)
+    ]
+
+    def send_close(self):
+        self.close_signal_var = 1
+
 def print_fictrac_state(data):
     state_string = ""
     for field_name, field_type in data._fields_:
