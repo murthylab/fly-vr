@@ -33,7 +33,7 @@ max_bad_frames      5
 %% output options %%
 do_update           1
 save_video          0
-save_input_video    0 
+save_input_video    1 
 do_serial_out       0
 serial_baud         115200
 serial_port         /dev/ttyS0
