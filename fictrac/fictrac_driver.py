@@ -106,6 +106,9 @@ class FicTracDriver(object):
                 if state.RUN.value == 0:
                     self.stop()
 
+                    # Lets wait a bit till FicTrac exits
+                    self.fictrac_process.wait()
+
             if self.fictrac_process.returncode < 0:
                 state.RUN.value = 0
                 state.RUNTIME_ERROR = -1

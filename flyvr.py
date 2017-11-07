@@ -73,8 +73,8 @@ def main():
         state = SharedState(options=options)
 
         print("Initializing DAQ Tasks ... ")
-        #daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
-        #daqTask.start()
+        daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
+        daqTask.start()
 
         # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
         fictrac_task = None
@@ -100,11 +100,11 @@ def main():
         if state.is_running_well():
             # Send a signal to the DAQ to start playback and acquisition
             sys.stdout.write("Starting playback and acquisition ... \n")
-            #state.START_DAQ.value = 1
+            state.START_DAQ.value = 1
 
             # Wait until we get a ready message from the DAQ task
-            #while state.DAQ_READY.value == 0 and state.is_running_well():
-            #    time.sleep(0.2)
+            while state.DAQ_READY.value == 0 and state.is_running_well():
+                time.sleep(0.2)
 
             # Wait till the user presses enter to end session
             if state.is_running_well():
