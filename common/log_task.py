@@ -19,7 +19,7 @@ def recursively_save_dict_contents_to_group(h5file, path, dic):
             h5file[path + key] = int(item)
         elif isinstance(item, list):
             h5file[path + key] = np.asarray(item)
-        elif isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
+        elif isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes, float)):
             h5file[path + key] = item
         elif isinstance(item, dict):
             recursively_save_dict_contents_to_group(h5file, path + key + '/', item)

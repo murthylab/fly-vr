@@ -98,6 +98,10 @@ def main():
                 time.sleep(0.2)
 
         if state.is_running_well():
+
+            print("Delaying start by " + str(options.start_delay) + " ...")
+            time.sleep(options.start_delay)
+
             # Send a signal to the DAQ to start playback and acquisition
             sys.stdout.write("Starting playback and acquisition ... \n")
             state.START_DAQ.value = 1

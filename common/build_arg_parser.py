@@ -63,6 +63,10 @@ def parse_arguments():
     parser.add_argument("-s", "--shuffle", action="store_true", dest="shuffle",
                         help="Shuffle the playback of the playlist randomly.",
                         default=False)
+    parser.add_argument("--start_delay", type=float,
+                        help="Delay the start of playback and acquisition from FicTrac tracking by this many seconds. " +
+                        "The default is 0 seconds.",
+                        default=0.0)
     required = "stim_playlist".split()
     options = parser.parse_args()
 
