@@ -5,6 +5,7 @@ from scipy import io
 import pandas as pd
 import os.path
 import time
+import h5py
 
 from audio.signal_producer import SignalProducer, SampleChunk
 
@@ -411,14 +412,17 @@ class MATFileStim(AudioStim):
         :return: The audio stimulus data, ready to be passed to the DAQ as voltage signals.
         :rtype: numpy.ndarray
         """
+        try:
+            data = scipy.io.loadmat(self.__filename, variable_names=['stim'], squeeze_me=True)
+            data = data['stim']
 
-        data =  scipy.io.loadmat(self.__filename, variable_names=['stim'], squeeze_me=True)
-        data = data['stim']
+            return data
+        except NotImplementedError, e:
+            # This exception indicates that this is an HDF5 file and not an old type MAT file
+            h5_file = h5py.File(self.__filename + '.mat', 'r')
+            data = np.squeeze(h5_file['stim'])
 
-        # Transform to a row vector if needed
-        #data = np.transpose(data)
-
-        return data
+            return data
 
 
 class AudioStimPlaylist(SignalProducer):
