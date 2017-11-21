@@ -1,5 +1,4 @@
 import ctypes
-import sys
 
 class SHMEMFicTracState(ctypes.Structure):
     """

@@ -82,7 +82,6 @@ class FicTracDriver(object):
             old_frame_count = data.frame_cnt
             print("Waiting for FicTrac updates in shared memory ... ")
             while self.fictrac_process.poll() is None:
-                data = shmem_transfer_data.SHMEMFicTracState.from_buffer(shmem)
                 new_frame_count = data.frame_cnt
 
                 if old_frame_count != new_frame_count:
