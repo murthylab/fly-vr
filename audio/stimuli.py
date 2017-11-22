@@ -512,4 +512,4 @@ class AudioStimPlaylist(SignalProducer):
                 stim_idx = 0
 
                 if(self.shuffle_playback):
-                    self.playback_order = self.nrg.permutation(len(self.stims))
+                    self.playback_order = self.rng.permutation(len(self.stims))

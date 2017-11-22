@@ -249,6 +249,9 @@ def io_task_main(message_pipe, state):
 
     try:
 
+        taskAO = None
+        taskAI = None
+
         options = state.options
 
         # If the user passed in an attenuation file function, apply it to the playlist

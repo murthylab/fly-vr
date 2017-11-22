@@ -3,8 +3,7 @@ import sys
 from multiprocessing import freeze_support
 from multiprocessing import Value, Array
 
-import h5py
-
+import traceback
 
 from audio import io_task
 from audio.attenuation import Attenuator
@@ -55,6 +54,7 @@ class SharedState(object):
 
     def runtime_error(self, excep, error_code):
         sys.stderr.write("RUNTIME ERROR - Unhandled Exception: \n" + str(excep) + "\n")
+        traceback.print_exc()
         self.RUN.value = 0
         self.RUNTIME_ERROR.value = -1
 

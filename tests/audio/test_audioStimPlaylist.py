@@ -22,7 +22,6 @@ def stim3():
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                    attenuator=None)
 
-
 def test_generator(stim1, stim2, stim3):
     stims = [stim1, stim2, stim3]
 
@@ -46,6 +45,18 @@ def test_generator(stim1, stim2, stim3):
 
     for i in range(0,3):
         assert (playGen.next().data == stims[order[i]].data).all()
+
+    # Get the next stimulus, this should cause the shuffle order to be reset
+    rand_stim = playGen.next()
+
+    # Get the new shuffle order
+    order = stimList.playback_order
+
+    assert((rand_stim.data == stims[order[0]].data).all)
+
+    for i in range(1,3):
+        assert (playGen.next().data == stims[order[i]].data).all()
+
 
 def test_history(stim1, stim2, stim3):
 
