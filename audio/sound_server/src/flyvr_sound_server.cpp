@@ -4,7 +4,7 @@
 */
 /*
  *
- * This program uses the PortAudio Portable Audio Library.
+ * This program is used by the Fly VR software system.
  * For more information see: https://github.com/PrincetonUniversity/fly-vr
  * Copyright (c) 2018 David Turner
  *

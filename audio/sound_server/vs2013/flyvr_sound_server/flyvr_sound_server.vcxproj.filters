@@ -19,17 +19,11 @@
     <Filter Include="Source Files\portaudio">
       <UniqueIdentifier>{2078d6c1-821d-43c6-8b73-99d0f1b70b47}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\ASIOSDK">
+      <UniqueIdentifier>{2bc6900d-4a58-4cd1-9e7f-7797af250139}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\asiosdk2\common\asio.cpp">
-      <Filter>Source Files\portaudio</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\asiosdk2\host\asiodrivers.cpp">
-      <Filter>Source Files\portaudio</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\asiosdk2\host\pc\asiolist.cpp">
-      <Filter>Source Files\portaudio</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\portaudio\src\common\pa_allocation.c">
       <Filter>Source Files\portaudio</Filter>
     </ClCompile>
@@ -77,6 +71,15 @@
     </ClCompile>
     <ClCompile Include="..\..\src\flyvr_sound_server.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\asiosdk2\common\asio.cpp">
+      <Filter>Source Files\ASIOSDK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\asiosdk2\host\asiodrivers.cpp">
+      <Filter>Source Files\ASIOSDK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\asiosdk2\host\pc\asiolist.cpp">
+      <Filter>Source Files\ASIOSDK</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
