@@ -102,7 +102,7 @@ class TwoPhotonController(SignalProducer):
                 stim_idx = 0
 
                 if (self.shuffle_playback):
-                    self.playback_order = self.nrg.permutation(len(self.signals))
+                    self.playback_order = self.rng.permutation(len(self.signals))
 
 
     def send_2P_stop_signal(self, dev_name="Dev1"):

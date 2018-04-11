@@ -156,8 +156,11 @@ class IOTask(daq.Task):
 
             # get data from data generator
             if self.data_gen is not None:
-                self._sample_chunk = next(self.data_gen)
-                self._data = self._sample_chunk.data
+                try:
+                    self._sample_chunk = next(self.data_gen)
+                    self._data = self._sample_chunk.data
+                except StopIteration:
+                    pass
 
             if self.cha_type is "input":
                 if not self.digital:
