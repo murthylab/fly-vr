@@ -37,18 +37,18 @@ def test_two_photon_control(stim1, stim2, stim3):
 
     N = two_photon_control.SIGNAL_LENGTH
 
-    playGen.next()
-    data = play2P.next().data
+    next(playGen)
+    data = next(play2P).data
     assert( (two_photon_control.start_signal[0:N, :] == data[0:N, :]).all() )
 
-    playGen.next()
-    data = play2P.next().data
+    next(playGen)
+    data = next(play2P).data
     assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())
 
-    playGen.next()
-    data = play2P.next().data
+    next(playGen)
+    data = next(play2P).data
     assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())
 
-    playGen.next()
-    data = play2P.next().data
+    next(playGen)
+    data = next(play2P).data
     assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())

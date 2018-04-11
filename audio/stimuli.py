@@ -9,7 +9,7 @@ import h5py
 
 from audio.signal_producer import SignalProducer, SampleChunk
 
-class AudioStim(SignalProducer):
+class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
     """
     The AudioStim class is base class meant to encapsulate common functionality and implementation details found in
     any audio stimulus. Mainly, this includes the generation and storage of audio signal data, basic information about
@@ -17,7 +17,6 @@ class AudioStim(SignalProducer):
     stimulus functionality you should create a new class that inherits from this class and implements its abstract
     methods.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, sample_rate, duration, intensity=1.0, pre_silence = 0, post_silence = 0, attenuator=None,
                  frequency=None, max_value=10.0, min_value=-10.0, next_event_callbacks=None):
@@ -417,7 +416,7 @@ class MATFileStim(AudioStim):
             data = data['stim']
 
             return data
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             # This exception indicates that this is an HDF5 file and not an old type MAT file
             h5_file = h5py.File(self.__filename + '.mat', 'r')
             data = np.squeeze(h5_file['stim'])
@@ -492,7 +491,7 @@ class AudioStimPlaylist(SignalProducer):
 
             play_idx = self.playback_order[stim_idx]
 
-            sample_chunk_obj = data_gens[play_idx].next()
+            sample_chunk_obj = next(data_gens[play_idx])
 
             data = sample_chunk_obj.data
 

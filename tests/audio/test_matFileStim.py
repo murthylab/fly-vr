@@ -1,5 +1,5 @@
 import pytest
-import mock
+from unittest import mock
 import math
 
 from audio.stimuli import AudioStim, MATFileStim
@@ -23,6 +23,6 @@ def test_callbacks():
 
     data_gen = stim.data_generator()
 
-    data_gen.next()
+    next(data_gen)
 
     my_callback_mock.assert_called()

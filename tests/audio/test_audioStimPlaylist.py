@@ -1,6 +1,6 @@
 import pytest
 import math
-import mock
+from unittest import mock
 
 from audio.stimuli import SinStim, AudioStimPlaylist
 
@@ -32,7 +32,7 @@ def test_generator(stim1, stim2, stim3):
 
     # See if we can do looping sequential playback
     for i in range(0,5):
-        assert (playGen.next().data == stims[i % 3].data).all()
+        assert (next(playGen).data == stims[i % 3].data).all()
 
     # Now lets check if shuffle is working. Make sure no stimulus is repeating.
     stimList = AudioStimPlaylist([stim1, stim2, stim3], shuffle_playback=True)
@@ -44,10 +44,10 @@ def test_generator(stim1, stim2, stim3):
     order = stimList.playback_order
 
     for i in range(0,3):
-        assert (playGen.next().data == stims[order[i]].data).all()
+        assert (next(playGen).data == stims[order[i]].data).all()
 
     # Get the next stimulus, this should cause the shuffle order to be reset
-    rand_stim = playGen.next()
+    rand_stim = next(playGen)
 
     # Get the new shuffle order
     order = stimList.playback_order
@@ -55,7 +55,7 @@ def test_generator(stim1, stim2, stim3):
     assert((rand_stim.data == stims[order[0]].data).all)
 
     for i in range(1,3):
-        assert (playGen.next().data == stims[order[i]].data).all()
+        assert (next(playGen).data == stims[order[i]].data).all()
 
 
 def test_history(stim1, stim2, stim3):
@@ -70,7 +70,7 @@ def test_history(stim1, stim2, stim3):
     # See if we can do looping sequential playback
     num_samples_played = 0
     for i in range(0,5):
-        data = playGen.next().data
+        data = next(playGen).data
         num_samples_played = num_samples_played + data.shape[0]
 
     assert(stimList.history == [0, 1, 2, 0, 1])
@@ -88,7 +88,7 @@ def test_callbacks(stim1, stim2, stim3):
 
     data_gen = stimList.data_generator()
 
-    data_gen.next()
+    next(data_gen)
 
     my_callback_mock.assert_called()
 
@@ -107,11 +107,11 @@ def test_callbacks(stim1, stim2, stim3):
 
     data_gen = stimList.data_generator()
 
-    data_gen.next()
+    next(data_gen)
 
     callback1.assert_called_once()
 
-    data_gen.next()
+    next(data_gen)
 
     callback1.assert_called_once()
     callback2.assert_called_once()

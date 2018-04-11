@@ -1,4 +1,4 @@
-import shmem_transfer_data
+from . import shmem_transfer_data
 import sys
 import time
 import os
@@ -93,8 +93,8 @@ class FicTracDriver(object):
 
                     if new_frame_count - old_frame_count != 1 and state.RUN.value != 1:
                         self.fictrac_process.terminate()
-                        print("FicTrac frame counter jumped by more than 1! oldFrame = " +
-                                         str(old_frame_count) + ", newFrame = " + str(new_frame_count))
+                        print(("FicTrac frame counter jumped by more than 1! oldFrame = " +
+                                         str(old_frame_count) + ", newFrame = " + str(new_frame_count)))
 
                     old_frame_count = new_frame_count
                     state.FICTRAC_FRAME_NUM.value = new_frame_count

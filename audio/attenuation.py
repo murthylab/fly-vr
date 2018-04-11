@@ -5,8 +5,8 @@ import audio.stimuli
 
 class Attenuator(object):
     def __init__(self, attenuation_factors):
-        self.frequencies = attenuation_factors.keys()
-        self.factors = attenuation_factors.values()
+        self.frequencies = list(attenuation_factors.keys())
+        self.factors = list(attenuation_factors.values())
         self.attenuation_factors = attenuation_factors
 
     @classmethod
@@ -16,7 +16,7 @@ class Attenuator(object):
         frequencies = af[:,0]
         factors = af[:,1]
 
-        attenuation_factors = dict(zip(frequencies, factors))
+        attenuation_factors = dict(list(zip(frequencies, factors)))
 
         return cls(attenuation_factors)
 
@@ -39,7 +39,7 @@ class Attenuator(object):
             # If we don't find it, then we need to linearly interpolate between the
             # values to get the right factor.
 
-                interpolator = interp1d(self.attenuation_factors.keys(), self.attenuation_factors.values(), kind='linear')
+                interpolator = interp1d(list(self.attenuation_factors.keys()), list(self.attenuation_factors.values()), kind='linear')
                 attenuation_factor = interpolator(frequency)
 
         return data * attenuation_factor

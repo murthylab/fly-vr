@@ -43,4 +43,4 @@ def print_fictrac_state(data):
         else:
             state_string = state_string + str(field[0]) + "\t" + str(field[1]) + "\t" + str(field[2]) + "\t"
 
-    print state_string
+    print(state_string)

@@ -12,13 +12,22 @@ def recursively_save_dict_contents_to_group(h5file, path, dic):
     dictionary are not np.ndarray, np.int64, np.float64, str, bytes. Objects
     must be iterable.
     """
-    for key, item in dic.items():
+    for key, item in list(dic.items()):
         if item is None:
             h5file[path + key] = ""
         elif isinstance(item, bool):
             h5file[path + key] = int(item)
         elif isinstance(item, list):
-            h5file[path + key] = np.asarray(item)
+            items_encoded = []
+            for it in item:
+                if isinstance(it, str):
+                    items_encoded.append(it.encode('utf8'))
+                else:
+                    items_encoded.append(it)
+
+            h5file[path + key] = np.asarray(items_encoded)
+        elif isinstance(item, (str)):
+            h5file[path + key] = item.encode('utf8')
         elif isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes, float)):
             h5file[path + key] = item
         elif isinstance(item, dict):
@@ -43,7 +52,7 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
     num_out_channels = len(state.options.analog_out_channels)
 
     # For each output channel, keep track of number of samples generated.
-    num_samples_out = [0 for i in xrange(num_out_channels)]
+    num_samples_out = [0 for i in range(num_out_channels)]
 
     # Open the HDF5 file for writing
     f = h5py.File(filename, "w")
@@ -75,10 +84,10 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
     # Add a history dataset that records occurrences of events
     hist_dsets = [channel_grps[i].create_dataset("history", shape=[out_hist_size_increment, 2],
                                                maxshape=[None, 2], dtype=np.int64)
-                  for i in xrange(num_out_channels)]
+                  for i in range(num_out_channels)]
 
     # Keep track of the current index for each channels events
-    hist_indices = [0 for i in xrange(num_out_channels)]
+    hist_indices = [0 for i in range(num_out_channels)]
 
     # Create a dataset for fictrac history
     fictrac_size_increment = 10000
@@ -149,7 +158,7 @@ def log_audio_task_main(frame_queue, state, sizeincrement=100, out_hist_size_inc
             raise ValueError("Bad message sent to logging thread.")
 
     # Shrink the data sets if we didn't fill them up
-    for i in xrange(num_out_channels):
+    for i in range(num_out_channels):
         hist_dsets[i].resize(hist_indices[i], axis=0)
 
     fictrac_dset.resize(fictrac_curr_idx, axis=0)

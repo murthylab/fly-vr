@@ -23,13 +23,12 @@ class SampleChunk(object):
         self.data = data
         self.producer_id = producer_id
 
-class SignalProducer(object):
+class SignalProducer(object, metaclass=abc.ABCMeta):
     """
     A general class that abstracts away the key features of signal producers. Its main purpose is to provide a generator
     method interface and to keep track of the history of this generator's execution. AudioStimuli, AudioStimuluPlaylist,
     and others inherit from this class to standardize their interface.
     """
-    __metaclass__ = abc.ABCMeta
 
     # We want to keep track of every instance of a signal producer class. These instance IDs will be appended to their
     # event messages.
@@ -118,7 +117,7 @@ def chunker(gen, chunk_size=100):
     while True:
 
         if curr_data_sample == num_samples:
-            sample_chunk_obj = gen.next()
+            sample_chunk_obj = next(gen)
             data = sample_chunk_obj.data
             curr_data_sample = 0
             num_samples = data.shape[0]

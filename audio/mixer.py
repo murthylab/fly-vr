@@ -11,7 +11,7 @@ class Mixer(object):
     """
     def __init__(self, channel_labels, daq_channel_names, data_producers):
         self.daq_channel_names = daq_channel_names
-        self._producers = dict(zip(channel_labels, data_producers))
+        self._producers = dict(list(zip(channel_labels, data_producers)))
         self._lock = Lock()
 
     def set_channel_producer(self, channel_label, producer):
@@ -29,10 +29,10 @@ class Mixer(object):
     def data_generator(self, chunk_size=100):
 
         # Create chunked generators for each producer
-        self._chunked_pro_gens = [chunker(pro.data_generator(), chunk_size) for label,pro in self._producers.iteritems()]
+        self._chunked_pro_gens = [chunker(pro.data_generator(), chunk_size) for label,pro in self._producers.items()]
 
         while True:
-            channel_chunks = [chan_chunker.next() for chan_chunker in self._chunked_pro_gens]
+            channel_chunks = [next(chan_chunker) for chan_chunker in self._chunked_pro_gens]
             mixed_chunk = np.concatenate(channel_chunks, axis=1)
             yield mixed_chunk
 

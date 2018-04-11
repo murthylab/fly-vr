@@ -156,7 +156,7 @@ class IOTask(daq.Task):
 
             # get data from data generator
             if self.data_gen is not None:
-                self._sample_chunk = self.data_gen.next()
+                self._sample_chunk = next(self.data_gen)
                 self._data = self._sample_chunk.data
 
             if self.cha_type is "input":
@@ -377,7 +377,7 @@ def io_task_main(message_pipe, state):
 
         state.DAQ_READY.value = 0
 
-    except Exception, e:
+    except Exception as e:
         state.runtime_error(e, -2)
 
 def test_hardware_singlepoint(rate=10000.0):
@@ -408,7 +408,7 @@ def test_hardware_singlepoint(rate=10000.0):
                 write_index = 0
 
     except DAQError as err:
-        print "DAQmx Error: %s" % err
+        print("DAQmx Error: %s" % err)
     finally:
         if taskHandle:
             # DAQmx Stop Code

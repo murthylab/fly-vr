@@ -13,9 +13,9 @@ def check_chunker(test_gen, chunk_size):
     # Run the data iterator 10 times to get some data. Put it
     # all in one array.
     num_data_to_test = 10
-    test_data = data_gen_iter.next().data
+    test_data = next(data_gen_iter).data
     for i in range(num_data_to_test - 1):
-        test_data = np.concatenate((test_data, data_gen_iter.next().data), axis=0)
+        test_data = np.concatenate((test_data, next(data_gen_iter).data), axis=0)
 
     # Reset generator
     data_gen_iter = test_gen()
@@ -26,9 +26,9 @@ def check_chunker(test_gen, chunk_size):
     # Now walk the chunk generator enough to get enough chunks to compare to
     # test data that we generated above
     num_chunks = int(math.ceil(float(test_data.shape[0]) / float(chunk_size)))
-    chunk_test_data = chunk_gen.next().data
+    chunk_test_data = next(chunk_gen).data
     for i in range(num_chunks - 1):
-        chunk_test_data = np.concatenate((chunk_test_data, chunk_gen.next().data), axis=0)
+        chunk_test_data = np.concatenate((chunk_test_data, next(chunk_gen).data), axis=0)
 
     # Truncate the data since the chunk size will probably not be a factor
     # of test data size.

@@ -12,7 +12,7 @@ def parse_arguments():
     savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
     # Setup program command line argument parser
-    parser = configargparse.ArgumentParser(version="%prog 0.1")
+    parser = configargparse.ArgumentParser()
     parser.add('-c', '--config', required=True, is_config_file=True, help='Path to a configuration file.')
     parser.add_argument("-p", "--stim_playlist", dest="stim_playlist",
                         help="A playlist file of auditory stimuli")

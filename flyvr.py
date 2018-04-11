@@ -99,7 +99,7 @@ def main():
 
         if state.is_running_well():
 
-            print("Delaying start by " + str(options.start_delay) + " ...")
+            print(("Delaying start by " + str(options.start_delay) + " ..."))
             time.sleep(options.start_delay)
 
             # Send a signal to the DAQ to start playback and acquisition
@@ -112,9 +112,9 @@ def main():
 
             # Wait till the user presses enter to end session
             if state.is_running_well():
-                raw_input("Press ENTER to end session ... ")
+                input("Press ENTER to end session ... ")
 
-    except Exception, e:
+    except Exception as e:
         state.runtime_error(e, -1)
 
     finally:

@@ -6,7 +6,7 @@ def coroutine(func):
     """ decorator that auto-initializes (calls `next(None)`) coroutines"""
     def start(*args, **kwargs):
         cr = func(*args, **kwargs)
-        cr.next()
+        next(cr)
         return cr
     return start
 
