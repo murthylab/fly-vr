@@ -18,7 +18,7 @@ from audio.signal_producer import chunker, SampleChunk
 from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from common.plot_task import plot_task_main
-from common.log_task import log_audio_task_main
+from common.logger import log_audio_task_main, DatasetLogger
 from two_photon.two_photon_control import TwoPhotonController
 
 NUM_OUTPUT_SAMPLES = 400
@@ -32,7 +32,7 @@ class IOTask(daq.Task):
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
                  num_samples_per_chan=10000, num_samples_per_event=None, digital=False, has_callback=True,
-                 shared_state=None, done_callback=None, fictrac_frame_recorder=None):
+                 shared_state=None, done_callback=None):
         # check inputs
         daq.Task.__init__(self)
 
@@ -52,8 +52,19 @@ class IOTask(daq.Task):
 
         # A task to send signals to everytime we write a chunk of samples. We will send the current sample number and
         # the current FicTrac frame number
-        self.fictrac_frame_recorder = fictrac_frame_recorder
+        self.logger = shared_state.logger
 
+        # We need to create a dataset for log messages.
+        if cha_type == "output" and not digital:
+            self.logger.create("/fictrac/daq_synchronization_info", shape = [1024, 2], maxshape = [None, 2], dtype = np.int64,
+                               chunks = (1024,2))
+        elif cha_type == "input" and not digital:
+            self.logger.create("/input/samples", shape=[512, len(cha_name)],
+                                    maxshape=[None, len(cha_name)],
+                                    chunks=(512, len(cha_name)),
+                                    dtype=np.float64, scaleoffset=8)
+            self.logger.create("/input/systemtime", shape=[1024, 1], chunks=(1024,1),
+                                       maxshape=[None, 1], dtype=np.float64)
 
         # These are just some dummy values for pass by reference C functions that the NI DAQ api has.
         self.read = daq.int32()
@@ -73,7 +84,7 @@ class IOTask(daq.Task):
         clock_source = None  # use internal clock
         self.callback = None
         self.data_gen = None  # called at start of callback
-        self.data_rec = None  # called at end of callback
+        self._data_recorders = None  # called at end of callback
 
         if self.cha_type is "input":
             if not self.digital:
@@ -127,8 +138,8 @@ class IOTask(daq.Task):
         if self.data_gen is not None:
             self._data = self.data_gen.close()  # close data generator
 
-        if self.data_rec is not None:
-            for data_rec in self.data_rec:
+        if self.data_recorders is not None:
+            for data_rec in self.data_recorders:
                 data_rec.finish()
                 data_rec.close()
 
@@ -141,6 +152,24 @@ class IOTask(daq.Task):
         with self._data_lock:
             chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_chan)
             self.data_gen = chunked_gen
+
+
+    @property
+    def data_recorders(self):
+        return self._data_recorders
+
+    @data_recorders.setter
+    def data_recorders(self, value):
+
+        if value is None:
+            self._data_recorders = None
+
+        # We need to store the data recorders as a list internally, because we will iterate over them later
+        elif not isinstance(value, list):
+            self._data_recorders = [value]
+
+        else:
+            self._data_recorders = value
 
     def send(self, data):
         if self.cha_type == "input":
@@ -171,9 +200,10 @@ class IOTask(daq.Task):
 
             elif self.cha_type is "output":
 
-                if self.fictrac_frame_recorder is not None:
-                    self.fictrac_frame_recorder.send((self.shared_state.FICTRAC_FRAME_NUM.value,
-                                                      self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value))
+                if self.logger is not None:
+                    self.logger.log("/fictrac/daq_synchronization_info",
+                                    np.array([self.shared_state.FICTRAC_FRAME_NUM.value,
+                                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
 
                 if not self.digital:
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
@@ -187,10 +217,15 @@ class IOTask(daq.Task):
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
             # Send the data to a callback if requested.
-            if self.data_rec is not None:
-                for data_rec in self.data_rec:
+            if self.data_recorders is not None:
+                for data_rec in self.data_recorders:
                     if self._data is not None:
                         data_rec.send((self._data, systemtime))
+
+            # Send the data to our logging process
+            if self.logger is not None and self.cha_type == "input":
+                self.logger.log("/input/samples", self._data)
+                self.logger.log("/input/systemtime", np.array([systemtime]))
 
             self._newdata_event.set()
 
@@ -230,20 +265,41 @@ def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
     except GeneratorExit:
         print("   cleaning up datagen.")
 
-def setup_playback_callbacks(stim, log_task):
-    def make_log_stim_playback(log_task_msg_queue):
+def setup_playback_callbacks(stim, logger, state):
+    """
+    This function setups a callback function for each stimulus in the playlist to be called when a set of data is
+    generated. This callback will send a log message to a logging process indicated the amount of samples generated and
+    the stimulus that generated them.
+
+    :param stim: The stimulus playlist to setup callbacks on.
+    :param logger: The DatasetLogger object to send log signals to.
+    :param state: The shared state variable that contains options to the program.
+    :return: None
+    """
+    def make_log_stim_playback(logger, state):
         def callback(event_message):
-            log_task_msg_queue.send(event_message)
+            channel = "ao" + str(state.options.analog_out_channels[event_message.channel])
+            logger.log("/output/" + channel + "/history",
+                       np.array([event_message.producer_id, event_message.num_samples]) )
 
         return callback
 
-    callbacks = make_log_stim_playback(log_task)
+    # Make the callback function
+    callbacks = make_log_stim_playback(logger, state)
 
+    # Setup the callback.
     if isinstance(stim, AudioStim):
         stim.next_event_callbacks = callbacks
     elif isinstance(stim, AudioStimPlaylist):
         for s in stim.stims:
             s.next_event_callbacks = callbacks
+
+    # Lets setup the logging datasets that these log events will be sent to
+    for channel in state.options.analog_out_channels:
+        channel_name = "ao" + channel
+        logger.create("/output/" + channel_name + "/history",
+                      shape=[2048,2], maxshape=[None, 2],
+                      chunks=(2048,2), dtype=np.int32)
 
 def io_task_main(message_pipe, state):
 
@@ -299,13 +355,16 @@ def io_task_main(message_pipe, state):
 
             disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
                                        taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
-            save_task = ConcurrentTask(task=log_audio_task_main, comms="queue", taskinitargs=[state])
 
-            taskAI.data_rec = [disp_task, save_task]
+            # Setup the display task to receive messages from recording task.
+            taskAI.data_recorders = [disp_task]
 
-            setup_playback_callbacks(audio_stim, save_task)
+            # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
+            # and when.
+            setup_playback_callbacks(audio_stim, state.logger, state)
+
+            # Setup the stimulus playlist as the data generator
             taskAO.set_data_generator(audio_stim.data_generator())
-            taskAO.fictrac_frame_recorder = save_task
 
             # Connect AO start to AI start
             taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
@@ -319,7 +378,6 @@ def io_task_main(message_pipe, state):
 
             # Start the display and logging tasks
             disp_task.start()
-            save_task.start()
 
             # Arm the AO task
             # It won't start until the start trigger signal arrives from the AI task
@@ -346,8 +404,11 @@ def io_task_main(message_pipe, state):
                         if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
                             audio_stim = msg
 
-                            setup_playback_callbacks(audio_stim, save_task)
+                            # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
+                            # and when.
+                            setup_playback_callbacks(audio_stim, state.logger, state)
 
+                            # Setup the stimulus playlist as the data generator
                             taskAO.set_data_generator(msg.data_generator())
                         if isinstance(msg, str) and msg == "STOP":
                             break

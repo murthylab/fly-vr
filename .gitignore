@@ -15,6 +15,7 @@ tests/test_data/fictrac/test-template.jpg
 audio/sound_server/asiosdk2/*
 audio/sound_server/portaudio/*
 audio/sound_server/bin/*
+audio/callback_timing.txt
 
 ##### Visual Studio Project Stuff
 

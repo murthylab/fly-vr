@@ -36,7 +36,7 @@ def plot_task_main(disp_queue, channel_names, chunk_size, limit, num_chunks_hist
         axes.append(ax)
         point_sets.append(ax.plot(np.arange(num_chunks_history * chunk_size), plot_data)[0])  # init plot content
 
-    plt.show(False)
+    plt.show()
     plt.draw()
     fig.canvas.start_event_loop(0.001)  # otherwise plot freezes after 3-4 iterations
 

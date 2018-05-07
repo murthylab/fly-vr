@@ -11,6 +11,7 @@ from audio.stimuli import SinStim, AudioStimPlaylist
 from common.build_arg_parser import parse_arguments
 
 from common.concurrent_task import ConcurrentTask
+from common.logger import DatasetLogger, DatasetLogServer
 from fictrac.fictrac_driver import FicTracDriver
 from fictrac.fictrac_driver import fictrac_poll_run_main
 from fictrac.fictrac_driver import tracking_update_stub
@@ -21,7 +22,7 @@ class SharedState(object):
     A class to represent the shared state between our concurrent tasks. We can add values to this shared state and they
     will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
     """
-    def __init__(self, options):
+    def __init__(self, options, logger):
 
         # Lets store the options passed to the program. This does not need to be stored in a thread
         # safe manner.
@@ -49,6 +50,9 @@ class SharedState(object):
         # to everyone that they have reached an unrepairable state and things need to shutdown.
         self.RUNTIME_ERROR = Value('i', 0)
 
+        # A DatasetLogger object which provides and interface for sending logging messages to the logging process.
+        self.logger = logger
+
     def is_running_well(self):
         return self.RUNTIME_ERROR.value == 0 and self.RUN.value != 0
 
@@ -69,8 +73,12 @@ def main():
         # Get the arguments passed
         options = parse_arguments()
 
+        # Setup logging server
+        log_server = DatasetLogServer()
+        logger = log_server.start_logging_server(options.record_file)
+
         # Initialize shared state between processes we are going to spawn
-        state = SharedState(options=options)
+        state = SharedState(options=options, logger=logger)
 
         print("Initializing DAQ Tasks ... ")
         daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
@@ -125,12 +133,15 @@ def main():
 
         # Wait until all the tasks are finnished.
         if daqTask is not None:
-            while daqTask._process.is_alive():
+            while daqTask.process.is_alive():
                 time.sleep(0.1)
 
         if fictrac_task is not None:
-            while fictrac_task._process.is_alive():
+            while fictrac_task.process.is_alive():
                 time.sleep(0.1)
+
+        log_server.stop_logging_server()
+        log_server.wait_till_close()
 
         print("Goodbye")
 

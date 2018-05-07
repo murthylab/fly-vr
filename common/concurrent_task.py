@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue, Pipe
+from multiprocessing import Process, Queue, Pipe, Manager
 import time
 import sys
 
@@ -25,13 +25,14 @@ class ConcurrentTask():
         if self.comms == "pipe":
             self._sender, self._receiver = Pipe()
         elif self.comms == "queue":
-            self._sender = Queue()
+            manager = Manager()
+            self._sender = manager.Queue()
             self._receiver = self._sender
         else:
             raise ValueError("comms argument must either be 'queue' or 'pipe'")
 
         taskinitargs.insert(0, self._receiver)  # prepend queue, i.e. sink end of pipe or end of queue
-        self._process = Process(target=task, args=tuple(taskinitargs))
+        self.process = Process(target=task, args=tuple(taskinitargs))
 
     def send(self, data):
         """
@@ -44,11 +45,14 @@ class ConcurrentTask():
         elif self.comms == "pipe":
             self._sender.send(data)
 
+    def get_sender(self):
+        return self._sender
+
     def start(self):
         """
         Call start on the underlying multiprocessing.Process object.
         """
-        self._process.start()
+        self.process.start()
 
     def finish(self, verbose=False, sleepduration=1, sleepcycletimeout=5, maxsleepcycles=100000000):
         """
@@ -79,12 +83,11 @@ class ConcurrentTask():
     def close(self):
         self.send(None)
         time.sleep(0.5)
-        self._process.terminate()
+        self.process.terminate()
         time.sleep(0.5)
-        self._sender.close()
-        del self._process
-        del self._sender
-        if self._receiver is not None:
-            self._receiver.close()
-            del self._receiver
 
+        if not self.comms is "queue":
+            self._sender.close()
+
+            if self._receiver is not None:
+                self._receiver.close()
