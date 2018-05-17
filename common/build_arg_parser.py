@@ -53,10 +53,6 @@ def parse_arguments():
     parser.add_argument('-m', "--fictrac_console_out",
                         type=str,
                         help="File to save FicTrac console output to.")
-    parser.add_argument('-k', "--fictrac_callback",
-                        type=str,
-                        help="A callback function that will be called anytime FicTrac updates its state. It must take " +
-                             "two parameters; the FicTrac state, and an IOTask object for communicating with the daq.")
     parser.add_argument("-g", "--pgr_cam_enable", action="store_true",
                         help="Enable Point Grey Camera support in FicTrac.",
                         default=False)
@@ -67,6 +63,10 @@ def parse_arguments():
                         help="Delay the start of playback and acquisition from FicTrac tracking by this many seconds. " +
                         "The default is 0 seconds.",
                         default=0.0)
+    parser.add_argument("--callback", type=str,
+                        help='Filename of Python code that contains implementaion of FlyVRCallback class. Used to plugin' +
+                        'custom control logic for closed loop experiments.', default=None)
+
     required = "stim_playlist".split()
     options = parser.parse_args()
 

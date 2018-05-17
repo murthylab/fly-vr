@@ -4,7 +4,7 @@ import copy
 
 class SignalNextEventData(object):
     """
-    A class that encapsulates all the data that SignalProducer's need to send to their callback
+    A class that encapsulates all the data that SignalProducer's need to send to their control
     functions when a next generator event occurs.
     """
     def __init__(self, producer_id, channel, metadata, num_samples, start_sample_num):
@@ -51,18 +51,18 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
     @property
     def next_event_callbacks(self):
         """
-        Get the callback or list of callback functions to execute when this producer generates data.
+        Get the control or list of control functions to execute when this producer generates data.
 
-        :return: The list of callback functions.
+        :return: The list of control functions.
         """
         return self._next_event_callbacks
 
     @next_event_callbacks.setter
     def next_event_callbacks(self, next_event_callbacks):
         """
-        Set the callback or list of callback functions to execute when this producer generates data.
+        Set the control or list of control functions to execute when this producer generates data.
 
-        :param next_event_callbacks: The callback or list of callbacks
+        :param next_event_callbacks: The control or list of callbacks
         """
 
         # If the user provided an attenuator, attenuate the signal

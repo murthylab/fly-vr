@@ -8,7 +8,7 @@ timeKillEvent = windll.winmm.timeKillEvent
 
 class MMTimer:
     """
-    A simple class that invokes a callback function at regular intervals. It uses the Windows Multimedia Timer. Code
+    A simple class that invokes a control function at regular intervals. It uses the Windows Multimedia Timer. Code
     taken from this stackoverflow post:
 
     https://stackoverflow.com/questions/10717589/how-to-implement-high-speed-consistent-sampling
@@ -26,11 +26,11 @@ class MMTimer:
 
     def __init__(self, interval, tickFunc, stopFunc=None, resolution=0, periodic=True):
         """
-        Setup a callback to be invoked on a fixed interval.
+        Setup a control to be invoked on a fixed interval.
 
-        :param interval: How frequently in milliseconds to invoke the callback.
-        :param tickFunc: The callback function to invoke.
-        :param stopFunc: Another callback to invoke when the event is stopped.
+        :param interval: How frequently in milliseconds to invoke the control.
+        :param tickFunc: The control function to invoke.
+        :param stopFunc: Another control to invoke when the event is stopped.
         :param resolution: The resolution of the time.
         :param periodic: Keep invoking the call back or not?
         """
@@ -47,7 +47,7 @@ class MMTimer:
         """
         Start the timer.
 
-        :param instant: Call the callback instantly the first time
+        :param instant: Call the control instantly the first time
         :return: None
         """
         if not self.running:
@@ -61,7 +61,7 @@ class MMTimer:
 
     def stop(self):
         """
-        Stop the timer callback.
+        Stop the timer control.
 
         :return: None
         """

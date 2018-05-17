@@ -17,7 +17,7 @@ def fictrac_poll_run_main(message_pipe, tracDrv, state):
 class FicTracDriver(object):
     """
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
-    calls a callback function once for each time the tracking state of the insect is updated.
+    calls a control function once for each time the tracking state of the insect is updated.
     """
     def __init__(self, config_file, console_ouput_file, track_change_callback=None, pgr_enable=False):
         """
@@ -26,9 +26,8 @@ class FicTracDriver(object):
 
         :param str config_file: The path to the configuration file that should be passed to the FicTrac command.
         :param str console_output_file: The path to the file where console output should be stored.
-        :param track_change_callback: A callback function which is called once everytime tracking status changes. This
-        function should have one argument; an object representing the current tracking state as 15 parameters. These are
-        the same parameters that FicTrac records in its ouput log file.
+        :param track_change_callback: A FlyVRCallback class which is called once everytime tracking status changes. See
+        control.FlyVRCallback for example.
         :param bool pgr_enable: Is Point Grey camera support needed. This just decides which executable to call, either
         'FicTrac' or 'FicTrac-PGR'.
         """
@@ -58,11 +57,14 @@ class FicTracDriver(object):
     def run(self, message_pipe, state):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
-        changes in tracking data and invoke a callback function when they occur. FicTrac is assumed to exist on the
+        changes in tracking data and invoke a control function when they occur. FicTrac is assumed to exist on the
         system path.
 
         :return:
         """
+
+        # Setup anything the callback needs.
+        self.track_change_callback._setup_callback()
 
         # Open or create the shared memory region for accessing FicTrac's state
         shmem = mmap.mmap(-1, ctypes.sizeof(shmem_transfer_data.SHMEMFicTracState), "FicTracStateSHMEM")
@@ -99,7 +101,7 @@ class FicTracDriver(object):
                     old_frame_count = new_frame_count
                     state.FICTRAC_FRAME_NUM.value = new_frame_count
 
-                    self.track_change_callback(data)
+                    self.track_change_callback._process_callback(data)
 
                 # If we detect it is time to shutdown, kill the FicTrac process
                 if state.RUN.value == 0:
@@ -111,16 +113,14 @@ class FicTracDriver(object):
             if self.fictrac_process.returncode < 0:
                 state.RUN.value = 0
                 state.RUNTIME_ERROR = -1
+                self.track_change_callback._shutdown_callback()
                 raise RuntimeError("Fictrac could not start because of an application error. Consult the FicTrac console ouput file.")
 
         state.FICTRAC_READY.value = 0
 
+        # Call the callback shutdown code.
+        self.track_change_callback._shutdown_callback()
+
     def stop(self):
         # Send a signal to the underlying FicTrac task so it exits gracefully.
         self.fictrac_signals.send_close()
-
-def tracking_update_stub(data):
-    pass
-
-def tracking_update_print_stub(data):
-    shmem_transfer_data.print_fictrac_state(data)

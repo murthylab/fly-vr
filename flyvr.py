@@ -12,9 +12,11 @@ from common.build_arg_parser import parse_arguments
 
 from common.concurrent_task import ConcurrentTask
 from common.logger import DatasetLogger, DatasetLogServer
+from control.callback import FlyVRCallback
+from control.threshold_callback import ThresholdCallback
+
 from fictrac.fictrac_driver import FicTracDriver
 from fictrac.fictrac_driver import fictrac_poll_run_main
-from fictrac.fictrac_driver import tracking_update_stub
 
 
 class SharedState(object):
@@ -44,7 +46,11 @@ class SharedState(object):
         # Current FicTrac frame number
         self.FICTRAC_FRAME_NUM = Value('i', 0)
 
+        # The total number of samples written to the DAQ
         self.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN = Value('i', 0)
+
+        # The total number of samples written to the sound card
+        self.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN = Value('i', 0)
 
         # A value to indicate a runtime error occurred and the program should close. This allows sub-processes to signal
         # to everyone that they have reached an unrepairable state and things need to shutdown.
@@ -61,7 +67,6 @@ class SharedState(object):
         traceback.print_exc()
         self.RUN.value = 0
         self.RUNTIME_ERROR.value = -1
-
 
 def main():
 
@@ -86,12 +91,10 @@ def main():
 
         # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
         fictrac_task = None
+        tracDrv = None
         if (options.fictrac_config is not None):
 
-            if options.fictrac_callback is None:
-                fictrac_callback = tracking_update_stub
-            else:
-                fictrac_callback = options.fictrac_callback
+            fictrac_callback = ThresholdCallback(shared_state=state)
 
             tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
                                     fictrac_callback, options.pgr_cam_enable)
@@ -134,10 +137,6 @@ def main():
         # Wait until all the tasks are finnished.
         if daqTask is not None:
             while daqTask.process.is_alive():
-                time.sleep(0.1)
-
-        if fictrac_task is not None:
-            while fictrac_task.process.is_alive():
                 time.sleep(0.1)
 
         log_server.stop_logging_server()

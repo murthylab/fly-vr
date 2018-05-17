@@ -45,7 +45,8 @@ class ConcurrentTask():
         elif self.comms == "pipe":
             self._sender.send(data)
 
-    def get_sender(self):
+    @property
+    def sender(self):
         return self._sender
 
     def start(self):

@@ -27,7 +27,7 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
         :param int duration: The duration of the sound in milliseconds
         :param int pre_silence: The duration (in milliseconds) of silence to add to the start of the signal.
         :param int post_silence: The duration (in milliseconds) of silence to add to the end of the signal.
-        :param list next_event_callbacks: A list of callback functions to call whenever the generator produced by this
+        :param list next_event_callbacks: A list of control functions to call whenever the generator produced by this
         class yields a value.
         """
 

@@ -3,6 +3,8 @@ import sounddevice as sd
 import time
 import sys
 import threading
+import multiprocessing
+from multiprocessing import Event
 
 import numpy as np
 
@@ -11,12 +13,15 @@ from audio.io_task import chunker
 
 import types
 
+from common.concurrent_task import ConcurrentTask
+
+
 class SoundServer:
     """
     The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
     stimulii via a sound card. It handles the configuration of the sound card with low latency ASIO drivers (required to
     be present on the system) and low latency settings. It also tracks information about the number and timing of
-    samples be outputed within its device callback so synchronization with other data sources in the experiment can be
+    samples be outputed within its device control so synchronization with other data sources in the experiment can be
     made.
     """
 
@@ -26,31 +31,20 @@ class SoundServer:
         method must be invoked before playback can begin.
         """
 
-        # Set the default device to the ASIO driver
-        sd.default.device = 'ASIO4ALL'
-
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = flyvr_shared_state
-
-        # Initialize number of samples played to 0
-        self.samples_played = 0
-
-        # Setup a stream end event, this is how the callback will signal to the main thread when it exits.
-        self._stream_end_event = threading.Event()
-
-        # Initialize the underlying stream to None, since it still needs to be setup with open_stream
-        self.stream = None
-
-        # Lets keep track of some timing statistics during playback
-        self.CALLBACK_TIMING_LOG_SIZE = 10000
-        self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE,5))
-        self.callback_timing_log_index = 0
 
         # No data generator has been set yet
         self._data_generator = None
 
         # Once, we no the block size and number of channels, we will pre-allocate a block of silence data
         self._silence = None
+
+        # The process we will spawn the sound server thread in.
+        self.task = ConcurrentTask(task = self._sound_server_main, comms='pipe')
+
+    # This is how many records of calls to the callback function we store in memory.
+    CALLBACK_TIMING_LOG_SIZE = 10000
 
     @property
     def data_generator(self):
@@ -73,62 +67,13 @@ class SoundServer:
         # If the stream has been setup and
         # If the generator the user is passing is None, then just set it. Otherwise, we need to set it but make sure
         # it is chunked up into the appropriate blocksize.
-        if self.stream is not None:
+        if self._stream is not None:
             if data_generator is None:
                 self._data_generator = None
             else:
-                self._data_generator = chunker(data_generator, chunk_size=self.stream.blocksize)
+                self._data_generator = chunker(data_generator, chunk_size=self._stream.blocksize)
 
-    def start_stream(self, data_generator=None, num_channels=1, dtype='float32',
-                    sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005,
-                    timeout=None):
-        """
-        Start a stream of audio data for playback to the device
-
-        :param data_generator: A data generator to use for producing samples. Or and AudioStim object. This is the source
-        of starting samples. If None, silence will be generated. Default is None
-        :param num_channels: The number of channels for playback, should be 1 or 2. Default is 1.
-        :param dtype: The datatype of each samples. Default is 'float32' and the only type currently supported.
-        :param sample_rate: The sample rate of the signal in Hz. Default is 44100 Hz
-        :param frames_per_buffer: The number of frames to output per write to the sound card. This will effect latency.
-        try to keep it as a power of 2 or better yet leave it to 0 and allow the sound card to pick it based on your
-        suggested latency. Default is 0.
-        :param suggested_output_latency: The suggested latency in seconds for output playback. Set as low as possible
-        without glitches in audio. Default is 0.005 seconds.
-        :param timeout: A timeout in seconds to close the stream automatically. None means no timeout. Default is None.
-        :return: None
-        """
-
-        # Initialize number of samples played to 0
-        self.samples_played = 0
-
-        # open stream using callback
-        self.stream = sd.OutputStream(samplerate=sample_rate, blocksize=frames_per_buffer,
-                                         latency=suggested_output_latency, channels=num_channels,
-                                         dtype=dtype,callback=self._make_callback(),
-                                         finished_callback=self._stream_end)
-
-
-        # Setup data generator, the callback has been setup to reference this classes data_generator field
-        if data_generator is None:
-            self.data_generator = None
-        elif isinstance(data_generator, AudioStim):
-            data_generator = self.play(data_generator)
-        elif isinstance(data_generator, types.GeneratorType):
-            # Setup the data generator, make sure it outputs chunks of the appropriate block size for the device.
-            self.data_generator = chunker(data_generator, chunk_size=self.stream.blocksize)
-
-        # Preallocate some silence data, this will be used when no data generator is specified.
-        self._silence = np.squeeze(np.zeros((self.stream.blocksize, self.stream.channels)))
-
-        # With a stream setup, wait till we get the end stream signal.
-        with self.stream:
-            if timeout is not None:
-                self._stream_end_event.wait(timeout=timeout)
-            else:
-                self._stream_end_event.wait()
-
-    def play(self, stim):
+    def _play(self, stim):
         """
         Play an audio stimulus through the sound card. This method invokes the data generator of the stimulus to
         generate the data.
@@ -146,6 +91,88 @@ class SoundServer:
             raise ValueError("The play method of SoundServer only takes instances of AudioStim objects or those that" +
                              "inherit from this base classs. ")
 
+    def start_stream(self, data_generator=None, num_channels=1, dtype='float32',
+                    sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005):
+        """
+        Start a stream of audio data for playback to the device
+
+        :param num_channels: The number of channels for playback, should be 1 or 2. Default is 1.
+        :param dtype: The datatype of each samples. Default is 'float32' and the only type currently supported.
+        :param sample_rate: The sample rate of the signal in Hz. Default is 44100 Hz
+        :param frames_per_buffer: The number of frames to output per write to the sound card. This will effect latency.
+        try to keep it as a power of 2 or better yet leave it to 0 and allow the sound card to pick it based on your
+        suggested latency. Default is 0.
+        :param suggested_output_latency: The suggested latency in seconds for output playback. Set as low as possible
+        without glitches in audio. Default is 0.005 seconds.
+        :return: None
+        """
+
+        # Keep a copy of the parameters for the stream
+        self._num_channels = num_channels
+        self._dtype = dtype
+        self._sample_rate = sample_rate
+        self._frames_per_buffer = frames_per_buffer
+        self._suggested_output_latency = suggested_output_latency
+        self._start_data_generator = data_generator
+
+        # Start the task
+        self.task.start()
+
+        return SoundStreamProxy(self)
+
+    def _sound_server_main(self, pipe):
+        """
+        The main process function for the sound server. Handles actually setting up the sounddevice object\stream.
+        Waits to receive objects to play on the stream, sent from other processes using a pipe.
+
+        :return: None
+        """
+
+        # Initialize number of samples played to 0
+        self.samples_played = 0
+
+        # Setup a stream end event, this is how the control will signal to the main thread when it exits.
+        self._stream_end_event = threading.Event()
+
+        # Set the default device to the ASIO driver
+        sd.default.device = 'ASIO4ALL'
+
+        # Lets keep track of some timing statistics during playback
+        self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
+        self.callback_timing_log_index = 0
+
+        # open stream using control
+        self._stream = sd.OutputStream(samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
+                                         latency=self._suggested_output_latency, channels=self._num_channels,
+                                         dtype=self._dtype,callback=self._make_callback(),
+                                         finished_callback=self._stream_end)
+        #
+        # # Setup data generator, the control has been setup to reference this classes data_generator field
+        # if self._start_data_generator is None:
+        #     self.data_generator = None
+        # elif isinstance(self._start_data_generator, AudioStim):
+        #     data_generator = self.play(data_generator)
+        # elif isinstance(self._start_data_generator, types.GeneratorType):
+        #     # Setup the data generator, make sure it outputs chunks of the appropriate block size for the device.
+        #     self.data_generator = chunker(self._start_data_generator, chunk_size=self._stream.blocksize)
+        #
+
+        # Initialize a block of silence to be played when the generator is none.
+        self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
+
+        # Setup up for playback of silence.
+        self.data_generator = None
+
+        # Loop until the stream end event is set.
+        with self._stream:
+            while not self._stream_end_event.is_set():
+
+                # Wait for a message to come
+                msg = pipe.recv()
+
+                if isinstance(msg, AudioStim) or msg is None:
+                    self._play(msg)
+
     def _stream_end(self):
         """
         Invoked at the end of stream playback by sounddevice. We can do any cleanup we need here.
@@ -156,15 +183,12 @@ class SoundServer:
 
     def _make_callback(self):
         """
-        Make callback for the stream playback. Reference self.data_generator to get samples.
+        Make control for the stream playback. Reference self.data_generator to get samples.
 
-        :return: A callback function to provide sounddevice.
+        :return: A control function to provide sounddevice.
         """
 
-        # Store the instance of our sample data generator in the instance of this class
-        self.data_generator = self.data_generator
-
-        # Create a callback function that uses the provided data generator to get sample blocks
+        # Create a control function that uses the provided data generator to get sample blocks
         def callback(outdata, frames, time_info, status):
 
             if status.output_underflow:
@@ -194,17 +218,17 @@ class SoundServer:
             self.samples_played = self.samples_played + frames
             self.callback_timing_log[self.callback_timing_log_index, 0] = self.samples_played
             self.callback_timing_log[self.callback_timing_log_index, 1] = time_info.currentTime
-            self.callback_timing_log[self.callback_timing_log_index, 2] = time_info.inputBufferAdcTime
+            self.callback_timing_log[self.callback_timing_log_index, 2] = time.clock() * 1000
             self.callback_timing_log[self.callback_timing_log_index, 3] = time_info.outputBufferDacTime
-            self.callback_timing_log[self.callback_timing_log_index, 4] = time.clock() * 1000
+
+            # Update the number of samples played in the shared state counter
+            if self.flyvr_shared_state is not None:
+                self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
+                self.callback_timing_log[self.callback_timing_log_index, 4] = self.flyvr_shared_state.FICTRAC_FRAME_NUMBER.value
 
             self.callback_timing_log_index = self.callback_timing_log_index + 1
             if self.callback_timing_log_index >= self.callback_timing_log.shape[0]:
                 self.callback_timing_log_index = 0
-
-            # Update the number of samples played in the shared state counter
-            if self.flyvr_shared_state is not None:
-                self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
 
             if len(data) < len(outdata):
                 outdata.fill(0)
@@ -213,6 +237,40 @@ class SoundServer:
                 outdata[:,0] = data
 
         return callback
+
+class SoundStreamProxy:
+    """
+    The SoundStreamProxy class acts as an interface to a SoundServer object that is running on another process. It
+    handles sending commands to the object on the other process.
+    """
+
+    def __init__(self, sound_server):
+        """
+        Initialize the SoundStreamProxy with an already setup SoundServer object. This assummes that the server is
+        running and ready to receive commands.
+
+        :param sound_server: The SoundServer object to issue commands to.
+        """
+        self.sound_server = sound_server
+        self.task = self.sound_server.task
+
+    def play(self, stim):
+        """
+        Send audio stimulus to the sound server for immediate playback.
+
+        :param stim: The AudioStim object to play.
+        :return: None
+        """
+        self.task.sender.send(stim)
+
+    def silence(self):
+        """
+        Set current playback to silence immediately.
+
+        :return: None
+        """
+        self.play(None)
+
 
 def main():
     global TIMING_IDX
@@ -225,16 +283,19 @@ def main():
 
     sound_server = SoundServer()
 
+    sound_client = sound_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
+
     from common.mmtimer import MMTimer
     def tick():
         global TIMING_IDX
-        sound_server.play(stims[TIMING_IDX % 2])
+        sound_client.play(stims[TIMING_IDX % 2])
         TIMING_IDX = TIMING_IDX + 1
+
     t1 = MMTimer(1000, tick)
     t1.start(True)
 
-    sound_server.start_stream(data_generator=stim1.data_generator(), frames_per_buffer=CHUNK_SIZE,
-                              suggested_output_latency=0.002, timeout=10)
+    while True:
+        pass
 
     np.savetxt('callback_timing.txt', sound_server.callback_timing_log[0:sound_server.callback_timing_log_index, :])
 

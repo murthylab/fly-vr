@@ -83,8 +83,8 @@ class IOTask(daq.Task):
 
         clock_source = None  # use internal clock
         self.callback = None
-        self.data_gen = None  # called at start of callback
-        self._data_recorders = None  # called at end of callback
+        self.data_gen = None  # called at start of control
+        self._data_recorders = None  # called at end of control
 
         if self.cha_type is "input":
             if not self.digital:
@@ -216,7 +216,7 @@ class IOTask(daq.Task):
                 else:
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
-            # Send the data to a callback if requested.
+            # Send the data to a control if requested.
             if self.data_recorders is not None:
                 for data_rec in self.data_recorders:
                     if self._data is not None:
@@ -267,8 +267,8 @@ def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
 
 def setup_playback_callbacks(stim, logger, state):
     """
-    This function setups a callback function for each stimulus in the playlist to be called when a set of data is
-    generated. This callback will send a log message to a logging process indicated the amount of samples generated and
+    This function setups a control function for each stimulus in the playlist to be called when a set of data is
+    generated. This control will send a log message to a logging process indicated the amount of samples generated and
     the stimulus that generated them.
 
     :param stim: The stimulus playlist to setup callbacks on.
@@ -284,10 +284,10 @@ def setup_playback_callbacks(stim, logger, state):
 
         return callback
 
-    # Make the callback function
+    # Make the control function
     callbacks = make_log_stim_playback(logger, state)
 
-    # Setup the callback.
+    # Setup the control.
     if isinstance(stim, AudioStim):
         stim.next_event_callbacks = callbacks
     elif isinstance(stim, AudioStimPlaylist):
@@ -317,8 +317,8 @@ def io_task_main(message_pipe, state):
         else:
             print("\nWarning: No attenuation file specified.")
 
-        # Read the playlist file and create and audio stimulus playlist object. We will pass a callback function to these
-        # underlying stimuli that is triggered anytime they generate data. The callback sends a log signal to the
+        # Read the playlist file and create and audio stimulus playlist object. We will pass a control function to these
+        # underlying stimuli that is triggered anytime they generate data. The control sends a log signal to the
         # master logging process.
         audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
