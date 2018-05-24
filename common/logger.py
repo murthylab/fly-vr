@@ -95,7 +95,7 @@ class DatasetLogServer:
         self.log_file_name = filename
         self._log_task.start()
 
-        return DatasetLogger(self._log_task.get_sender())
+        return DatasetLogger(self._log_task.sender)
 
     def stop_logging_server(self):
         """
@@ -291,6 +291,8 @@ class DatasetWriteEvent(DatasetLogEvent):
                 dset[write_pos:,:] = self.obj
 
                 server.dataset_write_pos[self.dataset_name] = dset.shape[0]
+
+        file_handle.flush()
 
 def test_worker(msg_queue):
     while True:

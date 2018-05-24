@@ -139,6 +139,10 @@ def main():
             while daqTask.process.is_alive():
                 time.sleep(0.1)
 
+        if fictrac_task is not None:
+            while fictrac_task.process.is_alive() and state.is_running_well():
+                time.sleep(0.1)
+
         log_server.stop_logging_server()
         log_server.wait_till_close()
 

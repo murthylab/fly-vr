@@ -21,7 +21,7 @@ from common.plot_task import plot_task_main
 from common.logger import log_audio_task_main, DatasetLogger
 from two_photon.two_photon_control import TwoPhotonController
 
-NUM_OUTPUT_SAMPLES = 400
+NUM_OUTPUT_SAMPLES = 800
 NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 
 

@@ -14,7 +14,7 @@ from audio.io_task import chunker
 import types
 
 from common.concurrent_task import ConcurrentTask
-
+from common.logger import DatasetLogServer
 
 class SoundServer:
     """
@@ -39,6 +39,9 @@ class SoundServer:
 
         # Once, we no the block size and number of channels, we will pre-allocate a block of silence data
         self._silence = None
+
+        # Setup a stream end event, this is how the control will signal to the main thread when it exits.
+        self.stream_end_event = multiprocessing.Event()
 
         # The process we will spawn the sound server thread in.
         self.task = ConcurrentTask(task = self._sound_server_main, comms='pipe')
@@ -120,10 +123,10 @@ class SoundServer:
 
         return SoundStreamProxy(self)
 
-    def _sound_server_main(self, pipe):
+    def _sound_server_main(self, msg_receiver):
         """
         The main process function for the sound server. Handles actually setting up the sounddevice object\stream.
-        Waits to receive objects to play on the stream, sent from other processes using a pipe.
+        Waits to receive objects to play on the stream, sent from other processes using a Queue or Pipe.
 
         :return: None
         """
@@ -131,22 +134,30 @@ class SoundServer:
         # Initialize number of samples played to 0
         self.samples_played = 0
 
-        # Setup a stream end event, this is how the control will signal to the main thread when it exits.
-        self._stream_end_event = threading.Event()
-
         # Set the default device to the ASIO driver
         sd.default.device = 'ASIO4ALL'
 
         # Lets keep track of some timing statistics during playback
+
         self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
         self.callback_timing_log_index = 0
+
+        # Setup a dataset to store timing information logged from the callback
+        self.timing_log_num_fields = 3
+        self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
+                                              shape = [2048, self.timing_log_num_fields],
+                                              maxshape = [None, self.timing_log_num_fields], dtype = np.float64,
+                                              chunks = (2048, self.timing_log_num_fields))
 
         # open stream using control
         self._stream = sd.OutputStream(samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
                                          latency=self._suggested_output_latency, channels=self._num_channels,
                                          dtype=self._dtype,callback=self._make_callback(),
                                          finished_callback=self._stream_end)
-        #
+
+        # Print the aquired output latency estimate
+        print("Output Latency: ", self._stream.latency)
+
         # # Setup data generator, the control has been setup to reference this classes data_generator field
         # if self._start_data_generator is None:
         #     self.data_generator = None
@@ -165,11 +176,11 @@ class SoundServer:
 
         # Loop until the stream end event is set.
         with self._stream:
-            while not self._stream_end_event.is_set():
+            while not self.stream_end_event.is_set() and \
+                    self.flyvr_shared_state.is_running_well():
 
                 # Wait for a message to come
-                msg = pipe.recv()
-
+                msg = msg_receiver.recv()
                 if isinstance(msg, AudioStim) or msg is None:
                     self._play(msg)
 
@@ -179,7 +190,7 @@ class SoundServer:
         """
 
         # Trigger the event that marks a stream end, the main loop thread is waiting on this.
-        self._stream_end_event.set()
+        self.stream_end_event.set()
 
     def _make_callback(self):
         """
@@ -216,19 +227,24 @@ class SoundServer:
 
             # Lets keep track of some running information
             self.samples_played = self.samples_played + frames
-            self.callback_timing_log[self.callback_timing_log_index, 0] = self.samples_played
-            self.callback_timing_log[self.callback_timing_log_index, 1] = time_info.currentTime
-            self.callback_timing_log[self.callback_timing_log_index, 2] = time.clock() * 1000
-            self.callback_timing_log[self.callback_timing_log_index, 3] = time_info.outputBufferDacTime
+
+            # self.callback_timing_log[self.callback_timing_log_index, 0] = self.samples_played
+            # self.callback_timing_log[self.callback_timing_log_index, 1] = time_info.currentTime
+            # self.callback_timing_log[self.callback_timing_log_index, 2] = time.clock() * 1000
+            # self.callback_timing_log[self.callback_timing_log_index, 3] = time_info.outputBufferDacTime
 
             # Update the number of samples played in the shared state counter
             if self.flyvr_shared_state is not None:
-                self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
-                self.callback_timing_log[self.callback_timing_log_index, 4] = self.flyvr_shared_state.FICTRAC_FRAME_NUMBER.value
+                self.flyvr_shared_state.logger.log("/fictrac/soundcard_synchronization_info",
+                                np.array([0,#self.flyvr_shared_state.FICTRAC_FRAME_NUM.value,
+                                          self.samples_played,
+                                          time.clock() * 1000]))
 
-            self.callback_timing_log_index = self.callback_timing_log_index + 1
-            if self.callback_timing_log_index >= self.callback_timing_log.shape[0]:
-                self.callback_timing_log_index = 0
+                #self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
+
+            # self.callback_timing_log_index = self.callback_timing_log_index + 1
+            # if self.callback_timing_log_index >= self.callback_timing_log.shape[0]:
+            #     self.callback_timing_log_index = 0
 
             if len(data) < len(outdata):
                 outdata.fill(0)
@@ -261,7 +277,7 @@ class SoundStreamProxy:
         :param stim: The AudioStim object to play.
         :return: None
         """
-        self.task.sender.send(stim)
+        self.task.send(stim)
 
     def silence(self):
         """
@@ -271,8 +287,27 @@ class SoundStreamProxy:
         """
         self.play(None)
 
+    def close(self):
+        """
+        Signal to the server to shutdown the stream.
+
+        :return: None
+        """
+        self.sound_server.stream_end_event.set()
+
+        # We send the server a junk signal. This will cause the message loop to wake up, skip the message because its
+        # junk, and check whether to exit, which it will see is set and will close the stream. Little bit of a hack but
+        # it gets the job done I guess.
+        self.play("KILL")
+
+        # Wait till the server goes away.
+        while self.task.process.is_alive():
+            time.sleep(0.1)
+
 
 def main():
+    from flyvr import SharedState
+
     global TIMING_IDX
     TIMING_IDX = 0
 
@@ -281,8 +316,13 @@ def main():
     stim2 = SinStim(frequency=300, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000)
     stims = [stim1, None]
 
-    sound_server = SoundServer()
+    # Setup logging server
+    log_server = DatasetLogServer()
+    logger = log_server.start_logging_server("test.h5")
 
+    shared_state = SharedState(None, logger)
+
+    sound_server = SoundServer(flyvr_shared_state=shared_state)
     sound_client = sound_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
 
     from common.mmtimer import MMTimer
@@ -294,10 +334,13 @@ def main():
     t1 = MMTimer(1000, tick)
     t1.start(True)
 
-    while True:
+    while time.clock() < 10:
         pass
 
-    np.savetxt('callback_timing.txt', sound_server.callback_timing_log[0:sound_server.callback_timing_log_index, :])
+    # Close the stream down.
+    sound_client.close()
+    log_server.stop_logging_server()
+    log_server.wait_till_close()
 
 if __name__ == "__main__":
     main()
