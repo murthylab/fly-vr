@@ -322,6 +322,11 @@ def io_task_main(message_pipe, state):
         # master logging process.
         audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
 
+        # Make a sanity check, ensure that the number of channels for this audio stimulus matches the number of output
+        # channels specified in configuration file.
+        if audio_stim.num_channels != len(options.analog_out_channels):
+            raise ValueError("Number of analog output channels specified in config does not equal number specified in playlist!")
+
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
 

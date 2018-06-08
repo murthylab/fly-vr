@@ -7,7 +7,8 @@ import os.path
 import time
 import h5py
 
-from audio.signal_producer import SignalProducer, SampleChunk
+from audio.signal_producer import SignalProducer, SampleChunk, MixedSignal, ConstantSignal
+
 
 class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
     """
@@ -140,7 +141,6 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
         while True:
             self.num_samples_generated = self.num_samples_generated + self.data.shape[0]
             self.trigger_next_callback(message_data=self.event_message, num_samples=self.data.shape[0])
-
 
             yield SampleChunk(data=self.data, producer_id=self.producer_id)
 
@@ -454,21 +454,88 @@ class AudioStimPlaylist(SignalProducer):
     @classmethod
     def fromfilename(cls, filename, shuffle_playback=False, attenuator=None, next_event_callbacks=None):
 
+        def check_for_field(d, field_name):
+            if field_name not in d:
+                raise ValueError("Could not find column named {} in playlist, check format.".format(field_name))
+
+        def parse_list(x):
+            if isinstance(x, str):
+                return x.replace('[','').replace(']','').split()
+            else:
+                return [x]
+
         # Get the root directory of this file
         local_dir = os.path.dirname(filename) + '/'
 
         # Read the playlist file
         data = pd.read_table(filename, sep="\t")
 
+        # Convert all column names to lower case.
+        data.columns = map(str.lower, data.columns)
+
+        # Take only the first word of column names, no spaces allowed
+        data.columns = map(lambda x: str.split(x)[0], data.columns)
+
+        # Make sure we have the nescessary fields
+        check_fields = ["stimfilename", "freq", "rate", "silencepre", "silencepost", "intensity"]
+        for field in check_fields:
+            check_for_field(data, field)
+
         # Get the stimulus filenames and load each one into a stimulus object
         row = 0
         stims = []
-        for filename in data['stimFileName']:
-            stim = MATFileStim(filename=local_dir+filename, frequency=data["freq (Hz)"][row],
-                               sample_rate=data["rate (Hz)"][row], intensity=data["intensity (au)"][row],
-                               pre_silence=data["silencePre (ms)"][row], post_silence=data["silencePost (ms)"][row],
-                               attenuator=attenuator, next_event_callbacks=next_event_callbacks)
-            stims.append(stim)
+        for stim_string in data['stimfilename']:
+            # Each stim_string field should be a semicolon separated list, each element should be a channel.
+            chan_names = stim_string.split(';')
+
+            def throw_error(msg):
+                return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row+2, msg))
+
+            # Now, parse the parameter fields to make sure they have the correct number of fields.
+            try:
+                frequencies = list(map(float, parse_list(data["freq"][row])))
+            except Exception as ex:
+                raise throw_error("Couldn't parse frequencies!") from ex
+
+            try:
+                intensities = list(map(float, parse_list(data["intensity"][row])))
+            except Exception as ex:
+                raise throw_error("Couldn't parse intensities!") from ex
+
+            # Make sure the sizes of the lists of parameters match the size of channels.
+            if len(frequencies) != len(chan_names):
+                raise throw_error("Number of frequencies is not equal to number of channels.")
+            if len(intensities) != len(chan_names):
+                raise throw_error("Number of intensities is not equal to number of channels.")
+
+            # Load each channel's stimulus
+            chans = []
+            chan_idx = 0
+            for chan_name in chan_names:
+                if chan_name.lower() == "optooff":
+                    chan = ConstantSignal(0.0)
+                elif chan_name.lower() == "optoon":
+                    chan = ConstantSignal(5.0)
+                elif chan_name.strip() == "":
+                    continue
+                else:
+                    chan = MATFileStim(filename=local_dir + chan_name,
+                                       frequency=frequencies[chan_idx],
+                                       sample_rate=data["rate"][row], intensity=intensities[chan_idx],
+                                       pre_silence=data["silencepre"][row],
+                                       post_silence=data["silencepost"][row],
+                                       attenuator=attenuator, next_event_callbacks=next_event_callbacks)
+
+                chans.append(chan)
+                chan_idx = chan_idx + 1
+
+            # Combine these stimuli into one analog signal with a channel for each.
+            mixed_stim = MixedSignal(chans)
+
+            # Append to playlist
+            stims.append(mixed_stim)
+
+            # Go to the next row
             row = row + 1
 
         return cls(stims, shuffle_playback)

@@ -2,6 +2,7 @@ import pytest
 import math
 from unittest import mock
 
+from audio.signal_producer import chunker
 from audio.stimuli import SinStim, AudioStimPlaylist
 
 @pytest.fixture
@@ -115,3 +116,14 @@ def test_callbacks(stim1, stim2, stim3):
 
     callback1.assert_called_once()
     callback2.assert_called_once()
+
+def test_multi_channel_playlist():
+    stimList = AudioStimPlaylist.fromfilename('tests/test_data/opto_control_playlist.txt')
+
+    gen = chunker(stimList.data_generator(), 1000)
+
+    chunk = next(gen).data
+
+    assert(chunk.shape[1] == 2)
+
+    assert(stimList.num_channels == 2)

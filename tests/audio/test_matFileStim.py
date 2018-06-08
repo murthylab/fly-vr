@@ -18,7 +18,7 @@ def test_callbacks():
 
     my_callback_mock = mock.Mock()
 
-    stim = stim = MATFileStim('tests/audio/pulseTrain_16IPI.mat', frequency=250, sample_rate=10000,
+    stim = MATFileStim('tests/audio/pulseTrain_16IPI.mat', frequency=250, sample_rate=10000,
                               next_event_callbacks=my_callback_mock)
 
     data_gen = stim.data_generator()

@@ -31,7 +31,7 @@ class TwoPhotonController(SignalProducer):
         """
 
         # Attach event next callbacks to this object, since it is a signal producer
-        super(TwoPhotonController, self).__init__()
+        super(TwoPhotonController, self).__init__(dtype=np.uint8)
 
         self.start_channel_name = start_channel_name
         self.stop_channel_name = stop_channel_name
@@ -52,7 +52,7 @@ class TwoPhotonController(SignalProducer):
         # Ok, we need to create a generator that is sychronized with the provided audio stimulus playlist. First step,
         # we want to produce exactly the same size underlying sample data. Look at each stimulus a create a zero matrix
         # for it.
-        self.signals = [np.zeros((stim.data.shape[0], 3), dtype=np.uint8) for stim in audio_stim_playlist.stims]
+        self.signals = [np.zeros((stim.num_samples, 3), dtype=np.uint8) for stim in audio_stim_playlist.stims]
 
         # Now, we want to put a next file signal at the start of every stimulus signal
         for signal in self.signals:
