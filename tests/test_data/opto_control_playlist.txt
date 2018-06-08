@@ -1,0 +1,11 @@
+stimFileName	rate (Hz)	trial	silencePre (ms)	silencePost (ms)	delayPost	intensity	freq (Hz)
+pulseTrain_16IPI;optoOFF;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoOFF;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoOFF;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoOFF;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoOFF;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoON;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoON;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoON;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoON;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
+pulseTrain_16IPI;optoON;;	10000	1	0	0	0	[5 1 -1 -1]	[250 -1 -1 -1]
