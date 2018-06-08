@@ -1,5 +1,10 @@
-import time
 import sys
+
+if sys.version_info[0] < 3:
+    raise Exception("FlyVR has been upgraded to require Python 3. If running on setup machine. "
+                    "Activate Anaconda conda environment from command line with command 'activate fly_vr_env'")
+
+import time
 from multiprocessing import freeze_support
 from multiprocessing import Value, Array
 
@@ -74,6 +79,7 @@ def main():
         state = None
         daqTask = None
         fictrac_task = None
+        log_server = None
 
         # Get the arguments passed
         options = parse_arguments()
@@ -143,8 +149,9 @@ def main():
             while fictrac_task.process.is_alive() and state.is_running_well():
                 time.sleep(0.1)
 
-        log_server.stop_logging_server()
-        log_server.wait_till_close()
+        if log_server is not None:
+            log_server.stop_logging_server()
+            log_server.wait_till_close()
 
         print("Goodbye")
 

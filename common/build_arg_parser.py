@@ -66,6 +66,12 @@ def parse_arguments():
     parser.add_argument("--callback", type=str,
                         help='Filename of Python code that contains implementaion of FlyVRCallback class. Used to plugin' +
                         'custom control logic for closed loop experiments.', default=None)
+    parser.add_argument("--ball_control_enable", action="store_true",
+                        default=False,
+                        help='Enable control signals for stepper motor controlling ball motion. Used for testing of closed loop setup.')
+    parser.add_argument("--ball_control_channel", type=str,
+                        default='port0/line3:4',
+                        help='String with name of two bit digital channels to send ball signal.')
 
     required = "stim_playlist".split()
     options = parser.parse_args()

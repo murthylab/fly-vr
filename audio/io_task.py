@@ -12,8 +12,9 @@ import numpy as np
 
 import common.tools
 from audio.attenuation import Attenuator
+from audio.motor_control import BallControl
 
-from audio.signal_producer import chunker, SampleChunk
+from audio.signal_producer import chunker, SampleChunk, MixedSignal
 
 from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
@@ -74,7 +75,6 @@ class IOTask(daq.Task):
         self.cha_type = cha_type
         self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
         self.cha_string = ", ".join(self.cha_name)
-        self.num_channels = len(cha_name)
         self.num_samples_per_chan = num_samples_per_chan
         self.num_samples_per_event = num_samples_per_event  # self.num_samples_per_chan*self.num_channels
 
@@ -92,6 +92,11 @@ class IOTask(daq.Task):
             else:
                 self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
+            # Get the number of channels from the task
+            nChans = ctypes.c_ulong()
+            self.GetTaskNumChans(nChans)
+            self.num_channels = nChans.value
+
             if has_callback:
                 self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Acquired_Into_Buffer, self.num_samples_per_event, 0)
                 self.CfgInputBuffer(self.num_samples_per_chan * self.num_channels * 4)
@@ -101,6 +106,11 @@ class IOTask(daq.Task):
                 self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
             else:
                 self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+
+            # Get the number of channels from the task
+            nChans = ctypes.c_ulong()
+            self.GetTaskNumChans(nChans)
+            self.num_channels = nChans.value
 
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
@@ -341,19 +351,39 @@ def io_task_main(message_pipe, state):
                             num_samples_per_chan=10000, num_samples_per_event=10000,
                             shared_state=state)
 
-            # Setup the two photon control if needed
-            two_photon_control = None
             taskDO = None
-            if state.options.remote_2P_enable:
-                two_photon_controller = TwoPhotonController(start_channel_name=state.options.remote_start_2P_channel,
-                                                            stop_channel_name=state.options.remote_stop_2P_channel,
-                                                            next_file_channel_name=state.options.remote_next_2P_channel,
-                                                            audio_stim_playlist=audio_stim)
-                taskDO = IOTask(cha_name=two_photon_controller.channel_names, cha_type="output", digital=True,
-                                num_samples_per_chan=NUM_OUTPUT_SAMPLES, num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
-                                shared_state=state)
+            two_photon_controller = None
+            ball_control = None
 
-                taskDO.set_data_generator(two_photon_controller.data_generator())
+            # Setup digital control if needed.
+            if state.options.remote_2P_enable or state.options.ball_control_enable:
+                channels = []
+                signals = []
+
+                # Setup the two photon control if needed
+                if state.options.remote_2P_enable:
+                    two_photon_controller = TwoPhotonController(start_channel_name=state.options.remote_start_2P_channel,
+                                                                stop_channel_name=state.options.remote_stop_2P_channel,
+                                                                next_file_channel_name=state.options.remote_next_2P_channel,
+                                                                audio_stim_playlist=audio_stim)
+                    channels = channels + two_photon_controller.channel_names
+                    signals.append(two_photon_controller)
+
+                # Setup the ball control if needed
+                if state.options.ball_control_enable:
+                    ball_control = BallControl(num_samples_period=400)
+                    channels.append(state.options.ball_control_channel)
+                    signals.append(ball_control)
+
+                taskDO = IOTask(cha_name=channels, cha_type="output", digital=True,
+                                 num_samples_per_chan=NUM_OUTPUT_SAMPLES,
+                                 num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
+                                 shared_state=state)
+
+                mixed_signal = MixedSignal(signals)
+
+                # Set the data generator. We will need combine the data generators into one signal for the digital task
+                taskDO.set_data_generator(mixed_signal.data_generator())
 
                 # Connect DO start to AI start
                 taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
@@ -388,7 +418,7 @@ def io_task_main(message_pipe, state):
             # It won't start until the start trigger signal arrives from the AI task
             taskAO.StartTask()
 
-            # Arm the DO task
+            # Arm the digital output task
             # It won't start until the start trigger signal arrives from the AI task
             if taskDO is not None:
                 taskDO.StartTask()
@@ -429,10 +459,13 @@ def io_task_main(message_pipe, state):
 
             # If we were doing digital output, end that too.
             if taskDO is not None:
-                print("Sending 2P imaging stop signal ... ")
                 taskDO.StopTask()
                 taskDO.stop()
                 taskDO.ClearTask()
+
+            # If we are doing two photon control, we need to send a special stop signal.
+            if two_photon_controller is not None:
+                print("Sending 2P imaging stop signal ... ")
                 two_photon_controller.send_2P_stop_signal(dev_name=taskDO.dev_name)
 
         if taskAO is not None:
@@ -482,10 +515,10 @@ def test_hardware_singlepoint(rate=10000.0):
             DAQmxClearTask(taskHandle)
 
 def main():
-    # taskDO = IOTask(cha_name=['port0/line0'], cha_type="output", digital=True,
+    # task2P_DO = IOTask(cha_name=['port0/line0'], cha_type="output", digital=True,
     #                 num_samples_per_chan=50, num_samples_per_event=50)
     #
-    # taskDO.StartTask()
+    # task2P_DO.StartTask()
     #
     # while True:
     #     time.sleep(0.2)

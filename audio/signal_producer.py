@@ -7,11 +7,11 @@ class SignalNextEventData(object):
     A class that encapsulates all the data that SignalProducer's need to send to their control
     functions when a next generator event occurs.
     """
-    def __init__(self, producer_id, channels, metadata, num_samples):
+    def __init__(self, producer_id, channel, metadata, num_samples):
         self.producer_id = producer_id
         self.metadata = metadata
         self.num_samples = num_samples
-        self.channels = channels
+        self.channel = channel
 
 class SampleChunk(object):
     """
@@ -80,7 +80,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         if next_event_callbacks is not None and not isinstance(next_event_callbacks, list):
             self._next_event_callbacks = [next_event_callbacks]
 
-    def trigger_next_callback(self, message_data, num_samples, channels=1):
+    def trigger_next_callback(self, message_data, num_samples, channel=0):
         """
         Trigger any callbacks that have been assigned to this SignalProducer. This methods should be called before
         any yield of a generator created by the signal producer. This allows them to signal next events to other parts
@@ -91,7 +91,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         """
 
         # Attach the event specific data to this event data. This is the producer and the start sample number
-        message = SignalNextEventData(producer_id=self.producer_id, num_samples=num_samples, channels=channels,
+        message = SignalNextEventData(producer_id=self.producer_id, num_samples=num_samples, channel=channel,
                                       metadata=message_data)
         message.producer_id = self.producer_id
 
@@ -195,20 +195,42 @@ class MixedSignal(SignalProducer):
         :param next_event_callbacks: A list of callables to trigger when a next is called on this signal producer.
         """
 
-        # Attach event next callbacks to this object, since it is a signal producer
-        super(MixedSignal, self).__init__(next_event_callbacks=None)
-
         self.signals = signals
+
+        # Check the dtypes of each producer to make sure they are compatible
+        dtypes = [sig.dtype for sig in self.signals]
+
+        dtype = dtypes[0]
+
+        # Make sure all signals have the same dtype.
+        if not all(typ == dtype for typ in dtypes):
+            raise ValueError("Cannot created mixed signal from signals with different dtypes.")
+
+        # Attach event next callbacks to this object, since it is a signal producer
+        super(MixedSignal, self).__init__(next_event_callbacks=next_event_callbacks, dtype=dtype)
 
         # Setup a dictionary for the parameters of the stimulus. We will send this as part
         # of an event message to the next_event_callbacks
-        self.event_message['channels'] =  [sig.event_message for sig in self.signals]
+        self.event_message['channels'] = [sig.event_message for sig in self.signals]
 
         # Grab a chunk from each generator to see how big their chunks are, we will need to make sure they are all the
         # same size later when we output a single chunk with multiple channels.
         data_gens = [signal.data_generator() for signal in self.signals]
         chunk_sizes = [next(gen).data.shape[0] for gen in data_gens]
+
+        # Get the number of channels for each signal
+        self.chunk_widths = []
+        for gen in data_gens:
+            chunk = next(gen).data
+            if chunk.data.ndim == 1:
+                self.chunk_widths.append(1)
+            else:
+                self.chunk_widths.append(chunk.data.shape[1])
+
         self.chunk_size = min(chunk_sizes)
+        self.chunk_width = sum(self.chunk_widths)
+
+        self._data = np.zeros((self.chunk_size, self.chunk_width), dtype=self.dtype)
 
     def data_generator(self):
         """
@@ -227,21 +249,25 @@ class MixedSignal(SignalProducer):
             # Get the next set of chunks, one for each channel.
             chunks = [next(gen) for gen in data_gens]
 
-            # Look at the first chunks data to see how big to make the output array.
-            mix_chunk = np.zeros(shape=(chunks[0].data.shape[0], len(chunks)), dtype=chunks[0].data.dtype)
-
             # Copy each chunk
+            channel_idx = 0
             for i in range(len(chunks)):
 
-                if chunks[i].data.shape[0] != mix_chunk.shape[0]:
-                    raise ValueError("Cannot combine signals from ")
+                # This should not happen.
+                assert chunks[i].data.shape[0] == self._data.shape[0]
 
-                mix_chunk[:,i] = chunks[i].data
+                if chunks[i].data.ndim == 1:
+                    self._data[:, channel_idx] = chunks[i].data
+                else:
+                    self._data[:, channel_idx:channel_idx+self.chunk_widths[i]] = chunks[i].data
+
+                channel_idx = channel_idx + self.chunk_widths[i]
+
 
             # We are about to yield, send an event to our callbacks
-            self.trigger_next_callback(message_data=self.event_message, num_samples=mix_chunk.shape[0], channels=mix_chunk.shape[1])
+            #self.trigger_next_callback(message_data=self.event_message, num_samples=mix_chunk.shape[0], channel=mix_chunk.shape[1])
 
-            yield SampleChunk(data=mix_chunk, producer_id=self.producer_id)
+            yield SampleChunk(data=self._data, producer_id=self.producer_id)
 
 
 class ConstantSignal(SignalProducer):
@@ -252,7 +278,7 @@ class ConstantSignal(SignalProducer):
     def __init__(self, constant, next_event_callbacks=None):
 
         # Attach event next callbacks to this object, since it is a signal producer
-        super(ConstantSignal, self).__init__(next_event_callbacks=None)
+        super(ConstantSignal, self).__init__(next_event_callbacks=next_event_callbacks)
 
         self.constant = constant
 
@@ -267,3 +293,4 @@ class ConstantSignal(SignalProducer):
             self.trigger_next_callback(message_data=self.event_message, num_samples=self.chunk.data.shape[0])
 
             yield self.chunk
+
