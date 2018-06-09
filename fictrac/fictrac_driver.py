@@ -3,6 +3,7 @@ import os
 import mmap
 import ctypes
 import subprocess
+import time
 
 from common.tools import which
 
@@ -59,7 +60,7 @@ class FicTracDriver(object):
         """
 
         # Setup anything the callback needs.
-        self.track_change_callback._setup_callback()
+        self.track_change_callback.setup_callback()
 
         # Open or create the shared memory region for accessing FicTrac's state
         shmem = mmap.mmap(-1, ctypes.sizeof(shmem_transfer_data.SHMEMFicTracState), "FicTracStateSHMEM")
@@ -96,26 +97,30 @@ class FicTracDriver(object):
                     old_frame_count = new_frame_count
                     state.FICTRAC_FRAME_NUM.value = new_frame_count
 
-                    self.track_change_callback._process_callback(data)
+                    self.track_change_callback.process_callback(data)
 
                 # If we detect it is time to shutdown, kill the FicTrac process
-                if state.RUN.value == 0:
+                if not state.is_running_well():
                     self.stop()
+                    break
 
-                    # Lets wait a bit till FicTrac exits
-                    self.fictrac_process.wait()
-
-            if self.fictrac_process.returncode < 0:
-                state.RUN.value = 0
-                state.RUNTIME_ERROR = -1
-                self.track_change_callback._shutdown_callback()
-                raise RuntimeError("Fictrac could not start because of an application error. Consult the FicTrac console ouput file.")
+            # Get the fic trac process return code
+            # if self.fictrac_process.returncode < 0:
+            #     state.RUN.value = 0
+            #     state.RUNTIME_ERROR = -1
+            #     self.track_change_callback.shutdown_callback()
+            #     raise RuntimeError("Fictrac could not start because of an application error. Consult the FicTrac console ouput file.")
 
         state.FICTRAC_READY.value = 0
 
         # Call the callback shutdown code.
-        self.track_change_callback._shutdown_callback()
+        self.track_change_callback.shutdown_callback()
 
     def stop(self):
-        # Send a signal to the underlying FicTrac task so it exits gracefully.
-        self.fictrac_signals.send_close()
+
+        print ("Sending stop signal to FicTrac ... ")
+
+        # We keep sending signals to the FicTrac process until it dies
+        while self.fictrac_process.poll() is None:
+            self.fictrac_signals.send_close()
+            time.sleep(0.2)

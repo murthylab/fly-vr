@@ -155,9 +155,6 @@ class SoundServer:
                                          dtype=self._dtype,callback=self._make_callback(),
                                          finished_callback=self._stream_end)
 
-        # Print the aquired output latency estimate
-        print("Output Latency: ", self._stream.latency)
-
         # # Setup data generator, the control has been setup to reference this classes data_generator field
         # if self._start_data_generator is None:
         #     self.data_generator = None
@@ -208,6 +205,10 @@ class SoundServer:
 
             # Make sure all is good
             assert not status
+
+            # Make sure all is good in the rest of the application
+            if not self.flyvr_shared_state.is_running_well():
+                raise sd.CallbackStop()
 
             try:
 

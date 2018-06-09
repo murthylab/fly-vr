@@ -140,13 +140,13 @@ def main():
         if state is not None:
             state.RUN.value = 0
 
-        # Wait until all the tasks are finnished.
+        # Wait until all the tasks are finished.
         if daqTask is not None:
             while daqTask.process.is_alive():
                 time.sleep(0.1)
 
         if fictrac_task is not None:
-            while fictrac_task.process.is_alive() and state.is_running_well():
+            while fictrac_task.process.is_alive():
                 time.sleep(0.1)
 
         if log_server is not None:

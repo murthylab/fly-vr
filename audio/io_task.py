@@ -4,6 +4,7 @@ import time
 
 import PyDAQmx as daq
 from PyDAQmx.DAQmxFunctions import *
+from PyDAQmx.DAQmxConstants import *
 
 import numpy as np
 
@@ -446,6 +447,7 @@ def io_task_main(message_pipe, state):
 
     except Exception as e:
         state.runtime_error(e, -2)
+
 
 def test_hardware_singlepoint(rate=10000.0):
     taskHandle = TaskHandle()

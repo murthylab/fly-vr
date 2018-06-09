@@ -13,7 +13,7 @@ class ThresholdCallback(FlyVRCallback):
         # Call the base class constructor
         super(ThresholdCallback, self).__init__(shared_state=shared_state)
 
-    def _setup_callback(self):
+    def setup_callback(self):
 
         # Setup the audio server for playback of sound
         self.sound_server = SoundServer(flyvr_shared_state=self.state)
@@ -26,14 +26,14 @@ class ThresholdCallback(FlyVRCallback):
         self.last_switch = 0
         self.SWITCH_INTERVAL = 100
 
-    def _process_callback(self, track_state):
+    def process_callback(self, track_state):
 
         if track_state.frame_cnt >= self.last_switch + self.SWITCH_INTERVAL:
             self.last_switch = self.last_switch + self.SWITCH_INTERVAL
             self.sound_client.play(self.stims[self.stim_idx])
             self.stim_idx = (self.stim_idx + 1) % 2
 
-    def _shutdown_callback(self):
+    def shutdown_callback(self):
 
         # Shutdown the sound server
         self.sound_client.close()

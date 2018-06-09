@@ -13,7 +13,7 @@ class FlyVRCallback:
         """
         self.state = shared_state
 
-    def _setup_callback(self):
+    def setup_callback(self):
         """
         This method is called once and only once before any event processing is triggered. Place any one time setup
         functionality within this function.
@@ -22,7 +22,7 @@ class FlyVRCallback:
         """
         pass
 
-    def _shutdown_callback(self):
+    def shutdown_callback(self):
         """
         This method is called once and only once before exiting the programe. Place any one time shutdown
         functionality within this function.
@@ -31,7 +31,7 @@ class FlyVRCallback:
         """
         pass
 
-    def _process_callback(self, track_state):
+    def process_callback(self, track_state):
         """
         This method is called each time an update is detected in the online tracking state. Code placed within this
         method should execute as quickly and deterministically as possible.

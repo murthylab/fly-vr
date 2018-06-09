@@ -52,7 +52,11 @@ class DatasetLogger:
         :return: None
         """
         create_event = DatasetCreateEvent(args=args, kwargs=kwargs)
-        self._sender_queue.put(create_event)
+
+        try:
+            self._sender_queue.put(create_event)
+        except FileNotFoundError:
+            pass
 
     def log(self, dataset_name, obj, append=True):
         """
@@ -66,7 +70,11 @@ class DatasetLogger:
         :return:
         """
         log_event = DatasetWriteEvent(dataset_name=dataset_name, obj=obj, append=append)
-        self._sender_queue.put(log_event)
+
+        try:
+            self._sender_queue.put(log_event)
+        except FileNotFoundError:
+            pass
 
 
 class DatasetLogServer:
