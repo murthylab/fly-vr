@@ -1,22 +1,11 @@
-import ctypes, os 
-import numpy as np
-
-# should go to `tools.py`
-def coroutine(func):
-    """ decorator that auto-initializes (calls `next(None)`) coroutines"""
-    def start(*args, **kwargs):
-        cr = func(*args, **kwargs)
-        next(cr)
-        return cr
-    return start
-
-
-# read ctrl file - this should also work for log files
-# ctrl = np.genfromtxt('wn.txt', dtype=None, names=True, delimiter='\t')
-
-# writing a nicely formatted log file seems more complicated
+import ctypes
 
 def systime():
+    """
+    Query the windows performance counter to get the current time in milliseconds.
+
+    :return: The current time in milliseconds since this thread started.
+    """
     "return a timestamp in milliseconds (ms)"
     tics = ctypes.c_int64()
     freq = ctypes.c_int64()
@@ -30,6 +19,12 @@ def systime():
     return t_ms
 
 def which(program):
+    """
+    Locate an executable's path that is on the PATH
+
+    :param program: The name of the executable.
+    :return: The full path to the executable
+    """
     import os
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)

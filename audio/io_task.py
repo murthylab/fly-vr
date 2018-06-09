@@ -1,26 +1,21 @@
 # -*- coding: utf-8 -*-
-import sys
 import threading
 import time
 
 import PyDAQmx as daq
-from PyDAQmx.DAQmxCallBack import *
-from PyDAQmx.DAQmxConstants import *
 from PyDAQmx.DAQmxFunctions import *
 
 import numpy as np
 
-import common.tools
 from audio.attenuation import Attenuator
-from audio.motor_control import BallControl
+from control.motor_control import BallControl
 
-from audio.signal_producer import chunker, SampleChunk, MixedSignal
+from audio.signal_producer import chunker, MixedSignal
 
 from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from common.plot_task import plot_task_main
-from common.logger import log_audio_task_main, DatasetLogger
-from two_photon.two_photon_control import TwoPhotonController
+from control.two_photon_control import TwoPhotonController
 
 NUM_OUTPUT_SAMPLES = 800
 NUM_OUTPUT_SAMPLES_PER_EVENT = 50
@@ -247,33 +242,6 @@ class IOTask(daq.Task):
             self.done_callback(self)
 
         return 0  # The function should return an integer
-
-@common.tools.coroutine
-def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
-    '''generator yields next chunk of data for output'''
-    # generate all stimuli
-
-    max_value = 5
-
-    if dtype == np.uint8:
-        max_value = 1
-
-    data = list()
-    for ii in range(2):
-        # t = np.arange(0, 1, 1.0 / max(100.0 ** ii, 100))
-        # tmp = np.tile(0.2 * np.sin(5000 * t).astype(np.float64), (channels, 1)).T
-
-        # simple ON/OFF pattern
-        tmp = max_value * ii * np.ones((channels, num_samples)).astype(dtype).T
-        data.append(np.ascontiguousarray(tmp))  # `ascont...` necessary since `.T` messes up internal array format
-    count = 0  # init counter
-    try:
-        while True:
-            count += 1
-            # print("{0}: generating {1}".format(count, data[(count-1) % len(data)].shape))
-            yield SampleChunk(producer_id=0, data=data[(count - 1) % len(data)])
-    except GeneratorExit:
-        print("   cleaning up datagen.")
 
 def setup_playback_callbacks(stim, logger, state):
     """

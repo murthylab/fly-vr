@@ -1,13 +1,8 @@
 from . import shmem_transfer_data
-import sys
-import time
 import os
 import mmap
 import ctypes
 import subprocess
-import numpy as np
-import signal
-from audio.io_task import IOTask, data_generator_test
 
 from common.tools import which
 

@@ -8,7 +8,7 @@ class CommaListParser(configargparse.Action):
         x = [x.strip() for x in values.split(',')]
         setattr(args, self.dest, x)
 
-def parse_arguments():
+def parse_arguments(args=None):
     savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
     # Setup program command line argument parser
@@ -74,7 +74,11 @@ def parse_arguments():
                         help='String with name of two bit digital channels to send ball signal.')
 
     required = "stim_playlist".split()
-    options = parser.parse_args()
+
+    if args:
+        options = parser.parse_args(args)
+    else:
+        options = parser.parse_args()
 
     # Check for required arguments
     for r in required:

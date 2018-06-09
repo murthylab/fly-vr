@@ -1,6 +1,6 @@
 import pytest
 from audio.stimuli import SinStim, AudioStimPlaylist
-from two_photon.two_photon_control import TwoPhotonController
+from control.two_photon_control import TwoPhotonController
 
 
 @pytest.fixture

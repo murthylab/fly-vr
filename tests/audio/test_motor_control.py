@@ -1,9 +1,9 @@
 import numpy as np
 
-from audio.motor_control import BallControl
+from control.motor_control import BallControl
 from audio.signal_producer import MixedSignal
 from audio.stimuli import SinStim, AudioStimPlaylist
-from two_photon.two_photon_control import TwoPhotonController
+from control.two_photon_control import TwoPhotonController
 
 
 def test_ball_control_signal():
