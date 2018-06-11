@@ -112,7 +112,11 @@ class FicTracDriver(object):
                     old_frame_count = new_frame_count
                     state.FICTRAC_FRAME_NUM.value = new_frame_count
 
-                    self.track_change_callback.process_callback(data)
+                    # Copy the current state.
+                    data_copy = SHMEMFicTracState()
+                    ctypes.pointer(data_copy)[0] = data
+
+                    self.track_change_callback.process_callback(data_copy)
 
                 # If we detect it is time to shutdown, kill the FicTrac process
                 if not state.is_running_well():
@@ -163,7 +167,7 @@ def plot_task_fictrac(disp_queue, flyvr_state, fictrac_state_fields=['speed', 'd
     num_channels = len(fictrac_state_fields)
 
     # Axes limits for each field
-    field_ax_limits = {'speed': (0, .2),
+    field_ax_limits = {'speed': (0, .15),
                        'direction': (0, 2*np.pi),
                        'heading': (0, 2*np.pi)}
 

@@ -20,6 +20,7 @@ remote_next_2P_channel=					port0/line2
 # FicTrac parameters.
 fictrac_config=							tests/test_data/fictrac/config.txt
 fictrac_console_out=					tests/test_data/fictrac/output.txt
+fictrac_plot_state=						True
 #pgr_cam_enable=						True
 
 # Ball Control
