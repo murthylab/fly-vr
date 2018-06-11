@@ -8,6 +8,26 @@ class CommaListParser(configargparse.Action):
         x = [x.strip() for x in values.split(',')]
         setattr(args, self.dest, x)
 
+# A custom action to process command line options that are
+# comma separated lists of numbers. Splits and trims whitespace, then converts to floats.
+class CommaListNumParser(configargparse.Action):
+    def __call__(self, parser, args, values, option_string=None):
+        x = [float(x.strip()) for x in values.split(',')]
+        setattr(args, self.dest, x)
+
+def validatate_args(options):
+
+    if options.ball_control_enable:
+        # Make sure the user has passed in the appropriate parameters
+        if not options.ball_control_periods:
+            raise ValueError("Ball control is enabled but no ball_control_periods parameter has been specified.")
+
+        if not options.ball_control_durations:
+            raise ValueError("Ball control is enabled but no ball_control_durations parameter has been specified.")
+
+        if len(options.ball_control_periods) != len(options.ball_control_durations):
+            raise ValueError("ball_control_periods and ball_control_durations must have same length, one duration for each period.")
+
 def parse_arguments(args=None):
     savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
@@ -53,6 +73,9 @@ def parse_arguments(args=None):
     parser.add_argument('-m', "--fictrac_console_out",
                         type=str,
                         help="File to save FicTrac console output to.")
+    parser.add_argument("--fictrac_plot_state", action="store_true",
+                        help="Enable plotting of FicTrac state history.",
+                        default=False)
     parser.add_argument("-g", "--pgr_cam_enable", action="store_true",
                         help="Enable Point Grey Camera support in FicTrac.",
                         default=False)
@@ -72,6 +95,17 @@ def parse_arguments(args=None):
     parser.add_argument("--ball_control_channel", type=str,
                         default='port0/line3:4',
                         help='String with name of two bit digital channels to send ball signal.')
+    parser.add_argument("--ball_control_periods",
+                        type=str,
+                        action=CommaListNumParser,
+                        help="A comma separated list of periods (in milliseconds) describing how to construct the ball control signal.")
+    parser.add_argument("--ball_control_durations",
+                        type=str,
+                        action=CommaListNumParser,
+                        help="A comma separated list of durations (in seconds) for each period in the ball_control_periods parameter.")
+    parser.add_argument("--ball_control_loop", action="store_true",
+                        default=True,
+                        help='Whether the ball control signal should loop idefinitely or not.')
 
     required = "stim_playlist".split()
 
@@ -85,5 +119,7 @@ def parse_arguments(args=None):
         if options.__dict__[r] is None:
             parser.print_help()
             parser.error("parameter %s required" % r)
+
+    validatate_args(options)
 
     return options

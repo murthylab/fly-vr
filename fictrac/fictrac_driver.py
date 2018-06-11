@@ -1,9 +1,17 @@
+from common.concurrent_task import ConcurrentTask
 from . import shmem_transfer_data
+from fictrac.shmem_transfer_data import SHMEMFicTracState, print_fictrac_state
+
 import os
 import mmap
 import ctypes
 import subprocess
+import matplotlib.pyplot as plt
+import warnings
+import matplotlib.cbook
+import numpy as np
 import time
+from collections import deque
 
 from common.tools import which
 
@@ -15,7 +23,7 @@ class FicTracDriver(object):
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
     calls a control function once for each time the tracking state of the insect is updated.
     """
-    def __init__(self, config_file, console_ouput_file, track_change_callback=None, pgr_enable=False):
+    def __init__(self, config_file, console_ouput_file, track_change_callback=None, pgr_enable=False, plot_on=True):
         """
         Create the FicTrac driver object. This function will perform a check to see if the FicTrac program is present
         on the path. If it is not, it will throw an exception.
@@ -50,6 +58,8 @@ class FicTracDriver(object):
         self.fictrac_process = None
         self.fictrac_signals = None
 
+        self.plot_on = plot_on
+
     def run(self, message_pipe, state):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
@@ -74,6 +84,11 @@ class FicTracDriver(object):
         with open(self.console_output_file, "wb") as out:
 
             self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out, stderr=subprocess.STDOUT)
+
+            if self.plot_on:
+                self.plot_task = ConcurrentTask(task=plot_task_fictrac, comms="pipe",
+                                       taskinitargs=[state])
+                self.plot_task.start()
 
             data = shmem_transfer_data.SHMEMFicTracState.from_buffer(shmem)
             first_frame_count = data.frame_cnt
@@ -124,3 +139,96 @@ class FicTracDriver(object):
         while self.fictrac_process.poll() is None:
             self.fictrac_signals.send_close()
             time.sleep(0.2)
+
+
+def plot_task_fictrac(disp_queue, flyvr_state, fictrac_state_fields=['speed', 'direction', 'heading'], num_history=200):
+    """
+    A coroutine for plotting fast, realtime as per: https://gist.github.com/pklaus/62e649be55681961f6c4. This is used
+    for plotting streaming data coming from FicTrac.
+
+    :param disp_queue: The message queue from which data is sent for plotting.
+    :return: None
+    """
+
+    # Open or create the shared memory region for accessing FicTrac's state
+    shmem = mmap.mmap(-1, ctypes.sizeof(shmem_transfer_data.SHMEMFicTracState), "FicTracStateSHMEM")
+
+    warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
+    plt.ion()
+
+    fig = plt.figure()
+    fig.canvas.set_window_title('traces: fictrac')
+
+    # Number of fields to display
+    num_channels = len(fictrac_state_fields)
+
+    # Axes limits for each field
+    field_ax_limits = {'speed': (0, .2),
+                       'direction': (0, 2*np.pi),
+                       'heading': (0, 2*np.pi)}
+
+    # Setup a queue for caching the historical data received so we can plot history of samples up to
+    # some N
+    data_history = deque([SHMEMFicTracState() for i in range(num_history)], maxlen=num_history)
+
+    plot_data = np.zeros((num_history, num_channels))
+
+    # We want to create a subplot for each channel
+    axes = []
+    backgrounds = []
+    point_sets = []
+    for chn in range(1, num_channels + 1):
+        field_name = fictrac_state_fields[chn-1]
+        ax = fig.add_subplot(num_channels, 1, chn)
+        ax.set_title(field_name)
+        backgrounds.append(fig.canvas.copy_from_bbox(ax.bbox))  # cache the background
+        ax.axis([0, num_history, field_ax_limits[field_name][0], field_ax_limits[field_name][1]])
+        axes.append(ax)
+        point_sets.append(ax.plot(np.arange(num_history), plot_data)[0])  # init plot content
+
+    plt.show()
+    plt.draw()
+    fig.canvas.start_event_loop(0.001)  # otherwise plot freezes after 3-4 iterations
+
+    RUN = True
+    data = shmem_transfer_data.SHMEMFicTracState.from_buffer(shmem)
+    first_frame_count = data.frame_cnt
+    old_frame_count = data.frame_cnt
+    while flyvr_state.is_running_well():
+        new_frame_count = data.frame_cnt
+
+        if old_frame_count != new_frame_count:
+
+            # Copy the current state.
+            data_copy = SHMEMFicTracState()
+            ctypes.pointer(data_copy)[0] = data
+
+            # Append to the history
+            data_history.append(data_copy)
+
+            # Turned the queued chunks into a flat array
+            sample_i = 0
+            for d in data_history:
+                chan_i = 0
+                for field in fictrac_state_fields:
+                    plot_data[sample_i,chan_i] = getattr(d, field)
+                    chan_i = chan_i + 1
+                sample_i = sample_i + 1
+
+            for chn in range(num_channels):
+                fig.canvas.restore_region(backgrounds[chn])         # restore background
+                point_sets[chn].set_data(np.arange(num_history), plot_data[:,chn])
+                axes[chn].draw_artist(point_sets[chn])              # redraw just the points
+                #fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
+
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+
+    # clean up
+    plt.close(fig)
+
+def test_fictrac():
+    pass
+
+if __name__ == "__main__":
+    test_fictrac()

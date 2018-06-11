@@ -9,26 +9,26 @@ from PyDAQmx.DAQmxConstants import *
 import numpy as np
 
 from audio.attenuation import Attenuator
-from control.motor_control import BallControl
+from control.motor_control import BallControlSignal
 
 from audio.signal_producer import chunker, MixedSignal
 
 from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
-from common.plot_task import plot_task_main
+from common.plot_task import plot_task_daq
 from control.two_photon_control import TwoPhotonController
 
-NUM_OUTPUT_SAMPLES = 800
-NUM_OUTPUT_SAMPLES_PER_EVENT = 50
-
+DAQ_SAMPLE_RATE = 10000
+DAQ_NUM_OUTPUT_SAMPLES = 800
+DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 
 class IOTask(daq.Task):
     """
     IOTask encapsulates the an input-output task that communicates with the NIDAQ. It works with a list of input or
     output channel names.
     """
-    def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=10000.0,
-                 num_samples_per_chan=10000, num_samples_per_event=None, digital=False, has_callback=True,
+    def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
+                 num_samples_per_chan=DAQ_SAMPLE_RATE, num_samples_per_event=None, digital=False, has_callback=True,
                  shared_state=None, done_callback=None):
         # check inputs
         daq.Task.__init__(self)
@@ -314,7 +314,7 @@ def io_task_main(message_pipe, state):
             input_chans = ["ai" + str(s) for s in options.analog_in_channels]
 
             taskAO = IOTask(cha_name=output_chans, cha_type="output",
-                            num_samples_per_chan=NUM_OUTPUT_SAMPLES, num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
+                            num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES, num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                             shared_state=state)
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=10000, num_samples_per_event=10000,
@@ -340,14 +340,17 @@ def io_task_main(message_pipe, state):
 
                 # Setup the ball control if needed
                 if state.options.ball_control_enable:
-                    ball_control = BallControl(num_samples_period=400)
+                    ball_control = BallControlSignal(periods=state.options.ball_control_periods,
+                                                     durations=state.options.ball_control_durations,
+                                                     loop=state.options.ball_control_loop,
+                                                     sample_rate=DAQ_SAMPLE_RATE)
                     channels.append(state.options.ball_control_channel)
                     signals.append(ball_control)
 
                 taskDO = IOTask(cha_name=channels, cha_type="output", digital=True,
-                                 num_samples_per_chan=NUM_OUTPUT_SAMPLES,
-                                 num_samples_per_event=NUM_OUTPUT_SAMPLES_PER_EVENT,
-                                 shared_state=state)
+                                num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
+                                num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
+                                shared_state=state)
 
                 mixed_signal = MixedSignal(signals)
 
@@ -357,7 +360,7 @@ def io_task_main(message_pipe, state):
                 # Connect DO start to AI start
                 taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-            disp_task = ConcurrentTask(task=plot_task_main, comms="pipe",
+            disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
                                        taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
 
             # Setup the display task to receive messages from recording task.

@@ -75,14 +75,18 @@ class SharedState(object):
 
 def main():
 
+    # Get the arguments passed
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
+
     try:
         state = None
         daqTask = None
         fictrac_task = None
         log_server = None
-
-        # Get the arguments passed
-        options = parse_arguments()
 
         # Setup logging server
         log_server = DatasetLogServer()
@@ -103,7 +107,8 @@ def main():
             fictrac_callback = ThresholdCallback(shared_state=state)
 
             tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                    fictrac_callback, options.pgr_cam_enable)
+                                    fictrac_callback, options.pgr_cam_enable,
+                                    plot_on=options.fictrac_plot_state)
 
             # Run the task
             print("Starting FicTrac ... ")
