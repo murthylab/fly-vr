@@ -1,6 +1,6 @@
 from common.concurrent_task import ConcurrentTask
 from . import shmem_transfer_data
-from fictrac.shmem_transfer_data import SHMEMFicTracState, print_fictrac_state
+from fictrac.shmem_transfer_data import SHMEMFicTracState, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
 
 import os
 import mmap
@@ -80,6 +80,11 @@ class FicTracDriver(object):
 
         self.fictrac_signals = shmem_transfer_data.SHMEMFicTracSignals.from_buffer(shmem_signals)
 
+        # Setup dataset to log FicTrac data to.
+        state.logger.create("/fictrac/output", shape=[2048, NUM_FICTRAC_FIELDS],
+                                              maxshape=[None, NUM_FICTRAC_FIELDS], dtype=np.float64,
+                                              chunks=(2048, NUM_FICTRAC_FIELDS))
+
         # Start FicTrac
         with open(self.console_output_file, "wb") as out:
 
@@ -115,6 +120,9 @@ class FicTracDriver(object):
                     # Copy the current state.
                     data_copy = SHMEMFicTracState()
                     ctypes.pointer(data_copy)[0] = data
+
+                    # Log the FicTrac data to our master log file.
+                    state.logger.log('/fictrac/output', fictrac_state_to_vec(data_copy))
 
                     self.track_change_callback.process_callback(data_copy)
 

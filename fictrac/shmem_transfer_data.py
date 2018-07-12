@@ -1,4 +1,8 @@
+import numpy as np
 import ctypes
+
+# The number of FicTrac fields in the output file
+NUM_FICTRAC_FIELDS = 23
 
 class SHMEMFicTracState(ctypes.Structure):
     """
@@ -22,6 +26,33 @@ class SHMEMFicTracState(ctypes.Structure):
         ('timestamp', ctypes.c_double),
         ('seq_num', ctypes.c_int),
     ]
+
+
+def fictrac_state_to_vec(s):
+    return np.array([s.frame_cnt,
+                     s.del_rot_cam_vec[0],
+                     s.del_rot_cam_vec[1],
+                     s.del_rot_cam_vec[2],
+                     s.del_rot_error,
+                     s.del_rot_lab_vec[0],
+                     s.del_rot_lab_vec[1],
+                     s.del_rot_lab_vec[2],
+                     s.abs_ori_cam_vec[0],
+                     s.abs_ori_cam_vec[1],
+                     s.abs_ori_cam_vec[2],
+                     s.abs_ori_lab_vec[0],
+                     s.abs_ori_lab_vec[1],
+                     s.abs_ori_lab_vec[2],
+                     s.posx,
+                     s.posy,
+                     s.heading,
+                     s.direction,
+                     s.speed,
+                     s.intx,
+                     s.inty,
+                     s.timestamp,
+                     s.seq_num
+                     ])
 
 class SHMEMFicTracSignals(ctypes.Structure):
     """
