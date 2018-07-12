@@ -2,6 +2,7 @@ import abc
 import numpy as np
 import scipy
 from scipy import io
+from scipy import signal
 import pandas as pd
 import os.path
 import time
@@ -362,6 +363,88 @@ class SinStim(AudioStim):
         data = self.amplitude * np.sin(2 * np.pi * self.frequency * T + self.phase)
 
         return data
+
+
+class SquareWaveStim(AudioStim):
+    """
+       The SquareWaveStim class provides a simple interface for generating square wave audio stimulus data
+       appropriate for feeding directly as samples for sound card playback. It allows parameterization
+       of the square wave as well as attenuation scaling.
+    """
+
+    def __init__(self, frequency, duty_cycle, amplitude, sample_rate, duration, intensity=1.0, pre_silence=0,
+                 post_silence=0, attenuator=None, next_event_callbacks=None):
+
+        # Initiatialize the base class members
+        super(SquareWaveStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
+                                      pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
+                                      frequency=frequency, next_event_callbacks=next_event_callbacks)
+
+        self.__duty_cycle = duty_cycle
+        self.__amplitude = amplitude
+
+        # Add class specific parameters to the event message that is sent to functions in next_event_callbacks from the
+        # base class generator.
+        self.event_message["duty_cycle"] = duty_cycle
+        self.event_message["amplitude"] = amplitude
+
+        self.data = self._generate_data()
+
+    @property
+    def amplitude(self):
+        """
+        Get the amplitude of the sin signal.
+
+        :return: The amplitude of the sin signal.
+        :rtype: float
+        """
+        return self.__amplitude
+
+    @amplitude.setter
+    def amplitude(self, amplitude):
+        """
+        Set the amplitude of the sin signal.
+
+        :param float amplitude: Set the amplitude of the sin signal.
+        """
+        self.__amplitude = amplitude
+        self.data = self._generate_data()
+
+    @property
+    def duty_cycle(self):
+        """
+        Get the duty cycle of the signal, between 0 and 1.
+
+        :return: The duty cycle of the signal, between 0 and 1.
+        :rtype: float
+        """
+        return self.__duty_cycle
+
+    @duty_cycle.setter
+    def phase(self, duty_cycle):
+        """
+        Set the duty cyclce of the signal.
+
+        :param float duty_cycle: The duty cycle, between 0 and 1.
+        """
+        self.__duty_cycle = duty_cycle
+        self.data = self._generate_data()
+
+    def _generate_data(self):
+        """
+        Generate the sin sample data according to the parameters. Also attenuatte the signal if an attenuator
+        is provided.
+
+        :return: The sin signal data, ready to be passed to the DAQ as voltage signals.
+        :rtype: numpy.ndarray
+        """
+        T = np.linspace(0.0, float(self.duration) / 1000.0, (float(self.sample_rate) / 1000.0) * self.duration)
+
+        # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
+        data = self.amplitude * signal.square(T * 2 * np.pi * self.frequency, duty=self.duty_cycle)
+
+        return data
+
 
 class MATFileStim(AudioStim):
     """A class to encapsulate stimulus data that has been pre-generated and stored as MATLAB MAT files. The lab has a

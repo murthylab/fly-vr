@@ -25,6 +25,7 @@ fictrac_plot_state=						True
 
 # Ball Control
 ball_control_enable=					True
+ball_control_channel=					port0/line3:4
 ball_control_loop=						True
 ball_control_periods=					40, 50, 60
 ball_control_durations=					2,	2,	2

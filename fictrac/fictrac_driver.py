@@ -145,7 +145,17 @@ class FicTracDriver(object):
             time.sleep(0.2)
 
 
-def plot_task_fictrac(disp_queue, flyvr_state, fictrac_state_fields=['speed', 'direction', 'heading'], num_history=200):
+def angle_diff(angle1, angle2):
+    diff = angle2 - angle1
+    while diff < np.deg2rad(-180.0):
+        diff += np.deg2rad(360.0)
+    while diff > np.deg2rad(180):
+        diff -= np.deg2rad(360.0)
+    return diff
+
+def plot_task_fictrac(disp_queue, flyvr_state,
+                      fictrac_state_fields=['speed', 'direction', 'del_rot_cam_vec', 'del_rot_error'],
+                      num_history=200):
     """
     A coroutine for plotting fast, realtime as per: https://gist.github.com/pklaus/62e649be55681961f6c4. This is used
     for plotting streaming data coming from FicTrac.
@@ -167,9 +177,12 @@ def plot_task_fictrac(disp_queue, flyvr_state, fictrac_state_fields=['speed', 'd
     num_channels = len(fictrac_state_fields)
 
     # Axes limits for each field
-    field_ax_limits = {'speed': (0, .15),
+    field_ax_limits = {'speed': (0, .03),
                        'direction': (0, 2*np.pi),
-                       'heading': (0, 2*np.pi)}
+                       'heading': (0, 2*np.pi),
+                       'heading_diff': (0, 0.261799),
+                       'del_rot_error': (0, 15000),
+                       'del_rot_cam_vec': (-0.025, 0.025)}
 
     # Setup a queue for caching the historical data received so we can plot history of samples up to
     # some N
@@ -212,11 +225,23 @@ def plot_task_fictrac(disp_queue, flyvr_state, fictrac_state_fields=['speed', 'd
 
             # Turned the queued chunks into a flat array
             sample_i = 0
+            last_d = data_history[0]
             for d in data_history:
                 chan_i = 0
                 for field in fictrac_state_fields:
-                    plot_data[sample_i,chan_i] = getattr(d, field)
+                    if field.endswith('_diff'):
+                        real_field = field.replace('_diff', '')
+
+                        if real_field in ['heading', 'direction']:
+                            plot_data[sample_i, chan_i] = abs(angle_diff(getattr(d, real_field), getattr(last_d, real_field)))
+                        else:
+                            plot_data[sample_i, chan_i] = getattr(d, real_field) - getattr(last_d, real_field)
+                    elif field.endswith('vec'):
+                        plot_data[sample_i, chan_i] = getattr(d, field)[1]
+                    else:
+                        plot_data[sample_i,chan_i] = getattr(d, field)
                     chan_i = chan_i + 1
+                last_d = d
                 sample_i = sample_i + 1
 
             for chn in range(num_channels):

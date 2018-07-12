@@ -108,7 +108,7 @@ def plot_task_fictrac(disp_queue, fictrac_state_fields=['speed', 'direction', 'h
     num_channels = len(fictrac_state_fields)
 
     # Axes limits for each field
-    field_ax_limits = {'speed': (0, .3),
+    field_ax_limits = {'speed': (0, .03),
                        'direction': (0, 2*np.pi),
                        'heading': (0, 2*np.pi)}
 

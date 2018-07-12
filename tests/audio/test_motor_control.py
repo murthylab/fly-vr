@@ -1,4 +1,5 @@
 import numpy as np
+import h5py as h5
 
 from control.motor_control import BallControlSignal
 from audio.signal_producer import MixedSignal
@@ -36,7 +37,6 @@ def test_ball_control_signal():
         # We are no looping, so the next yield should be all zeros.
         if i > 0:
             assert(np.all(chunk == 0))
-
 
 def test_mixed_control():
     stim1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,

@@ -2,6 +2,7 @@ import numpy as np
 
 from audio.signal_producer import SignalProducer, SampleChunk
 
+
 class BallControlSignal(SignalProducer):
     """
     BallControlSignal generates a 2-channel digital signal to control the speed of rotation of servo motor connected

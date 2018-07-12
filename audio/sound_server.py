@@ -214,10 +214,12 @@ class SoundServer:
 
                 # If we have no data generator set, then play silence. If not, call its next method
                 if self._data_generator is None:
+                    producer_id = -1 # Lets code silence as -1
                     data = self._silence
                 else:
-                    data_chunk = next(self._data_generator).data
-                    data = data_chunk.data
+                    data_chunk = next(self._data_generator)
+                    producer_id = data_chunk.producer_id
+                    data = data_chunk.data.data
 
                 # Make extra sure the length of the data we are getting is the correct number of samples
                 assert(len(data) == frames)
@@ -229,23 +231,14 @@ class SoundServer:
             # Lets keep track of some running information
             self.samples_played = self.samples_played + frames
 
-            # self.callback_timing_log[self.callback_timing_log_index, 0] = self.samples_played
-            # self.callback_timing_log[self.callback_timing_log_index, 1] = time_info.currentTime
-            # self.callback_timing_log[self.callback_timing_log_index, 2] = time.clock() * 1000
-            # self.callback_timing_log[self.callback_timing_log_index, 3] = time_info.outputBufferDacTime
-
             # Update the number of samples played in the shared state counter
             if self.flyvr_shared_state is not None:
                 self.flyvr_shared_state.logger.log("/fictrac/soundcard_synchronization_info",
-                                np.array([0,#self.flyvr_shared_state.FICTRAC_FRAME_NUM.value,
+                                np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM.value,
                                           self.samples_played,
-                                          time.clock() * 1000]))
+                                          producer_id]))
 
                 #self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
-
-            # self.callback_timing_log_index = self.callback_timing_log_index + 1
-            # if self.callback_timing_log_index >= self.callback_timing_log.shape[0]:
-            #     self.callback_timing_log_index = 0
 
             if len(data) < len(outdata):
                 outdata.fill(0)
