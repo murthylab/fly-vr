@@ -118,5 +118,5 @@ def test_mix_different_sizes():
 
     for i in range(500):
         chunk = next(gen).data
-        assert(chunk[:,0] == stim1.data[i])
-        assert(chunk[:,1] == 5)
+        assert(np.array_equal(chunk[:,0], stim1.data))
+        assert(np.array_equal(chunk[:,1], np.ones(shape=stim1.data.shape)*5))

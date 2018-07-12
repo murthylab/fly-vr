@@ -124,6 +124,6 @@ def test_multi_channel_playlist():
 
     chunk = next(gen).data
 
-    assert(chunk.shape[1] == 2)
+    assert(chunk.shape[1] == 4)
 
-    assert(stimList.num_channels == 2)
+    assert(stimList.num_channels == 4)

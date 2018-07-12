@@ -19,7 +19,7 @@ from common.plot_task import plot_task_daq
 from control.two_photon_control import TwoPhotonController
 
 DAQ_SAMPLE_RATE = 10000
-DAQ_NUM_OUTPUT_SAMPLES = 800
+DAQ_NUM_OUTPUT_SAMPLES = 10000
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 
 class IOTask(daq.Task):
@@ -212,6 +212,7 @@ class IOTask(daq.Task):
                                                               self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
 
                 if not self.digital:
+                    print(self._data.shape)
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                     self._data, daq.byref(self.read), None)
 

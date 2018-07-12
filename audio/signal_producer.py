@@ -227,7 +227,7 @@ class MixedSignal(SignalProducer):
             else:
                 self.chunk_widths.append(chunk.data.shape[1])
 
-        self.chunk_size = min(chunk_sizes)
+        self.chunk_size = max(chunk_sizes)
         self.chunk_width = sum(self.chunk_widths)
 
         self._data = np.zeros((self.chunk_size, self.chunk_width), dtype=self.dtype)

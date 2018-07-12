@@ -595,19 +595,22 @@ class AudioStimPlaylist(SignalProducer):
             chans = []
             chan_idx = 0
             for chan_name in chan_names:
-                if chan_name.lower() == "optooff":
+                if chan_name.lower() == "optooff" or chan_name.strip() == "":
                     chan = ConstantSignal(0.0)
                 elif chan_name.lower() == "optoon":
                     chan = ConstantSignal(5.0)
-                elif chan_name.strip() == "":
-                    continue
                 else:
+                    if frequencies[chan_idx] == -1:
+                        atten = None
+                    else:
+                        atten = attenuator
+
                     chan = MATFileStim(filename=local_dir + chan_name,
                                        frequency=frequencies[chan_idx],
                                        sample_rate=data["rate"][row], intensity=intensities[chan_idx],
                                        pre_silence=data["silencepre"][row],
                                        post_silence=data["silencepost"][row],
-                                       attenuator=attenuator, next_event_callbacks=next_event_callbacks)
+                                       attenuator=atten, next_event_callbacks=next_event_callbacks)
 
                 chans.append(chan)
                 chan_idx = chan_idx + 1

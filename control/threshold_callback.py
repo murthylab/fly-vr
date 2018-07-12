@@ -9,7 +9,7 @@ class ThresholdCallback(FlyVRCallback):
     threshold.
     """
 
-    def __init__(self, shared_state, speed_threshold=0.009, num_frames_mean=10):
+    def __init__(self, shared_state, speed_threshold=0.009, num_frames_mean=25):
 
         # Call the base class constructor
         super(ThresholdCallback, self).__init__(shared_state=shared_state)
@@ -23,8 +23,8 @@ class ThresholdCallback(FlyVRCallback):
         self.sound_server = SoundServer(flyvr_shared_state=self.state)
         self.sound_client = self.sound_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
 
-        #self.stim = SinStim(frequency=20, amplitude=2.0, phase=0.0, sample_rate=44100, duration=10000)
-        self.stim = SquareWaveStim(frequency=100, duty_cycle=0.5, amplitude=2, sample_rate=44100, duration=1000)
+        self.stim = SinStim(frequency=250, amplitude=0.25, phase=0.0, sample_rate=44100, duration=10000)
+        #self.stim = SquareWaveStim(frequency=100, duty_cycle=0.5, amplitude=2, sample_rate=44100, duration=1000)
 
         # Our buffer of past speeds
         self.speed_history = deque(maxlen=self.num_frames_mean)
