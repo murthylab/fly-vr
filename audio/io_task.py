@@ -19,7 +19,7 @@ from common.plot_task import plot_task_daq
 from control.two_photon_control import TwoPhotonController
 
 DAQ_SAMPLE_RATE = 10000
-DAQ_NUM_OUTPUT_SAMPLES = 10000
+DAQ_NUM_OUTPUT_SAMPLES = 800
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 
 class IOTask(daq.Task):
@@ -212,7 +212,6 @@ class IOTask(daq.Task):
                                                               self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
 
                 if not self.digital:
-                    print(self._data.shape)
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                     self._data, daq.byref(self.read), None)
 
@@ -248,7 +247,7 @@ class IOTask(daq.Task):
 def setup_playback_callbacks(stim, logger, state):
     """
     This function setups a control function for each stimulus in the playlist to be called when a set of data is
-    generated. This control will send a log message to a logging process indicated the amount of samples generated and
+    generated. This control will send a log message to a logging process indicating the amount of samples generated and
     the stimulus that generated them.
 
     :param stim: The stimulus playlist to setup callbacks on.
@@ -258,9 +257,8 @@ def setup_playback_callbacks(stim, logger, state):
     """
     def make_log_stim_playback(logger, state):
         def callback(event_message):
-            channel = "ao" + str(state.options.analog_out_channels[event_message.channel])
-            logger.log("/output/" + channel + "/history",
-                       np.array([event_message.producer_id, event_message.num_samples]) )
+            logger.log("/output/history",
+                       np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]) )
 
         return callback
 
@@ -274,12 +272,10 @@ def setup_playback_callbacks(stim, logger, state):
         for s in stim.stims:
             s.next_event_callbacks = callbacks
 
-    # Lets setup the logging datasets that these log events will be sent to
-    for channel in state.options.analog_out_channels:
-        channel_name = "ao" + channel
-        logger.create("/output/" + channel_name + "/history",
-                      shape=[2048,2], maxshape=[None, 2],
-                      chunks=(2048,2), dtype=np.int32)
+    # Lets setup the logging dataset that these log events will be sent to
+    logger.create("/output/history",
+                  shape=[2048,2], maxshape=[None, 2],
+                  chunks=(2048,2), dtype=np.int32)
 
 def io_task_main(message_pipe, state):
 
@@ -362,7 +358,7 @@ def io_task_main(message_pipe, state):
                 taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
-                                       taskinitargs=[input_chans,taskAI.num_samples_per_chan,10])
+                                       taskinitargs=[input_chans,taskAI.num_samples_per_chan,5])
 
             # Setup the display task to receive messages from recording task.
             taskAI.data_recorders = [disp_task]

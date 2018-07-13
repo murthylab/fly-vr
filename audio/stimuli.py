@@ -628,6 +628,10 @@ class AudioStimPlaylist(SignalProducer):
             # Combine these stimuli into one analog signal with a channel for each.
             mixed_stim = MixedSignal(chans)
 
+            # FIXME: This really isn't clean. I wan't to mark each MixedStim by its position in the playlist. However,
+            # this shouldn't be stored on the MixedSignal because it has no idea what playlists are really.
+            mixed_stim.event_message['stim_playlist_idx'] = row
+
             # Append to playlist
             stims.append(mixed_stim)
 

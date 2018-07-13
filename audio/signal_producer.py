@@ -7,11 +7,11 @@ class SignalNextEventData(object):
     A class that encapsulates all the data that SignalProducer's need to send to their control
     functions when a next generator event occurs.
     """
-    def __init__(self, producer_id, channel, metadata, num_samples):
+    def __init__(self, producer_id, channels, metadata, num_samples):
         self.producer_id = producer_id
         self.metadata = metadata
         self.num_samples = num_samples
-        self.channel = channel
+        self.channels = np.atleast_1d(channels)
 
 class SampleChunk(object):
     """
@@ -80,7 +80,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         if next_event_callbacks is not None and not isinstance(next_event_callbacks, list):
             self._next_event_callbacks = [next_event_callbacks]
 
-    def trigger_next_callback(self, message_data, num_samples, channel=0):
+    def trigger_next_callback(self, message_data, num_samples, channels=0):
         """
         Trigger any callbacks that have been assigned to this SignalProducer. This methods should be called before
         any yield of a generator created by the signal producer. This allows them to signal next events to other parts
@@ -91,7 +91,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         """
 
         # Attach the event specific data to this event data. This is the producer and the start sample number
-        message = SignalNextEventData(producer_id=self.producer_id, num_samples=num_samples, channel=channel,
+        message = SignalNextEventData(producer_id=self.producer_id, num_samples=num_samples, channels=channels,
                                       metadata=message_data)
         message.producer_id = self.producer_id
 
@@ -265,7 +265,7 @@ class MixedSignal(SignalProducer):
 
 
             # We are about to yield, send an event to our callbacks
-            #self.trigger_next_callback(message_data=self.event_message, num_samples=mix_chunk.shape[0], channel=mix_chunk.shape[1])
+            self.trigger_next_callback(message_data=self.event_message, num_samples=self._data.shape[0])
 
             yield SampleChunk(data=self._data, producer_id=self.producer_id)
 
