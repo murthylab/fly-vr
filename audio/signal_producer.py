@@ -275,14 +275,15 @@ class ConstantSignal(SignalProducer):
     A very simple signal that generates a constant value.
     """
 
-    def __init__(self, constant, next_event_callbacks=None):
+    def __init__(self, constant, num_samples=1, next_event_callbacks=None):
 
         # Attach event next callbacks to this object, since it is a signal producer
         super(ConstantSignal, self).__init__(next_event_callbacks=next_event_callbacks)
 
         self.constant = constant
 
-        self.chunk = SampleChunk(data=np.array([self.constant], dtype=self.dtype), producer_id=self.producer_id)
+        self.chunk = SampleChunk(data=np.ones(num_samples, dtype=self.dtype)*self.constant,
+                                 producer_id=self.producer_id)
 
         self.event_message['constant'] = constant
 

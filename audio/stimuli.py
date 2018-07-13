@@ -615,6 +615,16 @@ class AudioStimPlaylist(SignalProducer):
                 chans.append(chan)
                 chan_idx = chan_idx + 1
 
+            # Get the maximum duration of all the channel's stimuli
+            max_stim_len = max([next(chan.data_generator()).data.shape[0] for chan in chans])
+
+            # Make sure we resize all the ConstantSignal's to be as long as the maximum stim
+            # size, this will make data loading much more efficient since their generators will
+            # not need to yield a single sample many times for one chunk of data.
+            for i in range(len(chans)):
+                if isinstance(chans[i], ConstantSignal):
+                    chans[i] = ConstantSignal(chans[i].constant, num_samples=max_stim_len)
+
             # Combine these stimuli into one analog signal with a channel for each.
             mixed_stim = MixedSignal(chans)
 

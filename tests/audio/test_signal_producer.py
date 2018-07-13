@@ -110,7 +110,7 @@ def test_mix_different_sizes():
     stim1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
                     duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                     attenuator=None)
-    stim2 = ConstantSignal(5)
+    stim2 = ConstantSignal(5, num_samples=stim1.data.shape[0])
 
     mixed = MixedSignal([stim1, stim2])
 
