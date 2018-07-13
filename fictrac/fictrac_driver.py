@@ -11,6 +11,7 @@ import warnings
 import matplotlib.cbook
 import numpy as np
 import time
+import sys
 from collections import deque
 
 from common.tools import which
@@ -131,17 +132,16 @@ class FicTracDriver(object):
                     self.stop()
                     break
 
-            # Get the fic trac process return code
-            # if self.fictrac_process.returncode < 0:
-            #     state.RUN.value = 0
-            #     state.RUNTIME_ERROR = -1
-            #     self.track_change_callback.shutdown_callback()
-            #     raise RuntimeError("Fictrac could not start because of an application error. Consult the FicTrac console ouput file.")
-
         state.FICTRAC_READY.value = 0
 
         # Call the callback shutdown code.
         self.track_change_callback.shutdown_callback()
+
+        # Get the fic trac process return code
+        if self.fictrac_process.returncode is not None and self.fictrac_process.returncode != 0:
+            state.RUN.value = 0
+            state.RUNTIME_ERROR = -5
+            raise RuntimeError("FicTrac failed because of an application error. Consult the FicTrac console output file.")
 
     def stop(self):
 

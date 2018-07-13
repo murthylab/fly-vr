@@ -125,7 +125,7 @@ def main():
             time.sleep(options.start_delay)
 
             # Send a signal to the DAQ to start playback and acquisition
-            sys.stdout.write("Starting playback and acquisition ... \n")
+            sys.stdout.write("Starting DAQ tasks ... \n")
             state.START_DAQ.value = 1
 
             # Wait until we get a ready message from the DAQ task

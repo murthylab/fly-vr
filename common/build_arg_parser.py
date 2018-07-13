@@ -46,8 +46,7 @@ def parse_arguments(args=None):
     parser.add_argument('-o', "--analog_out_channels",
                         type=str,
                         action=CommaListParser,
-                        help="A comma separated list of numbers specifying the output channels. Default channel is 0.",
-                        default=[0])
+                        help="A comma separated list of numbers specifying the output channels. Default none for no output")
     parser.add_argument("--remote_2P_enable", action="store_true",
                         help="Enable remote start, stop, and next file signaling the 2-Photon imaging.",
                         default=False)
@@ -107,7 +106,8 @@ def parse_arguments(args=None):
                         default=True,
                         help='Whether the ball control signal should loop idefinitely or not.')
 
-    required = "stim_playlist".split()
+    #required = "stim_playlist".split()
+    required = "".split()
 
     if args:
         options = parser.parse_args(args)

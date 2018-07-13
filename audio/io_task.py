@@ -286,33 +286,44 @@ def io_task_main(message_pipe, state):
 
         options = state.options
 
-        # If the user passed in an attenuation file function, apply it to the playlist
-        attenuator = None
-        if state.options.attenuation_file is not None:
-            attenuator = Attenuator.load_from_file(options.attenuation_file)
+        # Check to make sure we are doing analog output
+        if state.options.stim_playlist is None or state.options.analog_out_channels is None:
+            is_analog_out = False
         else:
-            print("\nWarning: No attenuation file specified.")
+            is_analog_out = True
 
-        # Read the playlist file and create and audio stimulus playlist object. We will pass a control function to these
-        # underlying stimuli that is triggered anytime they generate data. The control sends a log signal to the
-        # master logging process.
-        audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
+        if is_analog_out:
 
-        # Make a sanity check, ensure that the number of channels for this audio stimulus matches the number of output
-        # channels specified in configuration file.
-        if audio_stim.num_channels != len(options.analog_out_channels):
-            raise ValueError("Number of analog output channels specified in config does not equal number specified in playlist!")
+            # If the user passed in an attenuation file function, apply it to the playlist
+            attenuator = None
+            if state.options.attenuation_file is not None:
+                attenuator = Attenuator.load_from_file(options.attenuation_file)
+            else:
+                print("\nWarning: No attenuation file specified.")
+
+            # Read the playlist file and create and audio stimulus playlist object. We will pass a control function to these
+            # underlying stimuli that is triggered anytime they generate data. The control sends a log signal to the
+            # master logging process.
+            audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
+
+            # Make a sanity check, ensure that the number of channels for this audio stimulus matches the number of output
+            # channels specified in configuration file.
+            if audio_stim.num_channels != len(options.analog_out_channels):
+                raise ValueError("Number of analog output channels specified in config does not equal number specified in playlist!")
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
 
-            # Get the input and output channels from the options
-            output_chans = ["ao" + str(s) for s in options.analog_out_channels]
-            input_chans = ["ai" + str(s) for s in options.analog_in_channels]
+            taskAO = None
+            if is_analog_out:
+                # Get the input and output channels from the options
+                output_chans = ["ao" + str(s) for s in options.analog_out_channels]
+                taskAO = IOTask(cha_name=output_chans, cha_type="output",
+                                num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES, num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
+                                shared_state=state)
 
-            taskAO = IOTask(cha_name=output_chans, cha_type="output",
-                            num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES, num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
-                            shared_state=state)
+
+            input_chans = ["ai" + str(s) for s in options.analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=10000, num_samples_per_event=10000,
                             shared_state=state)
@@ -322,7 +333,7 @@ def io_task_main(message_pipe, state):
             ball_control = None
 
             # Setup digital control if needed.
-            if state.options.remote_2P_enable or state.options.ball_control_enable:
+            if (state.options.remote_2P_enable and is_analog_out) or state.options.ball_control_enable:
                 channels = []
                 signals = []
 
@@ -365,13 +376,15 @@ def io_task_main(message_pipe, state):
 
             # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
             # and when.
-            setup_playback_callbacks(audio_stim, state.logger, state)
+            if is_analog_out:
+                setup_playback_callbacks(audio_stim, state.logger, state)
 
-            # Setup the stimulus playlist as the data generator
-            taskAO.set_data_generator(audio_stim.data_generator())
+            if taskAO is not None:
+                # Setup the stimulus playlist as the data generator
+                taskAO.set_data_generator(audio_stim.data_generator())
 
-            # Connect AO start to AI start
-            taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
+                # Connect AO start to AI start
+                taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             # Message loop that waits for start signal
             while state.START_DAQ.value == 0 and state.is_running_well():
@@ -383,9 +396,10 @@ def io_task_main(message_pipe, state):
             # Start the display and logging tasks
             disp_task.start()
 
-            # Arm the AO task
-            # It won't start until the start trigger signal arrives from the AI task
-            taskAO.StartTask()
+            if taskAO is not None:
+                # Arm the AO task
+                # It won't start until the start trigger signal arrives from the AI task
+                taskAO.StartTask()
 
             # Arm the digital output task
             # It won't start until the start trigger signal arrives from the AI task
@@ -412,16 +426,19 @@ def io_task_main(message_pipe, state):
                             # and when.
                             setup_playback_callbacks(audio_stim, state.logger, state)
 
-                            # Setup the stimulus playlist as the data generator
-                            taskAO.set_data_generator(msg.data_generator())
+                            if taskAO is not None:
+                                # Setup the stimulus playlist as the data generator
+                                taskAO.set_data_generator(msg.data_generator())
+
                         if isinstance(msg, str) and msg == "STOP":
                             break
                     except:
                         pass
 
             # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
-            taskAO.StopTask()
-            taskAO.stop()
+            if taskAO is not None:
+                taskAO.StopTask()
+                taskAO.stop()
 
             taskAI.StopTask()
             taskAI.stop()
