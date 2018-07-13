@@ -1,3 +1,4 @@
+from audio.signal_producer import ConstantSignal
 from audio.stimuli import SinStim, SquareWaveStim
 from control.callback import FlyVRCallback
 from audio.sound_server import SoundServer, SoundStreamProxy
@@ -23,8 +24,9 @@ class ThresholdCallback(FlyVRCallback):
         self.sound_server = SoundServer(flyvr_shared_state=self.state)
         self.sound_client = self.sound_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
 
-        self.stim = SinStim(frequency=250, amplitude=0.25, phase=0.0, sample_rate=44100, duration=10000)
-        #self.stim = SquareWaveStim(frequency=100, duty_cycle=0.5, amplitude=2, sample_rate=44100, duration=1000)
+        self.stim = SinStim(frequency=250, amplitude=1, phase=0.0, sample_rate=44100, duration=10000)
+        #self.stim = SquareWaveStim(frequency=100, duty_cycle=0.5, amplitude=1, sample_rate=44100, duration=1000)
+        #self.stim = ConstantSignal(constant=-1, num_samples=10000)
 
         # Our buffer of past speeds
         self.speed_history = deque(maxlen=self.num_frames_mean)

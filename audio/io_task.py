@@ -206,7 +206,8 @@ class IOTask(daq.Task):
 
             elif self.cha_type is "output":
 
-                if self.logger is not None:
+                # Log output syncrhonization info only if the logger is valid and the task is not digital.
+                if self.logger is not None and not self.digital:
                     self.logger.log("/fictrac/daq_synchronization_info",
                                     np.array([self.shared_state.FICTRAC_FRAME_NUM.value,
                                                               self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
@@ -338,7 +339,7 @@ def io_task_main(message_pipe, state):
                 signals = []
 
                 # Setup the two photon control if needed
-                if state.options.remote_2P_enable:
+                if state.options.remote_2P_enable and is_analog_out:
                     two_photon_controller = TwoPhotonController(start_channel_name=state.options.remote_start_2P_channel,
                                                                 stop_channel_name=state.options.remote_stop_2P_channel,
                                                                 next_file_channel_name=state.options.remote_next_2P_channel,
