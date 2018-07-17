@@ -94,7 +94,7 @@ class SoundServer:
             raise ValueError("The play method of SoundServer only takes instances of AudioStim objects or those that" +
                              "inherit from this base classs. ")
 
-    def start_stream(self, data_generator=None, num_channels=1, dtype='float32',
+    def start_stream(self, data_generator=None, num_channels=2, dtype='float32',
                     sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005):
         """
         Start a stream of audio data for playback to the device
@@ -244,7 +244,12 @@ class SoundServer:
                 outdata.fill(0)
                 raise sd.CallbackStop
             else:
-                outdata[:,0] = data
+
+                if data.ndim == 1 and self._num_channels == 2:
+                    outdata[:, 0] = data
+                    outdata[:, 1] = data
+                else:
+                    outdata[:] = data
 
         return callback
 
