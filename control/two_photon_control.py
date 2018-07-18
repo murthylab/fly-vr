@@ -49,6 +49,8 @@ class TwoPhotonController(SignalProducer):
 
     def set_playlist(self, audio_stim_playlist):
 
+        self.playlist = audio_stim_playlist
+
         # Ok, we need to create a generator that is sychronized with the provided audio stimulus playlist. First step,
         # we want to produce exactly the same size underlying sample data. Look at each stimulus a create a zero matrix
         # for it.
@@ -64,29 +66,32 @@ class TwoPhotonController(SignalProducer):
         self.shuffle_playback = audio_stim_playlist.shuffle_playback
         self.playback_order = np.arange(len(self.signals))
 
-        # If we are shuffling, copy the seed first, then create a new RNG with the same seed, then generate the same
-        # random permutation.
-        if self.shuffle_playback:
-            self.random_seed = audio_stim_playlist.random_seed
-            self.rng = np.random.RandomState()
-            self.rng.seed(self.random_seed)
-            self.playback_order = self.rng.permutation(len(self.signals))
-
-        self.never_sent_start = True
-
     def data_generator(self):
 
         stim_idx = 0
 
+        # Is this the first time this generator has been called
+        never_sent_start = True
+
+        # If we are shuffling, copy the seed first, then create a new RNG with the same seed, then generate the same
+        # random permutation.
+        if self.shuffle_playback:
+            random_seed = self.playlist.random_seed
+            rng = np.random.RandomState()
+            rng.seed(random_seed)
+            playback_order = rng.permutation(len(self.signals))
+        else:
+            playback_order = np.arange(len(self.signals))
+
         # Now, go through the list one at a time, call next on each one of their generators
         while True:
 
-            play_idx = self.playback_order[stim_idx]
+            play_idx = playback_order[stim_idx]
 
             data = self.signals[play_idx]
 
-            if self.never_sent_start:
-                self.never_sent_start = False
+            if never_sent_start:
+                never_sent_start = False
                 N = min([self.SIGNAL_LENGTH, data.shape[0]])
                 start_signal = np.copy(data)
                 start_signal[0:self.SIGNAL_LENGTH, 0] = 1
@@ -102,7 +107,7 @@ class TwoPhotonController(SignalProducer):
                 stim_idx = 0
 
                 if (self.shuffle_playback):
-                    self.playback_order = self.rng.permutation(len(self.signals))
+                    playback_order = rng.permutation(len(self.signals))
 
 
     def send_2P_stop_signal(self, dev_name="Dev1"):
