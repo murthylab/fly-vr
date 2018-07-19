@@ -103,10 +103,6 @@ def main():
         # experimental log file.
         logger.log(dataset_name='/', attribute_name='flyvr_git_hash', obj=get_flyvr_git_hash())
 
-        log_server.stop_logging_server()
-        log_server.wait_till_close()
-        return
-
         print("Initializing DAQ Tasks ... ")
         daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
         daqTask.start()
