@@ -30,6 +30,11 @@ def log_event_worker(msg_queue, dataset_name, logger, chunk_size):
         data_chunk = test1_dataset[i*chunk_size:(i*chunk_size+chunk_size), :]
         logger.log(dataset_name, data_chunk)
 
+    logger.log(dataset_name=dataset_name, attribute_name='string_attribute', obj='Hello')
+    logger.log(dataset_name=dataset_name, attribute_name='num_attribute', obj=50)
+    logger.log(dataset_name=dataset_name, attribute_name='array_attribute', obj=np.array([[1, 2], [3, 4]]))
+
+
 test2_dataset = {"data1": "This is a test", "data2": np.ones(shape=(3,2))}
 
 def log_event_worker2(msg_queue, dataset_name, logger):
@@ -93,6 +98,11 @@ def test_logger():
     assert('/deeper/test2/data1' in f)
     assert(f['/deeper/test2/data1'].value == test2_dataset['data1'].encode())
     assert('/deeper/test2/data2' in f and np.array_equal(f['/deeper/test2/data2'], test2_dataset['data2']))
+
+    # Check if we saved attributes correctly
+    assert(f["test1"].attrs['string_attribute'] == b"Hello")
+    assert (f["test1"].attrs['num_attribute'] == 50)
+    assert (np.array_equal(f["test1"].attrs['array_attribute'], np.array([[1, 2], [3, 4]])))
 
     f.close()
 

@@ -1,8 +1,12 @@
 import sys
 
+from common.tools import get_flyvr_git_hash
+
 if sys.version_info[0] < 3:
     raise Exception("FlyVR has been upgraded to require Python 3. If running on setup machine. "
                     "Activate Anaconda conda environment from command line with command 'activate fly_vr_env'")
+
+import numpy as np
 
 import time
 from multiprocessing import freeze_support
@@ -94,6 +98,14 @@ def main():
 
         # Initialize shared state between processes we are going to spawn
         state = SharedState(options=options, logger=logger)
+
+        # Before we do anything, lets store the git hash of the current state of the repo we are running from in the
+        # experimental log file.
+        logger.log(dataset_name='/', attribute_name='flyvr_git_hash', obj=get_flyvr_git_hash())
+
+        log_server.stop_logging_server()
+        log_server.wait_till_close()
+        return
 
         print("Initializing DAQ Tasks ... ")
         daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])

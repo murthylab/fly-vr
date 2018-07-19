@@ -58,7 +58,7 @@ class DatasetLogger:
         except FileNotFoundError:
             pass
 
-    def log(self, dataset_name, obj, append=True):
+    def log(self, dataset_name, obj, append=True, attribute_name=None):
         """
         Write data to a dataset. Supports appending data.
 
@@ -67,9 +67,14 @@ class DatasetLogger:
         :param obj: An object to write to the dataset. Currently, this should either be a numpy array or a dictionary
         that contains numpy arrays, strings, or lists, for its values.
         :param append: Should this data be appended based on the last write to this dataset. Only valid for numpy arrays.
+        :param attribute_name: If not None, store the object in the attribute called attribute_name. append is ignored.
         :return:
         """
-        log_event = DatasetWriteEvent(dataset_name=dataset_name, obj=obj, append=append)
+
+        if attribute_name is None:
+            log_event = DatasetWriteEvent(dataset_name=dataset_name, obj=obj, append=append)
+        else:
+            log_event = AttributeWriteEvent(dataset_name=dataset_name, attribute_name=attribute_name, obj=obj)
 
         try:
             self._sender_queue.put(log_event)
@@ -301,6 +306,45 @@ class DatasetWriteEvent(DatasetLogEvent):
                 dset[write_pos:,:] = self.obj
 
                 server.dataset_write_pos[self.dataset_name] = dset.shape[0]
+
+        file_handle.flush()
+
+class AttributeWriteEvent(DatasetLogEvent):
+    """
+    The AttributeWriteEvent implements writing to datasets attributes stored on the DatasetLogServer.
+    """
+
+    def __init__(self, dataset_name, attribute_name, obj):
+        """
+        Create a AttributeWriteEvent that can be sent to the logging server.
+
+        :param dataset_name: The name of the dataset to modify.
+        :param attribute_name: The name of the dataset to modify.
+        :param obj: An object to write to the dataset attribute.
+        """
+        self.attribute_name = attribute_name
+        self.obj = obj
+
+        super(AttributeWriteEvent,self).__init__(dataset_name)
+
+    def process(self, server):
+        """
+        Process this event on the logging server.
+
+        :param server: The DataLogServer object that this event was received on. Should have and open file.
+        :return: None
+        """
+
+        file_handle = server.file
+
+        # Get a handle to the dataset, we assume it has been created
+        dset = file_handle[self.dataset_name]
+
+        # Write the attribute
+        if isinstance(self.obj, str):
+            dset.attrs[self.attribute_name] = np.string_(self.obj)
+        else:
+            dset.attrs[self.attribute_name] = self.obj
 
         file_handle.flush()
 

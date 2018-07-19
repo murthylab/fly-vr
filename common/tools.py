@@ -42,3 +42,21 @@ def which(program):
                 return exe_file
 
     return None
+
+def get_flyvr_git_hash():
+
+    hash = None
+    try:
+
+        # Find the directory location of the script, the actual repo directory is the parent of this directory
+        # because we are in common.
+        import os
+        repo_dir = os.path.dirname(os.path.realpath(__file__))
+
+        import subprocess
+        hash = subprocess.check_output(['git', '--git-dir={}\\..\\.git'.format(repo_dir), 'rev-parse', 'HEAD'])
+
+    except:
+        print("Warning: Problem getting git hash for current fly-vr repo. Won't log in experiment output.")
+
+    return hash
