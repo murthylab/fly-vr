@@ -514,13 +514,8 @@ class AudioStimPlaylist(SignalProducer):
         # Attach event next callbacks to this object, since it is a signal producer
         super(AudioStimPlaylist, self).__init__(next_event_callbacks)
 
-        self.stims = stims
+        self._stims = stims
         self.shuffle_playback = shuffle_playback
-        self.playback_order = np.arange(len(self.stims))
-
-        # We want to keep a playback history. This history will be updated with each call to the data generator
-        self.num_samples_generated = 0
-        self.history = list()
 
         # We need to create a dictionary that describes the state of stimulus playlist
         self.event_message = {"name" : "AudioStimulusPlaylist",
@@ -530,9 +525,10 @@ class AudioStimPlaylist(SignalProducer):
         # If we want to shuffle things, get a random permutation.
         if (self.shuffle_playback):
             self.random_seed = int(time.time())
-            self.rng = np.random.RandomState()
-            self.rng.seed(self.random_seed)
-            self.playback_order = self.rng.permutation(len(self.stims))
+
+    """Lets make the class iterable since it is just a wrapper around a list of stimuli."""
+    def __iter__(self):
+        return iter(self._stims)
 
     @classmethod
     def fromfilename(cls, filename, shuffle_playback=False, attenuator=None, next_event_callbacks=None):
@@ -650,21 +646,27 @@ class AudioStimPlaylist(SignalProducer):
 
         stim_idx = 0
 
-        # Intitalize data generators for these stims in the play list
-        data_gens = [stim.data_generator() for stim in self.stims]
+        # Intitalize data generators for these _stims in the play list
+        data_gens = [stim.data_generator() for stim in self._stims]
+
+        # Store a local copy playlist state objects.
+        shuffle_playback = self.shuffle_playback
+
+        if shuffle_playback:
+            rng = np.random.RandomState()
+            rng.seed(self.random_seed)
+            playback_order = rng.permutation(len(self._stims))
+        else:
+            playback_order = np.arange(len(self._stims))
 
         # Now, go through the list one at a time, call next on each one of their generators
         while True:
 
-            play_idx = self.playback_order[stim_idx]
+            play_idx = playback_order[stim_idx]
 
             sample_chunk_obj = next(data_gens[play_idx])
 
             data = sample_chunk_obj.data
-
-            # Update the history
-            self.num_samples_generated = self.num_samples_generated + data.shape[0]
-            self.history.append(play_idx)
 
             # We are about to yield, send an event to our callbacks
             self.trigger_next_callback(message_data=self.event_message, num_samples=data.shape[0])
@@ -674,8 +676,8 @@ class AudioStimPlaylist(SignalProducer):
             stim_idx = stim_idx + 1
 
             # If we are at the end, then either go back to beginning or reshuffle
-            if(stim_idx == len(self.stims)):
+            if(stim_idx == len(playback_order)):
                 stim_idx = 0
 
-                if(self.shuffle_playback):
-                    self.playback_order = self.rng.permutation(len(self.stims))
+                if(shuffle_playback):
+                    playback_order = rng.permutation(len(playback_order))

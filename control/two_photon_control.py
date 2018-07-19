@@ -54,7 +54,7 @@ class TwoPhotonController(SignalProducer):
         # Ok, we need to create a generator that is sychronized with the provided audio stimulus playlist. First step,
         # we want to produce exactly the same size underlying sample data. Look at each stimulus a create a zero matrix
         # for it.
-        self.signals = [np.zeros((stim.num_samples, 3), dtype=np.uint8) for stim in audio_stim_playlist.stims]
+        self.signals = [np.zeros((stim.num_samples, 3), dtype=np.uint8) for stim in audio_stim_playlist]
 
         # Now, we want to put a next file signal at the start of every stimulus signal
         for signal in self.signals:

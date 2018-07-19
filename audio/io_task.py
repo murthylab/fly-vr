@@ -270,7 +270,7 @@ def setup_playback_callbacks(stim, logger, state):
     if isinstance(stim, AudioStim):
         stim.next_event_callbacks = callbacks
     elif isinstance(stim, AudioStimPlaylist):
-        for s in stim.stims:
+        for s in stim:
             s.next_event_callbacks = callbacks
 
     # Lets setup the logging dataset that these log events will be sent to

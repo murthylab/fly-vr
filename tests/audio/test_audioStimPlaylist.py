@@ -1,6 +1,7 @@
 import pytest
 import math
 from unittest import mock
+import numpy as np
 
 from audio.signal_producer import chunker
 from audio.stimuli import SinStim, AudioStimPlaylist
@@ -41,8 +42,10 @@ def test_generator(stim1, stim2, stim3):
     # Get the generator
     playGen = stimList.data_generator()
 
-    # Get the shuffle order
-    order = stimList.playback_order
+    # Get the shuffle order, use the same seed as the playlist
+    rng = np.random.RandomState()
+    rng.seed(stimList.random_seed)
+    order = rng.permutation(len(stims))
 
     for i in range(0,3):
         assert (next(playGen).data == stims[order[i]].data).all()
@@ -51,34 +54,12 @@ def test_generator(stim1, stim2, stim3):
     rand_stim = next(playGen)
 
     # Get the new shuffle order
-    order = stimList.playback_order
+    order = rng.permutation(len(stims))
 
     assert((rand_stim.data == stims[order[0]].data).all)
 
     for i in range(1,3):
         assert (next(playGen).data == stims[order[i]].data).all()
-
-
-def test_history(stim1, stim2, stim3):
-
-    stims = [stim1, stim2, stim3]
-
-    stimList = AudioStimPlaylist(stims, shuffle_playback=False)
-
-    # Get the generator
-    playGen = stimList.data_generator()
-
-    # See if we can do looping sequential playback
-    num_samples_played = 0
-    for i in range(0,5):
-        data = next(playGen).data
-        num_samples_played = num_samples_played + data.shape[0]
-
-    assert(stimList.history == [0, 1, 2, 0, 1])
-
-    assert([stimList.stims[i] for i in stimList.history] == [stim1, stim2, stim3, stim1, stim2])
-
-    assert(stimList.num_samples_generated == num_samples_played)
 
 def test_callbacks(stim1, stim2, stim3):
     stims = [stim1, stim2, stim3]
@@ -127,3 +108,22 @@ def test_multi_channel_playlist():
     assert(chunk.shape[1] == 4)
 
     assert(stimList.num_channels == 4)
+
+def test_no_side_effects(stim1, stim2, stim3):
+    stims = [stim1, stim2, stim3]
+
+    stimList = AudioStimPlaylist(stims, shuffle_playback=False)
+
+    # Get the generator
+    playGen = stimList.data_generator()
+
+    # See if we can do looping sequential playback
+    for i in range(6):
+        assert (next(playGen).data == stims[i % 3].data).all()
+
+    # Setting shuffle on the original object, should have no effect on the previously created generator
+    stimList.shuffle_playback = True
+
+    # See if we can do looping sequential playback
+    for i in range(6):
+        assert (next(playGen).data == stims[i % 3].data).all()
