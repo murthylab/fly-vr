@@ -48,6 +48,10 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
         axes.append(ax)
         point_sets.append(ax.plot(np.arange(num_chunks_history * chunk_size), plot_data)[0])  # init plot content
 
+    # Set the window position and size, this only works for Qt
+    fig_manager = plt.get_current_fig_manager()
+    fig_manager.window.setGeometry(50, 100, 640, 545)
+
     plt.show()
     plt.draw()
     fig.canvas.start_event_loop(0.001)  # otherwise plot freezes after 3-4 iterations
