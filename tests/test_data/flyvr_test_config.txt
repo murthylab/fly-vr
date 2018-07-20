@@ -10,6 +10,8 @@ stim_playlist=							tests/test_data/dsx_IPI_Tune.txt
 attenuation_file=						tests/audio/attenuation.txt
 start_delay=							0
 shuffle=								True
+#digital_in_channels=					port0/line9:11
+
 
 # Control for two photon signalling.
 remote_2P_enable=						True

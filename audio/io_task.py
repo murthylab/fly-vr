@@ -21,6 +21,8 @@ from control.two_photon_control import TwoPhotonController
 DAQ_SAMPLE_RATE = 10000
 DAQ_NUM_OUTPUT_SAMPLES = 800
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
+DAQ_NUM_INPUT_SAMPLES = 10000
+DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
 
 class IOTask(daq.Task):
     """
@@ -50,18 +52,6 @@ class IOTask(daq.Task):
         # A task to send signals to everytime we write a chunk of samples. We will send the current sample number and
         # the current FicTrac frame number
         self.logger = shared_state.logger
-
-        # We need to create a dataset for log messages.
-        if cha_type == "output" and not digital:
-            self.logger.create("/fictrac/daq_synchronization_info", shape = [1024, 2], maxshape = [None, 2], dtype = np.int64,
-                               chunks = (1024,2))
-        elif cha_type == "input" and not digital:
-            self.logger.create("/input/samples", shape=[512, len(cha_name)],
-                                    maxshape=[None, len(cha_name)],
-                                    chunks=(512, len(cha_name)),
-                                    dtype=np.float64, scaleoffset=8)
-            self.logger.create("/input/systemtime", shape=[1024, 1], chunks=(1024,1),
-                                       maxshape=[None, 1], dtype=np.float64)
 
         # These are just some dummy values for pass by reference C functions that the NI DAQ api has.
         self.read = daq.int32()
@@ -107,6 +97,30 @@ class IOTask(daq.Task):
             nChans = ctypes.c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
+
+        # We need to create a dataset for log messages.
+        if cha_type == "output" and not digital:
+            self.logger.create("/fictrac/daq_synchronization_info", shape=[1024, 2], maxshape=[None, 2],
+                               dtype=np.int64,
+                               chunks=(1024, 2))
+        elif cha_type == "input" and not digital:
+            self.samples_dset_name = "/input/samples"
+            self.samples_time_dset_name = "/input/systemtime"
+            self.logger.create(self.samples_dset_name, shape=[512, self.num_channels],
+                               maxshape=[None, self.num_channels],
+                               chunks=(512, self.num_channels),
+                               dtype=np.float64, scaleoffset=8)
+            self.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
+                               maxshape=[None, 1], dtype=np.float64)
+        elif cha_type == "input" and digital:
+            self.samples_dset_name = "/input/digital/samples"
+            self.samples_time_dset_name = "/input/digital/systemtime"
+            self.logger.create(self.samples_dset_name, shape=[2048, self.num_channels],
+                               maxshape=[None, self.num_channels],
+                               chunks=(2048, self.num_channels),
+                               dtype=np.uint8)
+            self.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
+                               maxshape=[None, 1], dtype=np.float64)
 
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
@@ -231,8 +245,8 @@ class IOTask(daq.Task):
 
             # Send the data to our logging process
             if self.logger is not None and self.cha_type == "input":
-                self.logger.log("/input/samples", self._data)
-                self.logger.log("/input/systemtime", np.array([systemtime]))
+                self.logger.log(self.samples_dset_name, self._data)
+                self.logger.log(self.samples_time_dset_name, np.array([systemtime]))
 
             self._newdata_event.set()
 
@@ -284,20 +298,27 @@ def io_task_main(message_pipe, state):
 
         taskAO = None
         taskAI = None
+        taskDI = None
 
         options = state.options
 
         # Check to make sure we are doing analog output
-        if state.options.stim_playlist is None or state.options.analog_out_channels is None:
+        if options.stim_playlist is None or options.analog_out_channels is None:
             is_analog_out = False
         else:
             is_analog_out = True
+
+        # Check to see if we are doing digital recording
+        if options.digital_in_channels is None:
+            is_digital_in = False
+        else:
+            is_digital_in = True
 
         if is_analog_out:
 
             # If the user passed in an attenuation file function, apply it to the playlist
             attenuator = None
-            if state.options.attenuation_file is not None:
+            if options.attenuation_file is not None:
                 attenuator = Attenuator.load_from_file(options.attenuation_file)
             else:
                 print("\nWarning: No attenuation file specified.")
@@ -326,7 +347,7 @@ def io_task_main(message_pipe, state):
 
             input_chans = ["ai" + str(s) for s in options.analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
-                            num_samples_per_chan=10000, num_samples_per_event=10000,
+                            num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES, num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
                             shared_state=state)
 
             taskDO = None
@@ -334,26 +355,26 @@ def io_task_main(message_pipe, state):
             ball_control = None
 
             # Setup digital control if needed.
-            if (state.options.remote_2P_enable and is_analog_out) or state.options.ball_control_enable:
+            if (options.remote_2P_enable and is_analog_out) or options.ball_control_enable:
                 channels = []
                 signals = []
 
                 # Setup the two photon control if needed
-                if state.options.remote_2P_enable and is_analog_out:
-                    two_photon_controller = TwoPhotonController(start_channel_name=state.options.remote_start_2P_channel,
-                                                                stop_channel_name=state.options.remote_stop_2P_channel,
-                                                                next_file_channel_name=state.options.remote_next_2P_channel,
+                if options.remote_2P_enable and is_analog_out:
+                    two_photon_controller = TwoPhotonController(start_channel_name=options.remote_start_2P_channel,
+                                                                stop_channel_name=options.remote_stop_2P_channel,
+                                                                next_file_channel_name=options.remote_next_2P_channel,
                                                                 audio_stim_playlist=audio_stim)
                     channels = channels + two_photon_controller.channel_names
                     signals.append(two_photon_controller)
 
                 # Setup the ball control if needed
-                if state.options.ball_control_enable:
-                    ball_control = BallControlSignal(periods=state.options.ball_control_periods,
-                                                     durations=state.options.ball_control_durations,
-                                                     loop=state.options.ball_control_loop,
+                if options.ball_control_enable:
+                    ball_control = BallControlSignal(periods=options.ball_control_periods,
+                                                     durations=options.ball_control_durations,
+                                                     loop=options.ball_control_loop,
                                                      sample_rate=DAQ_SAMPLE_RATE)
-                    channels.append(state.options.ball_control_channel)
+                    channels.append(options.ball_control_channel)
                     signals.append(ball_control)
 
                 taskDO = IOTask(cha_name=channels, cha_type="output", digital=True,
@@ -387,6 +408,18 @@ def io_task_main(message_pipe, state):
                 # Connect AO start to AI start
                 taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
+
+            # Setup digital input recording
+            if is_digital_in:
+                taskDI = IOTask(cha_name=options.digital_in_channels, cha_type="input",
+                                digital=True,
+                                num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES, num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
+                                shared_state=state)
+
+                # Connect DI start to AI start
+                taskDI.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
+
+
             # Message loop that waits for start signal
             while state.START_DAQ.value == 0 and state.is_running_well():
                 time.sleep(0.2)
@@ -406,6 +439,10 @@ def io_task_main(message_pipe, state):
             # It won't start until the start trigger signal arrives from the AI task
             if taskDO is not None:
                 taskDO.StartTask()
+
+            # Arm the digital input task
+            if taskDI is not None:
+                taskDI.StartTask()
 
             # Start the AI task
             # This generates the AI start trigger signal and triggers the AO task
@@ -449,6 +486,12 @@ def io_task_main(message_pipe, state):
                 taskDO.StopTask()
                 taskDO.stop()
                 taskDO.ClearTask()
+
+                # If we were doing digital input, end that too.
+            if taskDI is not None:
+                taskDI.StopTask()
+                taskDI.stop()
+                taskDI.ClearTask()
 
             # If we are doing two photon control, we need to send a special stop signal.
             if two_photon_controller is not None:

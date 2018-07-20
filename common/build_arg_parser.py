@@ -43,6 +43,11 @@ def parse_arguments(args=None):
                         action=CommaListParser,
                         help="A comma separated list of numbers specifying the input channels record. Default channel is 0.",
                         default=[0])
+    parser.add_argument("--digital_in_channels",
+                        type=str,
+                        action=CommaListParser,
+                        help="A comma separated list of channels specifying the digital input channels record. Default is None.",
+                        default=None)
     parser.add_argument('-o', "--analog_out_channels",
                         type=str,
                         action=CommaListParser,
@@ -75,10 +80,10 @@ def parse_arguments(args=None):
     parser.add_argument("--fictrac_plot_state", action="store_true",
                         help="Enable plotting of FicTrac state history.",
                         default=False)
-    parser.add_argument("-g", "--pgr_cam_enable", action="store_true",
+    parser.add_argument("--pgr_cam_enable", action="store_true",
                         help="Enable Point Grey Camera support in FicTrac.",
                         default=False)
-    parser.add_argument("-s", "--shuffle", action="store_true", dest="shuffle",
+    parser.add_argument("--shuffle", action="store_true", dest="shuffle",
                         help="Shuffle the playback of the playlist randomly.",
                         default=False)
     parser.add_argument("--start_delay", type=float,
