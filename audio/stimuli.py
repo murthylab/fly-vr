@@ -475,7 +475,7 @@ class MATFileStim(AudioStim):
         :return: The filename that stored the audio data.
         :rtype: str
         """
-        return self.__filaname
+        return self.__filename
 
     @filename.setter
     def filename(self, filename):
