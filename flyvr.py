@@ -104,6 +104,9 @@ def main():
         logger.log(dataset_name='/', attribute_name='flyvr_git_hash', obj=get_flyvr_git_hash())
 
         print("Initializing DAQ Tasks ... ")
+        # !!!!!!!!!!!!!!!!
+        # Put in code for running LED here
+        # Right now using AudioStim function fromfilename to LED out
         daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
         daqTask.start()
 
@@ -112,6 +115,10 @@ def main():
         tracDrv = None
         if (options.fictrac_config is not None):
 
+            # !!!!!!!!!!!!!!!!!!!!
+            # this is where we call the (visual) stimulus
+            # it is a Threshold callback because in this case it is supposed to trigger on some
+            # fictrac velocity threshold
             fictrac_callback = ThresholdCallback(shared_state=state)
 
             tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
