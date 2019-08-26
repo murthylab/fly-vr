@@ -4,6 +4,8 @@ from control.callback import FlyVRCallback
 from audio.sound_server import SoundServer, SoundStreamProxy
 from collections import deque
 
+from video.video_server import VideoServer, VideoStreamProxy
+
 class ThresholdCallback(FlyVRCallback):
     """
     This class implements control logic for triggering an audio stimulus when tracking velocity reaches a certain
@@ -19,6 +21,11 @@ class ThresholdCallback(FlyVRCallback):
         self.num_frames_mean = num_frames_mean
 
     def setup_callback(self):
+
+        print('setup')
+        self.video_server = VideoServer(flyvr_shared_state=self.state)
+        self.video_client = self.video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
+        print('done')
 
         # Setup the audio server for playback of sound
         self.sound_server = SoundServer(flyvr_shared_state=self.state)

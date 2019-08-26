@@ -8,7 +8,7 @@ from multiprocessing import Event
 
 import numpy as np
 
-from video.stimuli import LoomingDot
+from video.stimuli import VideoStim, LoomingDot
 
 # from audio.stimuli import SinStim, AudioStim
 # from audio.io_task import chunker
@@ -30,7 +30,7 @@ from psychopy.visual.windowwarp import Warper
 # be as complicated as you need them to be to implement your API. 
 
 
-class VisualServer:
+class VideoServer:
     """
     The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
     stimulii via a sound card. It handles the configuration of the sound card with low latency ASIO drivers (required to
@@ -44,6 +44,9 @@ class VisualServer:
         Setup the initial state of the sound server. This does not open any devices for play back. The start_stream
         method must be invoked before playback can begin.
         """
+
+
+        # also need the code to set the colors to blue
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = flyvr_shared_state
@@ -84,11 +87,10 @@ class VisualServer:
         # If the stream has been setup and
         # If the generator the user is passing is None, then just set it. Otherwise, we need to set it but make sure
         # it is chunked up into the appropriate blocksize.
-        if self._stream is not None:
-            if data_generator is None:
-                self._data_generator = None
-            else:
-                self._data_generator = chunker(data_generator, chunk_size=self._stream.blocksize)
+        if data_generator is None:
+            self._data_generator = None
+        else:
+            self._data_generator = chunker(data_generator, chunk_size=self._stream.blocksize)
 
     def _play(self, stim):
         """
@@ -100,12 +102,15 @@ class VisualServer:
         """
 
         # Make sure the user passed and AudioStim instance
-        if isinstance(stim, VisualStim):
+        if isinstance(stim, VideoStim):
             self.data_generator = stim.data_generator()
         elif stim is None:
-            self.data_generator = None
+            # self.data_generator = None
+            screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+            screen.draw()
+            self.mywin.update()
         else:
-            raise ValueError("The play method of VisualServer only takes instances of VisualStim objects or those that" +
+            raise ValueError("The play method of VideoServer only takes instances of VisualStim objects or those that" +
                              "inherit from this base classs. ")
 
     # def start_stream(self, data_generator=None, num_channels=2, dtype='float32',
@@ -134,10 +139,15 @@ class VisualServer:
         self._suggested_output_latency = suggested_output_latency
         self._start_data_generator = data_generator
 
+        # self._stream = None
+
         # Start the task
         self.task.start()
 
         return VideoStreamProxy(self)
+
+    def getWindow(self):
+        return self.mywin
 
     def _video_server_main(self, msg_receiver):
         """
@@ -147,75 +157,64 @@ class VisualServer:
         :return: None
         """
 
+        # Initialize number of samples played to 0
+        self.samples_played = 0
+        print(1)
+        self.mywin = visual.Window([608,684],
+             useFBO = True)
         # need the code to automatically connect to the projector, set the colors to 7 bits,
         # set the frame rate to be 180 Hz, the projector to blue and the power to the blue LED
         # to some (pre-defined? parameterized?) voltage/amperage
 
         # create the window for the visual stimulus on the DLP (screen = 1)
-        self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
-                     useFBO = True)
+        # self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
+        #              useFBO = True)
 
         # warp the image according to some calibration that we have already performed
+        # self.warper = Warper(self.mywin,
+        #         # warp='spherical',
+        #         warp='warpfile',
+        #         warpfile = "calibratedBallImage.data",
+        #         warpGridsize = 300,
+        #         eyepoint = [0.5, 0.5],
+        #         flipHorizontal = False,
+        #         flipVertical = False)
+
         self.warper = Warper(self.mywin,
-                # warp='spherical',
-                warp='warpfile',
-                warpfile = "calibratedBallImage.data",
+                warp='spherical',
                 warpGridsize = 300,
                 eyepoint = [0.5, 0.5],
                 flipHorizontal = False,
                 flipVertical = False)
+        print(2)
 
-        # also need the code to set the colors to 
-
-        # Initialize number of samples played to 0
-        self.samples_played = 0
-
-        # Set the default device to the ASIO driver
-        sd.default.device = 'ASIO4ALL'
-
-        # Lets keep track of some timing statistics during playback
-
-        self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
-        self.callback_timing_log_index = 0
+        # self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
+        # self.callback_timing_log_index = 0
 
         # Setup a dataset to store timing information logged from the callback
-        self.timing_log_num_fields = 3
-        self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
-                                              shape = [2048, self.timing_log_num_fields],
-                                              maxshape = [None, self.timing_log_num_fields], dtype = np.float64,
-                                              chunks = (2048, self.timing_log_num_fields))
-
-        # # open stream using control
-        # self._stream = sd.OutputStream(samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
-        #                                  latency=self._suggested_output_latency, channels=self._num_channels,
-        #                                  dtype=self._dtype,callback=self._make_callback(),
-        #                                  finished_callback=self._stream_end)
-
-        # # Setup data generator, the control has been setup to reference this classes data_generator field
-        # if self._start_data_generator is None:
-        #     self.data_generator = None
-        # elif isinstance(self._start_data_generator, AudioStim):
-        #     data_generator = self.play(data_generator)
-        # elif isinstance(self._start_data_generator, types.GeneratorType):
-        #     # Setup the data generator, make sure it outputs chunks of the appropriate block size for the device.
-        #     self.data_generator = chunker(self._start_data_generator, chunk_size=self._stream.blocksize)
-        #
-
-        # Initialize a block of silence to be played when the generator is none.
-        # self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
+        # self.timing_log_num_fields = 3
+        # self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
+        #                                       shape = [2048, self.timing_log_num_fields],
+        #                                       maxshape = [None, self.timing_log_num_fields], dtype = np.float64,
+        #                                       chunks = (2048, self.timing_log_num_fields))
 
         # Setup up for playback of silence.
         self.data_generator = None
 
         # Loop until the stream end event is set.
-        with self._stream:
-            while not self.stream_end_event.is_set() and \
-                    self.flyvr_shared_state.is_running_well():
+        # as opposed to the audio, I think what I want to do here is just update the stimulus on 
+        # every iteration of the loop
+        while (not (self.stream_end_event.is_set() and self.flyvr_shared_state is not None and \
+                ( self.flyvr_shared_state.is_running_well()))) and \
+                (not (self.stream_end_event.is_set())):
 
-                # Wait for a message to come
-                msg = msg_receiver.recv()
-                if isinstance(msg, AudioStim) or msg is None:
-                    self._play(msg)
+            # Wait for a message to come
+            msg = msg_receiver.recv()
+            if isinstance(msg, VideoStim) or msg is None:
+                self._play(msg)
+
+
+
 
     def _stream_end(self):
         """
@@ -328,7 +327,7 @@ class VideoStreamProxy:
 
         :return: None
         """
-        self.sound_server.stream_end_event.set()
+        self.video_server.stream_end_event.set()
 
         # We send the server a junk signal. This will cause the message loop to wake up, skip the message because its
         # junk, and check whether to exit, which it will see is set and will close the stream. Little bit of a hack but

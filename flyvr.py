@@ -101,7 +101,7 @@ def main():
 
         # Before we do anything, lets store the git hash of the current state of the repo we are running from in the
         # experimental log file.
-        logger.log(dataset_name='/', attribute_name='flyvr_git_hash', obj=get_flyvr_git_hash())
+        # logger.log(dataset_name='/', attribute_name='flyvr_git_hash', obj=get_flyvr_git_hash())
 
         print("Initializing DAQ Tasks ... ")
         # !!!!!!!!!!!!!!!!
@@ -109,6 +109,23 @@ def main():
         # Right now using AudioStim function fromfilename to LED out
         daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
         daqTask.start()
+
+
+        print('setup')
+        from video.video_server import VideoServer, VideoStreamProxy
+        from video.stimuli import LoomingDot
+        from time import sleep
+        video_server = VideoServer()
+        video_client = video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
+        print('pause...')
+        sleep(10)    # takes a bit for the video_server thread to create the psychopy window
+        print('llllllooooming!')
+        video_client.play(None)
+        # print(video_server.getWindow())
+        # stim = LoomingDot(window=video_server.getWindow())
+        # video_client.play(stim)
+
+        
 
         # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
         fictrac_task = None
@@ -150,6 +167,8 @@ def main():
             # Wait till the user presses enter to end session
             if state.is_running_well():
                 input("Press ENTER to end session ... ")
+
+        video_client.close()
 
     except Exception as e:
         state.runtime_error(e, -1)
