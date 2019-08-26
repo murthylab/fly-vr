@@ -19,7 +19,7 @@ from common.plot_task import plot_task_daq
 from control.two_photon_control import TwoPhotonController
 
 DAQ_SAMPLE_RATE = 10000
-DAQ_NUM_OUTPUT_SAMPLES = 1000
+DAQ_NUM_OUTPUT_SAMPLES = 800
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 DAQ_NUM_INPUT_SAMPLES = 10000
 DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000

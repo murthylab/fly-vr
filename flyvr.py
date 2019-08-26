@@ -125,8 +125,6 @@ def main():
         # stim = LoomingDot(window=video_server.getWindow())
         # video_client.play(stim)
 
-        
-
         # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
         fictrac_task = None
         tracDrv = None

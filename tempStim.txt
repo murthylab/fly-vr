@@ -1,0 +1,2 @@
+stimfilename	freq	rate	silencepre	silencepost	intensity
+square	5	5	4	4	3
