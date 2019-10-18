@@ -106,9 +106,10 @@ class VideoServer:
             self.data_generator = stim.data_generator()
         elif stim is None:
             # self.data_generator = None
-            screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
-            screen.draw()
+            self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+            self.screen.draw()
             self.mywin.update()
+            # self.data_generator = stim.data_generator()
         else:
             raise ValueError("The play method of VideoServer only takes instances of VisualStim objects or those that" +
                              "inherit from this base classs. ")
@@ -204,14 +205,24 @@ class VideoServer:
         # Loop until the stream end event is set.
         # as opposed to the audio, I think what I want to do here is just update the stimulus on 
         # every iteration of the loop
+        playingStim = False
         while (not (self.stream_end_event.is_set() and self.flyvr_shared_state is not None and \
                 ( self.flyvr_shared_state.is_running_well()))) and \
                 (not (self.stream_end_event.is_set())):
 
-            # Wait for a message to come
-            msg = msg_receiver.recv()
-            if isinstance(msg, VideoStim) or msg is None:
-                self._play(msg)
+            # Pipe.recv() is blocking so let's check first, otherwise we can loop the visual stimulus
+            # (the visual stim should eventually probably move to its own thread)
+            if msg_receiver.poll():
+                # Wait for a message to come
+                msg = msg_receiver.recv()
+                if isinstance(msg, VideoStim) or msg is None:
+                    self._play(msg)
+                    playingStim = True
+            else:
+                if playingStim:
+                    self.screen.setPhase(0.05,'+')
+                    self.screen.draw()
+                    self.mywin.update()
 
 
 
