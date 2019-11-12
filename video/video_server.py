@@ -39,13 +39,17 @@ class VideoServer:
     made.
     """
 
-    def __init__(self, flyvr_shared_state=None):
+    def __init__(self, stim=None, flyvr_shared_state=None):
         """
         Setup the initial state of the sound server. This does not open any devices for play back. The start_stream
         method must be invoked before playback can begin.
         """
 
 
+        if stim is None:
+            stim = 'grating'
+
+        self.stim = stim
         # also need the code to set the colors to blue
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
@@ -106,7 +110,13 @@ class VideoServer:
             self.data_generator = stim.data_generator()
         elif stim is None:
             # self.data_generator = None
-            self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+            if self.stim == 'grating':
+                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+            elif self.stim == 'looming':
+                self.screen = visual.LoomingDot(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+            elif self.stim == 'movingSquare':
+                self.screen = visual.MovingSquare(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+
             self.screen.draw()
             self.mywin.update()
             # self.data_generator = stim.data_generator()
