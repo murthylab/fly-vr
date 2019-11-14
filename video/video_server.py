@@ -39,17 +39,17 @@ class VideoServer:
     made.
     """
 
-    def __init__(self, stim=None, flyvr_shared_state=None):
+    def __init__(self, stimName=None, flyvr_shared_state=None):
         """
         Setup the initial state of the sound server. This does not open any devices for play back. The start_stream
         method must be invoked before playback can begin.
         """
 
 
-        if stim is None:
-            stim = 'grating'
+        if stimName is None:
+            stimName = 'grating'
 
-        self.stim = stim
+        self.stimName = stimName
         # also need the code to set the colors to blue
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
@@ -110,12 +110,14 @@ class VideoServer:
             self.data_generator = stim.data_generator()
         elif stim is None:
             # self.data_generator = None
-            if self.stim == 'grating':
-                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
-            elif self.stim == 'looming':
-                self.screen = visual.LoomingDot(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
-            elif self.stim == 'movingSquare':
-                self.screen = visual.MovingSquare(win=self.mywin, size=5, pos=[0,0], sf=50, color=-1)
+            print(self.stimName)
+            if self.stimName == 'grating':
+                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,-0.5], sf=50, color=-1)
+            elif self.stimName == 'looming':
+                self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[0,-0.5], lineColor=None, fillColor='black')
+            elif self.stimName == 'movingSquare':
+                print('square!')
+                self.screen = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0,-0.5], lineColor=None, fillColor='black')
 
             self.screen.draw()
             self.mywin.update()
@@ -230,7 +232,20 @@ class VideoServer:
                     playingStim = True
             else:
                 if playingStim:
-                    self.screen.setPhase(0.05,'+')
+                    if self.stimName == 'grating':
+                        self.screen.setPhase(0.05,'+')
+                    elif self.stimName == 'looming':
+                        self.screen.size += 0.01
+                        if (self.screen.size > 0.8).any():
+                            self.screen.size = (0.05,0.05)
+
+                    elif self.stimName == 'movingSquare':
+                        pass
+                        # print('move!')
+                        self.screen.pos += [0.01,0]
+                        if self.screen.pos[0] >= 1:
+                            self.screen.pos[0] = -1
+
                     self.screen.draw()
                     self.mywin.update()
 
