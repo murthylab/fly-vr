@@ -7,6 +7,7 @@ import multiprocessing
 from multiprocessing import Event
 
 import numpy as np
+import os.path
 
 from video.stimuli import VideoStim, LoomingDot
 
@@ -51,6 +52,8 @@ class VideoServer:
 
         self.stimName = stimName
         # also need the code to set the colors to blue
+
+        self.synchSignal = 0
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = flyvr_shared_state
@@ -109,16 +112,18 @@ class VideoServer:
         if isinstance(stim, VideoStim):
             self.data_generator = stim.data_generator()
         elif stim is None:
+            self.synchRect = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0.5,0.5], lineColor=None, fillColor='white')
             # self.data_generator = None
             print(self.stimName)
             if self.stimName == 'grating':
                 self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,-0.5], sf=50, color=-1)
             elif self.stimName == 'looming':
-                self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[0,-0.5], lineColor=None, fillColor='black')
+                self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[0,-0.25], lineColor=None, fillColor='white')
             elif self.stimName == 'movingSquare':
                 print('square!')
                 self.screen = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0,-0.5], lineColor=None, fillColor='black')
 
+            self.synchRect.draw()
             self.screen.draw()
             self.mywin.update()
             # self.data_generator = stim.data_generator()
@@ -172,34 +177,34 @@ class VideoServer:
 
         # Initialize number of samples played to 0
         self.samples_played = 0
-        print(1)
-        self.mywin = visual.Window([608,684],
-             useFBO = True)
+        # self.mywin = visual.Window([608,684],
+        #      useFBO = True)
+
         # need the code to automatically connect to the projector, set the colors to 7 bits,
         # set the frame rate to be 180 Hz, the projector to blue and the power to the blue LED
         # to some (pre-defined? parameterized?) voltage/amperage
 
         # create the window for the visual stimulus on the DLP (screen = 1)
-        # self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
-        #              useFBO = True)
+        self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
+                     useFBO = True, color=-0.5)
 
+        if os.path.isfile('calibratedBallImage.data'):
         # warp the image according to some calibration that we have already performed
-        # self.warper = Warper(self.mywin,
-        #         # warp='spherical',
-        #         warp='warpfile',
-        #         warpfile = "calibratedBallImage.data",
-        #         warpGridsize = 300,
-        #         eyepoint = [0.5, 0.5],
-        #         flipHorizontal = False,
-        #         flipVertical = False)
-
-        self.warper = Warper(self.mywin,
-                warp='spherical',
-                warpGridsize = 300,
-                eyepoint = [0.5, 0.5],
-                flipHorizontal = False,
-                flipVertical = False)
-        print(2)
+            self.warper = Warper(self.mywin,
+                    # warp='spherical',
+                    warp='warpfile',
+                    warpfile = "calibratedBallImage.data",
+                    warpGridsize = 300,
+                    eyepoint = [0.5, 0.5],
+                    flipHorizontal = False,
+                    flipVertical = False)
+        else:
+            self.warper = Warper(self.mywin,
+                    warp='spherical',
+                    warpGridsize = 300,
+                    eyepoint = [0.5, 0.5],
+                    flipHorizontal = False,
+                    flipVertical = False)
 
         # self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
         # self.callback_timing_log_index = 0
@@ -246,6 +251,14 @@ class VideoServer:
                         if self.screen.pos[0] >= 1:
                             self.screen.pos[0] = -1
 
+                    if self.synchSignal > 200:
+                        self.synchRect.fillColor = 'black'
+                        self.synchSignal = 0
+                    elif self.synchSignal > 100:
+                        self.synchRect.fillColor = 'white'
+
+                    self.synchSignal += 1
+                    self.synchRect.draw()
                     self.screen.draw()
                     self.mywin.update()
 
