@@ -443,7 +443,8 @@ class SquareWaveStim(AudioStim):
 
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
         data = self.amplitude * signal.square(T * 2 * np.pi * self.frequency, duty=self.duty_cycle)
-
+        data = np.append(np.zeros(int(self.pre_silence * self.sample_rate)),data)
+        data = np.append(data,np.zeros(int(self.post_silence * self.sample_rate)))
         return data
 
 
@@ -602,8 +603,13 @@ class AudioStimPlaylist(SignalProducer):
                     print('square wave!')
                     # chan = SquareWaveStim(frequency=data["freq"][row], duty_cycle=1, amplitude=5.0, sample_rate=1e4, duration=5.0, intensity=1.0, pre_silence=data["silencepre"][row],
                     #     post_silence=data["silencepost"][row])
-                    chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
-                        post_silence=5.0)
+                    # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
+                    #     post_silence=5.0)
+                    # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=500.0, intensity=1.0, pre_silence=1.0,
+                    #     post_silence=1.0)
+                    # ["stimfilename", "freq", "rate", "silencepre", "silencepost", "intensity"]
+                    chan = SquareWaveStim(frequency=data['freq'][row], duty_cycle=0.75, amplitude=data['intensity'][row], sample_rate=1e4, duration=data['rate'][row]*1000.0, intensity=1.0, pre_silence=data['silencepre'][row],
+                        post_silence=data['silencepost'][row])
                 else:
                     if frequencies[chan_idx] == -1:
                         atten = None
@@ -622,6 +628,8 @@ class AudioStimPlaylist(SignalProducer):
 
             # Get the maximum duration of all the channel's stimuli
             max_stim_len = max(1000, max([next(chan.data_generator()).data.shape[0] for chan in chans]))
+            print('max stim length')
+            print(max_stim_len)
 
             # Make sure we resize all the ConstantSignal's to be as long as the maximum stim
             # size, this will make data loading much more efficient since their generators will
@@ -643,6 +651,7 @@ class AudioStimPlaylist(SignalProducer):
             # Go to the next row
             row = row + 1
 
+        print(stims)
         return cls(stims, shuffle_playback)
 
     def data_generator(self):
@@ -797,7 +806,10 @@ class VideoStimPlaylist(SignalProducer):
                     print('square wave!')
                     # chan = SquareWaveStim(frequency=data["freq"][row], duty_cycle=1, amplitude=5.0, sample_rate=1e4, duration=5.0, intensity=1.0, pre_silence=data["silencepre"][row],
                     #     post_silence=data["silencepost"][row])
-                    chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
+                    # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
+                    #     post_silence=5.0)
+
+                    chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=5.0, intensity=1.0, pre_silence=5.0,
                         post_silence=5.0)
                 else:
                     if frequencies[chan_idx] == -1:

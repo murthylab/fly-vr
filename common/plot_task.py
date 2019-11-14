@@ -44,9 +44,13 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
         ax = fig.add_subplot(num_channels, 1, chn)
         ax.set_title(channel_names[chn-1])
         backgrounds.append(fig.canvas.copy_from_bbox(ax.bbox))  # cache the background
-        ax.axis([0, num_chunks_history * chunk_size, -limit, limit])
+        print('axis?')
+        ax.axis([0, num_chunks_history * chunk_size, 1.5, 2.5])
+        # ax.axis([0, num_chunks_history * chunk_size, -limit, limit])
+        # ax.axis([0, num_chunks_history * chunk_size, 0, 4])
         axes.append(ax)
         point_sets.append(ax.plot(np.arange(num_chunks_history * chunk_size), plot_data)[0])  # init plot content
+        print('axis!')
 
     # Set the window position and size, this only works for Qt
     fig_manager = plt.get_current_fig_manager()
