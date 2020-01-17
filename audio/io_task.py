@@ -74,7 +74,8 @@ class IOTask(daq.Task):
 
         if self.cha_type is "input":
             if not self.digital:
-                self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
+                # self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
+                self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts, None)
             else:
                 self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
