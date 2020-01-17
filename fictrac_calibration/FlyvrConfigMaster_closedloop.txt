@@ -1,0 +1,21 @@
+# A test configuration file for Fly VR
+analog_in_channels=						2,0,16  # 4 - auditory, 1 - optogenetics, 16 - Galvomirror
+
+
+remote_2P_enable=						True
+remote_start_2P_channel=				port0/line0
+remote_stop_2P_channel=					port0/line1
+remote_next_2P_channel=					port0/line2
+
+record_file=            				ball_control_tests_7_17_2018/180524_101_output_25.h5
+
+fictrac_config=							FicTracPGR_Config.txt
+fictrac_console_out=					console_output.txt
+fictrac_plot_state=						True
+pgr_cam_enable=							True
+
+ball_control_enable=					False
+ball_control_channel=					port0/line3:4
+ball_control_loop=						True
+ball_control_periods=					160,32
+ball_control_durations=					2,2

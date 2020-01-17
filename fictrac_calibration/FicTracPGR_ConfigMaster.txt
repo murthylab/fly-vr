@@ -1,0 +1,46 @@
+%% input files and control parameters%%
+output_fn           output.txt
+mask_fn             MASK.tiff
+transform_fn        calibration-transform.dat
+template_fn         template.jpg
+load_template       0
+do_config           0
+
+
+%% camera parameters %%
+fisheye             0
+cam_input           1
+cam_index           0
+vfov                2.15
+
+
+%% playback/display options %%
+frame_skip          0
+frames_skip_display 20
+frame_step          1
+do_display          1
+no_prompts          1
+fps                 -1
+do_led_display      0
+
+
+%% search behaviour %%
+do_search           0
+use_ball_colour     0
+quality_factor      8
+nlopt_ftol          1e-4
+nlopt_max_eval      100
+error_thresh        15000
+thresh_win          0.2
+thresh_ratio        2.5
+max_bad_frames      1
+
+
+%% output options %%
+do_update           1
+save_video          0
+save_input_video    1
+do_serial_out       0
+serial_baud         115200
+serial_port         /dev/ttyS0
+do_socket_out      0

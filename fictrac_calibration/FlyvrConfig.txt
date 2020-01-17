@@ -1,0 +1,14 @@
+# A test configuration file for Fly VR
+
+stim_playlist=          E:/fly-vr/tests/test_data/dsx_IPI_Tune.txt
+attenuation_file=			E:/fly-vr/tests/audio/attenuation.txt
+analog_out_channels=		0   # 0 for auditory, 2 - for optogenetics
+analog_in_channels=			0   # 0 for auditory, 1 - for optogenetics
+remote_2P_enable=			True
+remote_start_2P_channel=	port0/line0
+remote_stop_2P_channel=		port0/line1
+remote_next_2P_channel=		port0/line2
+record_file=            180323_101_output.txt
+fictrac_config=				FicTracPGR_Config.txt
+fictrac_console_out=		console_output.txt
+pgr_cam_enable=				True
