@@ -568,6 +568,8 @@ class AudioStimPlaylist(SignalProducer):
         for stim_string in data['stimfilename']:
             # Each stim_string field should be a semicolon separated list, each element should be a channel.
             chan_names = stim_string.split(';')
+            print('splitting string ' + stim_string + '  into  ')
+            print(chan_names)
 
             def throw_error(msg):
                 return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row+2, msg))
@@ -608,7 +610,7 @@ class AudioStimPlaylist(SignalProducer):
                     # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=500.0, intensity=1.0, pre_silence=1.0,
                     #     post_silence=1.0)
                     # ["stimfilename", "freq", "rate", "silencepre", "silencepost", "intensity"]
-                    chan = SquareWaveStim(frequency=data['freq'][row], duty_cycle=0.75, amplitude=data['intensity'][row], sample_rate=1e4, duration=data['rate'][row]*1000.0, intensity=1.0, pre_silence=data['silencepre'][row],
+                    chan = SquareWaveStim(frequency=frequencies[chan_idx], duty_cycle=0.75, amplitude=intensities[chan_idx], sample_rate=1e4, duration=data['rate'][row]*1000.0, intensity=1.0, pre_silence=data['silencepre'][row],
                         post_silence=data['silencepost'][row])
                 else:
                     if frequencies[chan_idx] == -1:
