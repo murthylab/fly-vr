@@ -1,0 +1,17 @@
+# I think I need to add a stimulus file for this...
+# check how the audio and DAQ were separated in my code
+# note that addSyncOutput uses the last analog_out_channel[s] to send a 5V synchronization signal
+analog_out_channels= 					0
+addSyncOutput=							True
+stim_playlist=							stim.txt
+
+# currently implemented visual stimuli:
+# grating
+# looming
+# movingSquare
+# pipStim
+# dPR1Stim
+#
+# need to add stimulus file that allows varying aspects of the visual stimuli
+
+visual_stimulus=						looming

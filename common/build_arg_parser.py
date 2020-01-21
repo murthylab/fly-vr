@@ -55,6 +55,10 @@ def parse_arguments(args=None):
     parser.add_argument("--addSyncOutput", action="store_true",
                         help="Send a 5V power signal to the last AO channel for visual synchronization.",
                         default=False)
+    parser.add_argument('-v', "--visual_stimulus",
+                        type=str,
+                        help="A pre-defined visual stimulus",
+                        default='PipStim')
     parser.add_argument("--remote_2P_enable", action="store_true",
                         help="Enable remote start, stop, and next file signaling the 2-Photon imaging.",
                         default=False)
