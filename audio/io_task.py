@@ -31,7 +31,7 @@ class IOTask(daq.Task):
     """
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
                  num_samples_per_chan=DAQ_SAMPLE_RATE, num_samples_per_event=None, digital=False, has_callback=True,
-                 shared_state=None, done_callback=None):
+                 shared_state=None, done_callback=None, use_RSE=True):
         # check inputs
         daq.Task.__init__(self)
 
@@ -74,8 +74,10 @@ class IOTask(daq.Task):
 
         if self.cha_type is "input":
             if not self.digital:
-                # self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
-                self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts, None)
+                if use_RSE:
+                    self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
+                else:
+                    self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts, None)
             else:
                 self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
@@ -349,7 +351,7 @@ def io_task_main(message_pipe, state):
             input_chans = ["ai" + str(s) for s in options.analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES, num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
-                            shared_state=state)
+                            shared_state=state,use_RSE=options.use_RSE)
 
             taskDO = None
             two_photon_controller = None
