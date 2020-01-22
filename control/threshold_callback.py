@@ -22,10 +22,8 @@ class ThresholdCallback(FlyVRCallback):
 
     def setup_callback(self):
 
-        print('setup')
-        self.video_server = VideoServer(flyvr_shared_state=self.state)
-        self.video_client = self.video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
-        print('done')
+        # self.video_server = VideoServer(flyvr_shared_state=self.state)
+        # self.video_client = self.video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
 
         # Setup the audio server for playback of sound
         self.sound_server = SoundServer(flyvr_shared_state=self.state)
