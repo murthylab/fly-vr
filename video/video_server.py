@@ -1,5 +1,7 @@
 # import sounddevice as sd
 
+import traceback
+
 import time
 import sys
 import threading
@@ -117,22 +119,23 @@ class VideoServer:
             # self.synchRect = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0.5,0.5], lineColor=None, fillColor='grey')
             self.synchRect = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0.75,-0.75], lineColor=None, fillColor='grey')
             # self.data_generator = None
-            print(self.stimName)
+            self.yOffset = -0.5
+            self.xOffset = 0.2
+            # NIVEDITA: this changes stimulus size for movingSquare_OFF
+            self.stimSize = 0.25
             if self.stimName == 'grating':
-                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,-0.5], sf=50, color=-1)
-            elif self.stimName == 'looming':
-                self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[0,-0.25], lineColor=None, fillColor='white')
-            elif self.stimName == 'movingSquare':
+                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,self.yOffset], sf=50, color=-1)
+            elif self.stimName == 'looming_OFF':
+                self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
+            elif self.stimName == 'movingSquare_OFF':
                 print('square!')
-                self.screen = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0,-0.5], lineColor=None, fillColor='black')
-            elif self.stimName == 'pipStim':
+                self.screen = visual.Rect(win=self.mywin, size=(self.stimSize,self.stimSize), pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
+            elif self.stimName == 'pipStim_OFF':
                 print('pipStim!')
-                self.yOffset = -0.25
+                self.yOffset = -0.5
                 self.frameNum = 0
-                self.screen = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0,self.yOffset], lineColor=None, fillColor='black')
-                f = h5py.File('pipStim.mat','r')
-                print(f['tAng'].shape)
-                print('!!!!!!!!')
+                self.screen = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
+                f = h5py.File('e:/fly-vr-adam/fly-vr/pipStim.mat','r')
                 self.tDis = f['tDis'][:,0]
                 self.tAng = f['tAng'][:,0]
             elif self.stimName == 'dPR1Stim':
@@ -206,11 +209,20 @@ class VideoServer:
 
         # need the code to automatically connect to the projector, set the colors to 7 bits,
         # set the frame rate to be 180 Hz, the projector to blue and the power to the blue LED
+
         # to some (pre-defined? parameterized?) voltage/amperage
+        # traceback.print_stack()
 
         # create the window for the visual stimulus on the DLP (screen = 1)
-        self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
-                     useFBO = True, color=-0.5)
+        if self.stimName[-4:] == '_OFF':
+            self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
+                     useFBO = True, color=1)
+        elif self.stimName[-3:] == '_ON':
+            self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
+                     useFBO = True, color=-1)
+        else:
+            self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
+                         useFBO = True, color=-0.5)
 
         if os.path.isfile('calibratedBallImage.data'):
         # warp the image according to some calibration that we have already performed
@@ -261,24 +273,27 @@ class VideoServer:
                     playingStim = True
             else:
                 if playingStim:
+                    # these stimuli need to be turned into classes
                     if self.stimName == 'grating':
                         self.screen.setPhase(0.05,'+')
-                    elif self.stimName == 'looming':
+                    elif self.stimName == 'looming_OFF':
+                        # NIVEDITA: this changes looming speed
                         self.screen.size += 0.01
+                        # NIVEDITA: this sets maximum looming size
                         if (self.screen.size > 0.8).any():
                             self.screen.size = (0.05,0.05)
 
-                    elif self.stimName == 'movingSquare':
+                    elif self.stimName == 'movingSquare_OFF':
                         # print('move!')
                         self.screen.pos += [0.01,0]
                         if self.screen.pos[0] >= 1:
-                            self.screen.pos[0] = -1
+                            self.screen.pos[0] = 0
 
-                    elif self.stimName == 'pipStim':
+                    elif self.stimName == 'pipStim_OFF':
                         self.frameNum += 1
                         # print((self.tAng.shape,self.tDis.shape))
                         # print((self.tAng[self.frameNum]/180,1/self.tDis[self.frameNum]))
-                        self.screen.pos =[self.tAng[round(self.frameNum)]/180,self.yOffset]
+                        self.screen.pos =[self.tAng[round(self.frameNum)]/180 + self.xOffset,self.yOffset]
                         self.screen.size = 1/self.tDis[round(self.frameNum)]
 
                     elif self.stimName == 'dPR1Stim':
