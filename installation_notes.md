@@ -2,7 +2,7 @@
 
 If you are using a Point Grey/FLIR camera, make sure the [FlyCapture SDK](https://www.flir.com/products/flycapture-sdk/) is installed. Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - for instance, C:\Program Files\Point Grey Research\FlyCapture2\bin64) and place it in your FicTrac directory. If it is named FlyCapture2_C_v100.dll rename it. I have included this version in the fictrac_calibration folder of the repo for now.
 
-For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download the pre-built binaries available [here](https://github.com/murthylab/fictrac/releases/tag/v2.0.2).
+For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases).
 
 For configuring FicTrac, a few files are needed:
 1. A TIFF file used as a mask to remove non-ball areas, bright spots, etc (show examples). There is currently a matlab function that will help create this mask available in Im2P_CreateNewMask.m. But first need to capture a single frame to use as reference point!
@@ -17,3 +17,4 @@ Note that you probably want to reduce the resolution of the frame to minimize ho
 
 
 Question: how do I exit FicTrac??
+How to calculate vfov: https://www.reddit.com/r/fictrac/comments/e71ida/how_to_get_the_right_vfov/
