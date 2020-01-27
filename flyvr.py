@@ -136,7 +136,7 @@ def main():
             fictrac_callback = ThresholdCallback(shared_state=state)
 
             tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                    fictrac_callback, options.pgr_cam_enable,
+                                    None, options.pgr_cam_enable,
                                     plot_on=options.fictrac_plot_state)
 
             # Run the task

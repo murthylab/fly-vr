@@ -123,6 +123,11 @@ class VideoServer:
             self.xOffset = 0.2
             # NIVEDITA: this changes stimulus size for movingSquare_OFF
             self.stimSize = 0.25
+            self.direction = 1
+            self.frameNum = 0
+            self.internalCount = 0
+            self.countCurrStim = 0
+            self.currStim = 0
             if self.stimName == 'grating':
                 self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,self.yOffset], sf=50, color=-1)
             elif self.stimName == 'looming_OFF':
@@ -149,13 +154,16 @@ class VideoServer:
                 self.currStim = 0
                 self.countCurrStim = 0
                 self.angleOffset = 0
-            elif self.stimName == 'grating_and_moving_switch_ON':
+            elif self.stimName == 'grating_and_moving_switch':
+                self.yOffset = 0.25
+                # N = 2 seconds
                 # what is the logic:
                 # N = 5 for how many seconds?
                 # N passes of grating alternately moving left and right
                 # N passes of square moving left and right
                 # square moving randomly in/out?
                 # alternate the square being an ON and and OFF stimulus
+                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,self.yOffset], sf=50, color=-1)
 
             self.synchRect.draw()
             self.screen.draw()
@@ -323,8 +331,58 @@ class VideoServer:
                                 self.currStim = 0
                                 self.angleOffset = 0
 
-                        self.screen.pos =[self.angleOffset + self.tAng[round(self.frameNum)]/180,self.yOffset]
+                        self.screen.pos = [self.angleOffset + self.tAng[round(self.frameNum)]/180,self.yOffset]
                         self.screen.size = 1/self.tDis[round(self.frameNum)]
+
+                    elif self.stimName == 'grating_and_moving_switch':
+                        switchStim = 60*2.5*2
+                        # switchStim = 60*2.5*20
+                        internalSwitch = 60*2.5
+                        self.frameNum += 1
+                        self.countCurrStim += 1
+                        self.internalCount += 1
+
+                        if self.countCurrStim > switchStim:
+                            self.countCurrStim = 0
+                            self.currStim += 1
+                            if self.currStim > 3:
+                                self.currStim = 0
+
+                            if self.currStim == 0 or self.currStim == 2:
+                                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,self.yOffset], sf=50, color=-1)
+                            elif self.currStim == 1:
+                                # movingDot ON
+                                self.mywin.color = -1
+                                self.screen = visual.Rect(win=self.mywin, size=(self.stimSize,self.stimSize), pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='white')
+                            elif self.currStim == 3:
+                                # movingDot OFF
+                                self.mywin.color = 1
+                                self.screen = visual.Rect(win=self.mywin, size=(self.stimSize,self.stimSize), pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
+
+
+                            # currStim: 0,1,2,3 = center, OFF, right, OFF
+
+                        if self.internalCount > internalSwitch:
+                            self.internalCount = 0
+                            self.direction *= -1
+
+                        if self.currStim == 0 or self.currStim == 2:
+
+                            if self.direction > 0:
+                                self.screen.setPhase(0.05,'+')
+                            else:
+                                self.screen.setPhase(0.05,'-')
+
+                        if self.currStim == 1 or self.currStim == 3:
+                            self.screen.pos += [self.direction*0.01,0]
+
+                            if self.screen.pos[0] >= 1:
+                                self.screen.pos[0] = 0
+                            elif self.screen.pos[0] <= -1:
+                                self.screen.pos[0] = 0
+
+                        # self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
+
 
                     elif self.stimName == 'MATfile':
                         pass

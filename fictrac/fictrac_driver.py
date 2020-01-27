@@ -71,7 +71,8 @@ class FicTracDriver(object):
         """
 
         # Setup anything the callback needs.
-        self.track_change_callback.setup_callback()
+        if self.track_change_callback is not None:
+            self.track_change_callback.setup_callback()
 
         # Open or create the shared memory region for accessing FicTrac's state
         shmem = mmap.mmap(-1, ctypes.sizeof(shmem_transfer_data.SHMEMFicTracState), "FicTracStateSHMEM")
@@ -125,7 +126,8 @@ class FicTracDriver(object):
                     # Log the FicTrac data to our master log file.
                     state.logger.log('/fictrac/output', fictrac_state_to_vec(data_copy))
 
-                    self.track_change_callback.process_callback(data_copy)
+                    if self.track_change_callback is not None:
+                        self.track_change_callback.process_callback(data_copy)
 
                 # If we detect it is time to shutdown, kill the FicTrac process
                 if not state.is_running_well():
@@ -135,7 +137,8 @@ class FicTracDriver(object):
         state.FICTRAC_READY.value = 0
 
         # Call the callback shutdown code.
-        self.track_change_callback.shutdown_callback()
+        if self.track_change_callback is not None:
+            self.track_change_callback.shutdown_callback()
 
         # Get the fic trac process return code
         if self.fictrac_process.returncode is not None and self.fictrac_process.returncode != 0:
