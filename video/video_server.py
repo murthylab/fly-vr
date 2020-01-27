@@ -149,6 +149,13 @@ class VideoServer:
                 self.currStim = 0
                 self.countCurrStim = 0
                 self.angleOffset = 0
+            elif self.stimName == 'grating_and_moving_switch_ON':
+                # what is the logic:
+                # N = 5 for how many seconds?
+                # N passes of grating alternately moving left and right
+                # N passes of square moving left and right
+                # square moving randomly in/out?
+                # alternate the square being an ON and and OFF stimulus
 
             self.synchRect.draw()
             self.screen.draw()
