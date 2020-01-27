@@ -335,8 +335,8 @@ class VideoServer:
                         self.screen.size = 1/self.tDis[round(self.frameNum)]
 
                     elif self.stimName == 'grating_and_moving_switch':
-                        switchStim = 60*2.5*2
-                        # switchStim = 60*2.5*20
+                        # switchStim = 60*2.5*2
+                        switchStim = 60*2.5*20
                         internalSwitch = 60*2.5
                         self.frameNum += 1
                         self.countCurrStim += 1
