@@ -28,6 +28,9 @@ def validatate_args(options):
         if len(options.ball_control_periods) != len(options.ball_control_durations):
             raise ValueError("ball_control_periods and ball_control_durations must have same length, one duration for each period.")
 
+# need to add photosensor argument (and logic)
+# need to add in calibration path argument
+# need to add in matplotlib plotting command-line argument
 def parse_arguments(args=None):
     savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
@@ -58,7 +61,11 @@ def parse_arguments(args=None):
     parser.add_argument('-v', "--visual_stimulus",
                         type=str,
                         help="A pre-defined visual stimulus",
-                        default='PipStim')
+                        default='pipStim')
+    parser.add_argument("--screen_calibration",
+                        type=str,
+                        help="Where to find the (pre-computed) screen calibration file",
+                        default='')
     parser.add_argument("--use_RSE",
                         help="Use RSE (as opposed to differential) denoising on AI DAQ inputs",
                         default=True)

@@ -115,7 +115,7 @@ def main():
         from video.video_server import VideoServer, VideoStreamProxy
         from video.stimuli import LoomingDot
         from time import sleep
-        video_server = VideoServer(stimName=options.visual_stimulus)
+        video_server = VideoServer(stimName=options.visual_stimulus,calibration_file=options.calibration_file)
         video_client = video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
         print('pause...')
         sleep(10)    # takes a bit for the video_server thread to create the psychopy window
