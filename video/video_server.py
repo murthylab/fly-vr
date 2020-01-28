@@ -44,7 +44,7 @@ class VideoServer:
     made.
     """
 
-    def __init__(self, stimName=None, flyvr_shared_state=None):
+    def __init__(self, stimName=None, flyvr_shared_state=None, calibration_file=None):
         """
         Setup the initial state of the sound server. This does not open any devices for play back. The start_stream
         method must be invoked before playback can begin.
@@ -239,7 +239,12 @@ class VideoServer:
             self.mywin = visual.Window([608,684],monitor='DLP',screen=1,
                          useFBO = True, color=-0.5)
 
-        if os.path.isfile('calibratedBallImage.data'):
+        if self.calibration_file is not None:
+            warpfile = self.calibration_file
+        else:
+            warpfile = 'calibratedBallImage.data'
+
+        if os.path.isfile(warpfile):
         # warp the image according to some calibration that we have already performed
             self.warper = Warper(self.mywin,
                     # warp='spherical',
