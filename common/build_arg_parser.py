@@ -61,7 +61,7 @@ def parse_arguments(args=None):
     parser.add_argument('-v', "--visual_stimulus",
                         type=str,
                         help="A pre-defined visual stimulus",
-                        default='pipStim')
+                        default='grating')
     parser.add_argument("--screen_calibration",
                         type=str,
                         help="Where to find the (pre-computed) screen calibration file",

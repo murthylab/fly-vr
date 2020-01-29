@@ -44,7 +44,7 @@ class VideoServer:
     made.
     """
 
-    def __init__(self, stimName=None, shared_state=None, calibration_file=None, ):
+    def __init__(self, stimName=None, shared_state=None, calibration_file=None):
         """
         Setup the initial state of the sound server. This does not open any devices for play back. The start_stream
         method must be invoked before playback can begin.
@@ -58,6 +58,8 @@ class VideoServer:
         # also need the code to set the colors to blue
 
         self.synchSignal = 0
+
+        self.calibration_file = calibration_file
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = shared_state
@@ -150,7 +152,6 @@ class VideoServer:
                 self.stimColor = -1
 
                 self.screen = visual.GratingStim(win=self.mywin, size=self.stimSize, pos=[0,0], sf=self.sf, color=self.stimColor, phase=0)
-
                 self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
                                                       maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
                                                       chunks=(2048, NUM_VIDEO_FIELDS))
@@ -411,7 +412,7 @@ class VideoServer:
                                               self.sf,
                                               self.stimSize,
                                               self.stimColor,
-                                              self.screen.phase]))
+                                              self.screen.phase[0]]))
                     elif self.stimName == 'looming_OFF':
                         # NIVEDITA: this changes looming speed
                         self.screen.size += 0.01
@@ -423,7 +424,7 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      self.screen.pos[0],self.screen.pos[1]
+                                      self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size[0],self.screen.size[1]]))
 
                     elif self.stimName == 'movingSquare_OFF':
@@ -436,7 +437,7 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      self.screen.pos[0],self.screen.pos[1]
+                                      self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size[0],self.screen.size[1]]))
 
                     elif self.stimName == 'pipStim_OFF':
@@ -450,7 +451,7 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      self.screen.pos[0],self.screen.pos[1]
+                                      self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size[0],self.screen.size[1]]))
 
                     elif self.stimName == 'dPR1Stim':
@@ -480,7 +481,7 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      self.screen.pos[0],self.screen.pos[1]
+                                      self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size[0],self.screen.size[1]]))
 
                     elif self.stimName == 'grating_and_moving_switch':
@@ -526,13 +527,13 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      0,0
+                                      0,0,
                                       0,0,
                                       1,
                                       self.sf,
                                       self.stimSize,
-                                      self.stimColor
-                                      self.screen.phase]))
+                                      self.stimColor,
+                                      self.screen.phase[0]]))
 
                         if self.currStim == 1 or self.currStim == 3:
                             self.screen.pos += [self.direction*0.01,0]
@@ -546,7 +547,7 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      self.screen.pos[0],self.screen.pos[1]
+                                      self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size[0],self.screen.size[1],
                                       1,
                                       0,
@@ -568,7 +569,7 @@ class VideoServer:
                                     np.array([self.frameNum,
                                       self.bgColor,
                                       0,
-                                      self.screen.pos[0],self.screen.pos[1]
+                                      self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size[0],self.screen.size[1]]))
 
                     if self.synchSignal > 60*10:
@@ -585,7 +586,7 @@ class VideoServer:
                     # only really need to do this every few frames?
                     self.logger.log("/video/daq_synchronization_info",
                                     np.array([self.frameNum,
-                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
+                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
 
 
 
