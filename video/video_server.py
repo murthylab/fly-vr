@@ -452,7 +452,7 @@ class VideoServer:
                                       self.bgColor,
                                       0,
                                       self.screen.pos[0],self.screen.pos[1],
-                                      self.screen.size[0],self.screen.size[1]]))
+                                      self.screen.size,self.screen.size]))
 
                     elif self.stimName == 'dPR1Stim':
                         switchStim = 60*20
@@ -482,7 +482,7 @@ class VideoServer:
                                       self.bgColor,
                                       0,
                                       self.screen.pos[0],self.screen.pos[1],
-                                      self.screen.size[0],self.screen.size[1]]))
+                                      self.screen.size,self.screen.size]))
 
                     elif self.stimName == 'grating_and_moving_switch':
                         # switchStim = 60*2.5*2
@@ -502,11 +502,13 @@ class VideoServer:
                                 self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0,self.yOffset], sf=50, color=-1)
                             elif self.currStim == 1:
                                 # movingDot ON
-                                self.mywin.color = -1
+                                self.bgColor = -1
+                                self.mywin.color = self.bgColor
                                 self.screen = visual.Rect(win=self.mywin, size=(self.stimSize,self.stimSize), pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='white')
                             elif self.currStim == 3:
                                 # movingDot OFF
-                                self.mywin.color = 1
+                                self.bgColor = 1
+                                self.mywin.color = self.bgColor
                                 self.screen = visual.Rect(win=self.mywin, size=(self.stimSize,self.stimSize), pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
 
 
