@@ -1,13 +1,13 @@
 # A test configuration file for Fly VR
 
-stim_playlist=          C:/Users/adamjc/Documents/GitHub/fly-vr/blankStim.txt
-analog_out_channels=		0,1
-analog_in_channels=			0,2,4,6
+stim_playlist=          C:/Users/adamjc/Documents/GitHub/fly-vr/calibrationStim2.txt
+analog_out_channels=		0
+analog_in_channels=			0,2,4
 record_file=            	output.txt
 fictrac_config=				C:/Users/adamjc/Documents/GitHub/fly-vr/fictrac_calibration/FicTracPGR_ConfigMaster.txt
 fictrac_console_out=		console_output.txt
 pgr_cam_enable=				True
 
-visual_stimulus=grating_and_moving_switch
+visual_stimulus=maya_model
 
 use_RSE = False
