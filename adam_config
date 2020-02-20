@@ -8,6 +8,6 @@ fictrac_config=				C:/Users/adamjc/Documents/GitHub/fly-vr/fictrac_calibration/F
 fictrac_console_out=		console_output.txt
 pgr_cam_enable=				True
 
-visual_stimulus=maya_model
+visual_stimulus=opt_model
 
 use_RSE = False

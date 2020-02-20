@@ -315,6 +315,72 @@ class VideoServer:
                                                       maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
                                                       chunks=(2048, NUM_VIDEO_FIELDS))
 
+            elif self.stimName == 'opt_model':
+                from PIL import Image
+
+                self.yOffset = -0
+                # N = 2 seconds
+                # what is the logic:
+                # N = 5 for how many seconds?
+                # N passes of grating alternately moving left and right
+                # N passes of square moving left and right
+                # square moving randomly in/out?
+                # alternate the square being an ON and and OFF stimulus
+                image_names = ['Z:/adamjc/mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in range(-179,181)]
+
+                self.imgs = [visual.ImageStim(win=self.mywin,image=Image.open(img_nm).convert('L')) for img_nm in image_names]
+                self.screen = self.imgs[0]
+
+                angles_v = np.load('mayamodel/forwardvelocity/angles_optstim.npy')
+
+                ty_v = np.load('mayamodel/forwardvelocity/tops_optstim.npy')
+                by_v = np.load('mayamodel/forwardvelocity/bottoms_optstim.npy')
+                lx_v = np.load('mayamodel/forwardvelocity/lefts_optstim.npy')
+                rx_v = np.load('mayamodel/forwardvelocity/rights_optstim.npy')
+
+                angles_p = np.load('mayamodel/pulse/angles_optstim.npy')
+
+                ty_p = np.load('mayamodel/pulse/tops_optstim.npy')
+                by_p = np.load('mayamodel/pulse/bottoms_optstim.npy')
+                lx_p = np.load('mayamodel/pulse/lefts_optstim.npy')
+                rx_p = np.load('mayamodel/pulse/rights_optstim.npy')
+
+                self.angles = angles_v[:300]
+                self.angles = np.append(self.angles,angles_p[:300])
+                self.img_pos = np.array([(lx_v[:300] + rx_v[:300])/2, (ty_v[:300] + by_v[:300])/2])
+                self.img_pos = np.append(self.img_pos, np.array([(lx_p[:300] + rx_p[:300])/2, (ty_p[:300] + by_p[:300])/2]),axis=1)
+
+                self.img_size = [rx_v[:300] - lx_v[:300], ty_v[:300] - by_v[:300]]
+                self.img_size = np.append(self.img_size, np.array([rx_p[:300] - lx_p[:300], ty_p[:300] - by_p[:300]]),axis=1)
+
+                for ii in range(300,3300,300):
+                    self.angles = np.append(self.angles,angles_v[ii:ii+300])
+                    self.angles = np.append(self.angles,angles_p[ii:ii+300])
+
+                    self.img_pos = np.append(self.img_pos, np.array([(lx_v[ii:ii+300] + rx_v[ii:ii+300])/2, (ty_v[ii:ii+300] + by_v[ii:ii+300])/2]),axis=1)
+                    self.img_pos = np.append(self.img_pos, np.array([(lx_p[ii:ii+300] + rx_p[ii:ii+300])/2, (ty_p[ii:ii+300] + by_p[ii:ii+300])/2]),axis=1)
+
+                    self.img_size = np.append(self.img_size, np.array([rx_v[ii:ii+300] - lx_v[ii:ii+300], ty_v[ii:ii+300] - by_v[ii:ii+300]]),axis=1)
+                    self.img_size = np.append(self.img_size, np.array([rx_p[ii:ii+300] - lx_p[ii:ii+300], ty_p[ii:ii+300] - by_p[ii:ii+300]]),axis=1)
+
+                print(self.angles.shape)
+                print(self.img_pos.shape)
+                print(self.img_size.shape)
+                NUM_VIDEO_FIELDS = 7
+                # for now fields are:
+                # 0: frameNum
+                # 1: background color: [-1, 1]
+                # 2: object 1: 2 = 3D_model
+                # 3: object 1: height
+                # 4: object 1: width
+                # 5: object 1: x
+                # 6: object 1: y
+                # need to figure out how to log this information in the h5 file (a text field?)
+
+                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
+                                                      maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
+                                                      chunks=(2048, NUM_VIDEO_FIELDS))
+
             self.synchRect.draw()
             self.screen.draw()
             self.mywin.update()
@@ -385,7 +451,7 @@ class VideoServer:
             
         elif self.stimName[-3:] == '_ON':
             self.bgColor = -1
-        elif self.stimName == 'maya_model':
+        elif self.stimName == 'maya_model' or self.stimName == 'opt_model':
             self.bgColor = (178/256)*2 - 1
         else:
             self.bgColor = 0.5
@@ -500,6 +566,30 @@ class VideoServer:
                                       self.screen.pos[0],self.screen.pos[1],
                                       self.screen.size,self.screen.size]))
                     
+                    elif self.stimName == 'opt_model':
+                        self.frameNum += 1
+                        # print((self.tAng.shape,self.tDis.shape))
+                        # print((self.tAng[self.frameNum]/180,1/self.tDis[self.frameNum]))
+
+                        # right now moving at 30 Hz but projecting at 60 Hz
+
+                        self.screen = self.imgs[self.angles[round(self.frameNum/2)]]
+                        # print(self.img_pos)
+                        # print(round(self.frameNum/2))
+                        # print(print(self.img_pos[0][10]))
+                        # print(print(self.img_pos[0,10]))
+                        # print(self.img_pos[0,round(self.frameNum/2)])
+                        # print('ello?')
+                        self.screen.pos =[self.img_pos[0][round(self.frameNum/2)] + self.xOffset,self.img_pos[1][round(self.frameNum/2)] + self.yOffset]
+                        self.screen.size = [self.img_size[0][round(self.frameNum/2)],self.img_size[1][round(self.frameNum/2)]]
+
+                        self.logger.log("/video/stimulus",
+                                    np.array([self.frameNum,
+                                      self.bgColor,
+                                      2,
+                                      self.screen.pos[0],self.screen.pos[1],
+                                      self.screen.size[0],self.screen.size[1]]))
+
                     elif self.stimName == 'maya_model':
                         self.frameNum += 1
                         # print((self.tAng.shape,self.tDis.shape))

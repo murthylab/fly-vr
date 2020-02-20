@@ -9,7 +9,7 @@
 %used, so do CheckMask=0 only if you are SURE that this mask is good.
 %Any doubt? Do CheckMask = 1
 
-
+addpath(genpath('Z:\Dudi\MatlabProg\'))
 %Parameters
 Calibration_Directory = 'C:\Users\adamjc\Documents\GitHub\fly-vr\fictrac_calibration';
 
