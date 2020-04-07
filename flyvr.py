@@ -7,6 +7,7 @@ if sys.version_info[0] < 3:
                     "Activate Anaconda conda environment from command line with command 'activate fly_vr_env'")
 
 import numpy as np
+import pyglet.media
 
 import time
 from multiprocessing import freeze_support
