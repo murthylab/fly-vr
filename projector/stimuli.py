@@ -195,7 +195,7 @@ class MovingGratingsStim(VisualStim):
         :return: The sin signal data, ready to be passed to the DAQ as voltage signals.
         :rtype: numpy.ndarray
         """
-        T = np.linspace(0.0, float(self.duration) / 1000.0, (float(self.sample_rate) / 1000.0) * self.duration)
+        T = np.linspace(0.0, float(self.duration) / 1000.0, int((float(self.sample_rate) / 1000.0) * self.duration))
 
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
         data = self.amplitude * np.sin(2 * np.pi * self.frequency * T + self.phase)
@@ -276,7 +276,7 @@ class SquareWaveStim(AudioStim):
         :return: The sin signal data, ready to be passed to the DAQ as voltage signals.
         :rtype: numpy.ndarray
         """
-        T = np.linspace(0.0, float(self.duration) / 1000.0, (float(self.sample_rate) / 1000.0) * self.duration)
+        T = np.linspace(0.0, float(self.duration) / 1000.0, int((float(self.sample_rate) / 1000.0) * self.duration))
 
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
         data = self.amplitude * signal.square(T * 2 * np.pi * self.frequency, duty=self.duty_cycle)
