@@ -16,6 +16,7 @@ import types
 from common.concurrent_task import ConcurrentTask
 from common.logger import DatasetLogServer
 
+
 class SoundServer:
     """
     The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
@@ -48,6 +49,48 @@ class SoundServer:
 
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
+
+    DEVICE_DEFAULT = 'ASIO4ALL v2'
+    DEVICE_OUTPUT_DTYPE = 'float32'
+    DEVICE_OUTPUT_NUM_CHANNELS = 2
+    DEVICE_SAMPLE_RATE = 44100
+
+    @staticmethod
+    def get_audio_output_device_supported_sample_rates(device, channels, dtype, verbose=False):
+        supported_samplerates = []
+        for fs in (32000, 44100, 48000, 96000, 128000):
+            try:
+                sd.check_output_settings(device=device, samplerate=fs, channels=channels, dtype=dtype)
+            except Exception as e:
+                if verbose:
+                    print(fs, e)
+            else:
+                supported_samplerates.append(fs)
+        return supported_samplerates
+
+    @staticmethod
+    def _iter_compatible_output_devices(show_all=False):
+        """ returns (device_name, hostapi_name)"""
+        devs = sd.query_devices()
+        for info in devs:
+            if info['max_output_channels']:
+                hostapi_info = sd.query_hostapis(info['hostapi'])
+                if show_all or ('ASIO' in hostapi_info.get('name', '')):
+                    yield info['name'], hostapi_info.get('name', '')
+
+    @staticmethod
+    def list_supported_asio_output_devices(num_channels=DEVICE_OUTPUT_NUM_CHANNELS, dtype=DEVICE_OUTPUT_DTYPE,
+                                           out=None, show_all=False):
+        out = sys.stdout if out is None else out
+
+        out.write("All Devices\n")
+        for device_name, hostapi_name in SoundServer._iter_compatible_output_devices(show_all=show_all):
+            if show_all or ('ASIO' in hostapi_name):
+                srs = SoundServer.get_audio_output_device_supported_sample_rates(device_name,
+                                                                                 num_channels, dtype)
+                out.write('    Name: %s (Driver: %s) Sample Rates: %r\n' % (device_name,
+                                                                            hostapi_name,
+                                                                            srs))
 
     @property
     def data_generator(self):
@@ -94,8 +137,10 @@ class SoundServer:
             raise ValueError("The play method of SoundServer only takes instances of AudioStim objects or those that" +
                              "inherit from this base classs. ")
 
-    def start_stream(self, data_generator=None, num_channels=2, dtype='float32',
-                    sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005):
+    def start_stream(self, data_generator=None,
+                     device=DEVICE_DEFAULT, num_channels=DEVICE_OUTPUT_NUM_CHANNELS,
+                     dtype=DEVICE_OUTPUT_DTYPE, sample_rate=DEVICE_SAMPLE_RATE,
+                     frames_per_buffer=0, suggested_output_latency=0.005):
         """
         Start a stream of audio data for playback to the device
 
@@ -111,6 +156,7 @@ class SoundServer:
         """
 
         # Keep a copy of the parameters for the stream
+        self._device = device
         self._num_channels = num_channels
         self._dtype = dtype
         self._sample_rate = sample_rate
@@ -134,9 +180,6 @@ class SoundServer:
         # Initialize number of samples played to 0
         self.samples_played = 0
 
-        # Set the default device to the ASIO driver
-        sd.default.device = 'ASIO4ALL'
-
         # Lets keep track of some timing statistics during playback
 
         self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
@@ -150,10 +193,11 @@ class SoundServer:
                                               chunks = (2048, self.timing_log_num_fields))
 
         # open stream using control
-        self._stream = sd.OutputStream(samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
-                                         latency=self._suggested_output_latency, channels=self._num_channels,
-                                         dtype=self._dtype,callback=self._make_callback(),
-                                         finished_callback=self._stream_end)
+        self._stream = sd.OutputStream(device=self._device,
+                                       samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
+                                       latency=self._suggested_output_latency, channels=self._num_channels,
+                                       dtype=self._dtype,callback=self._make_callback(),
+                                       finished_callback=self._stream_end)
 
         # # Setup data generator, the control has been setup to reference this classes data_generator field
         # if self._start_data_generator is None:
