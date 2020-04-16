@@ -3,26 +3,36 @@ import threading
 import time
 
 import PyDAQmx as daq
-from PyDAQmx.DAQmxFunctions import *
-from PyDAQmx.DAQmxConstants import *
+# noinspection PyUnresolvedReferences
+from PyDAQmx.DAQmxFunctions import (DAQmxCreateTask, DAQmxCreateAOVoltageChan,
+                                    DAQmxCfgSampClkTiming, DAQmxStartTask,
+                                    DAQmxWriteAnalogScalarF64, DAQmxWaitForNextSampleClock, DAQmxStopTask,
+                                    DAQmxClearTask)
+# noinspection PyUnresolvedReferences
+from PyDAQmx.DAQmxConstants import (DAQmx_Val_RSE, DAQmx_Val_Volts, DAQmx_Val_Rising, DAQmx_Val_HWTimedSinglePoint,
+                                    DAQmx_Val_Acquired_Into_Buffer, DAQmx_Val_ContSamps, DAQmx_Val_Transferred_From_Buffer,
+                                    DAQmx_Val_DoNotAllowRegen, DAQmx_Val_AllowRegen, DAQmx_Val_GroupByChannel,
+                                    DAQmx_Val_Auto, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, DAQmx_Val_Diff,
+                                    DAQmx_Val_ChanPerLine)
 
 import numpy as np
+from ctypes import byref, c_ulong
 
 from audio.attenuation import Attenuator
-from control.motor_control import BallControlSignal
-
 from audio.signal_producer import chunker, MixedSignal
-
-from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
-from common.plot_task import plot_task_daq
+from control.motor_control import BallControlSignal
 from control.two_photon_control import TwoPhotonController
+from common.concurrent_task import ConcurrentTask
+from common.plot_task import plot_task_daq
+
 
 DAQ_SAMPLE_RATE = 10000
 DAQ_NUM_OUTPUT_SAMPLES = 1000
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 DAQ_NUM_INPUT_SAMPLES = 10000
 DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
+
 
 class IOTask(daq.Task):
     """
@@ -79,10 +89,10 @@ class IOTask(daq.Task):
                 else:
                     self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts, None)
             else:
-                self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+                self.CreateDIChan(self.cha_string, "", DAQmx_Val_ChanPerLine)
 
             # Get the number of channels from the task
-            nChans = ctypes.c_ulong()
+            nChans = c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
 
@@ -94,10 +104,10 @@ class IOTask(daq.Task):
             if not self.digital:
                 self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
             else:
-                self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+                self.CreateDOChan(self.cha_string, "", DAQmx_Val_ChanPerLine)
 
             # Get the number of channels from the task
-            nChans = ctypes.c_ulong()
+            nChans = c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
 
@@ -514,7 +524,7 @@ def io_task_main(message_pipe, state):
 
 
 def test_hardware_singlepoint(rate=10000.0):
-    taskHandle = TaskHandle()
+    taskHandle = daq.TaskHandle()
     samplesPerChannelWritten = daq.int32()
     isLate = daq.c_uint32()
 
@@ -537,10 +547,10 @@ def test_hardware_singlepoint(rate=10000.0):
 
             write_index += 1
 
-            if write_index > stim.data.shape[0]:
+            if write_index >= stim.data.shape[0]:
                 write_index = 0
 
-    except DAQError as err:
+    except daq.DAQError as err:
         print("DAQmx Error: %s" % err)
     finally:
         if taskHandle:
