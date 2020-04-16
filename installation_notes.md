@@ -15,10 +15,10 @@ When installing, ensure you choose to install the 'Offline Control Panel'.
 ## flyvr
 
 * Install Python 3.7.X
-* Create a virtual environment  
+* Create a virtual environment
   `python -m venv`
 * Activate the virtual environment and install dependencies
-  `python -m pip -r requirements.txt`
+  `python -m pip install -r requirements.txt`
 * Run the tests  
   `python -m pytest`
 
