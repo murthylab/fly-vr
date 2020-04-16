@@ -53,8 +53,11 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
         point_sets.append(ax.plot(np.arange(num_chunks_history * chunk_size), plot_data)[0])  # init plot content
 
     # Set the window position and size, this only works for Qt
-    fig_manager = plt.get_current_fig_manager()
-    fig_manager.window.setGeometry(50, 100, 640, 545)
+    try:
+        fig_manager = plt.get_current_fig_manager()
+        fig_manager.window.setGeometry(50, 100, 640, 545)
+    except AttributeError:
+        pass
 
     plt.show()
     plt.draw()
