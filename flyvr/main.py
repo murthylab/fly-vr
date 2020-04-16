@@ -9,7 +9,6 @@ import traceback
 from multiprocessing import freeze_support
 
 import numpy as np
-import pyglet.media
 
 from flyvr.audio import io_task
 from flyvr.audio.attenuation import Attenuator
