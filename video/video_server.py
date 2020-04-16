@@ -873,7 +873,8 @@ class VideoStreamProxy:
 
 
 def main():
-    from flyvr import SharedState
+    from common import SharedState
+    from common.mmtimer import MMTimer
 
     global TIMING_IDX
     TIMING_IDX = 0
@@ -891,7 +892,6 @@ def main():
     video_server = VideoServer(flyvr_shared_state=shared_state)
     video_client = video_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
 
-    from common.mmtimer import MMTimer
     def tick():
         global TIMING_IDX
         sound_client.play(stims[TIMING_IDX % 2])
@@ -907,6 +907,7 @@ def main():
     sound_client.close()
     log_server.stop_logging_server()
     log_server.wait_till_close()
+
 
 if __name__ == "__main__":
     main()
