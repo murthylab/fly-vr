@@ -1,3 +1,4 @@
+git+https://github.com/nzjrs/pyglet.git@fix-wmf-shutdown-crash#egg=pyglet
 PsychoPy==2020.1.2
 PyDAQmx==1.4.3
 ConfigArgParse==1.2
