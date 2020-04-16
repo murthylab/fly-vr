@@ -1,20 +1,15 @@
-import sounddevice as sd
-
 import time
 import sys
-import threading
 import multiprocessing
-from multiprocessing import Event
 
 import numpy as np
+import sounddevice as sd
 
-from audio.stimuli import SinStim, AudioStim
+from audio.stimuli import AudioStim
 from audio.io_task import chunker
 
-import types
-
 from common.concurrent_task import ConcurrentTask
-from common.logger import DatasetLogServer
+
 
 class SoundServer:
     """
@@ -44,10 +39,54 @@ class SoundServer:
         self.stream_end_event = multiprocessing.Event()
 
         # The process we will spawn the sound server thread in.
-        self.task = ConcurrentTask(task = self._sound_server_main, comms='pipe')
+        self.task = ConcurrentTask(task=self._sound_server_main, comms='pipe')
+
+        self._device = self._num_channels = self._dtype = self._sample_rate = self._frames_per_buffer = self._suggested_output_latency = None
 
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
+
+    DEVICE_DEFAULT = 'ASIO4ALL v2'
+    DEVICE_OUTPUT_DTYPE = 'float32'
+    DEVICE_OUTPUT_NUM_CHANNELS = 2
+    DEVICE_SAMPLE_RATE = 44100
+
+    @staticmethod
+    def get_audio_output_device_supported_sample_rates(device, channels, dtype, verbose=False):
+        supported_samplerates = []
+        for fs in (32000, 44100, 48000, 96000, 128000):
+            try:
+                sd.check_output_settings(device=device, samplerate=fs, channels=channels, dtype=dtype)
+            except Exception as e:
+                if verbose:
+                    print(fs, e)
+            else:
+                supported_samplerates.append(fs)
+        return supported_samplerates
+
+    @staticmethod
+    def _iter_compatible_output_devices(show_all=False):
+        """ returns (device_name, hostapi_name)"""
+        devs = sd.query_devices()
+        for info in devs:
+            if info['max_output_channels']:
+                hostapi_info = sd.query_hostapis(info['hostapi'])
+                if show_all or ('ASIO' in hostapi_info.get('name', '')):
+                    yield info['name'], hostapi_info.get('name', '')
+
+    @staticmethod
+    def list_supported_asio_output_devices(num_channels=DEVICE_OUTPUT_NUM_CHANNELS, dtype=DEVICE_OUTPUT_DTYPE,
+                                           out=None, show_all=False):
+        out = sys.stdout if out is None else out
+
+        out.write("All Devices\n")
+        for device_name, hostapi_name in SoundServer._iter_compatible_output_devices(show_all=show_all):
+            if show_all or ('ASIO' in hostapi_name):
+                srs = SoundServer.get_audio_output_device_supported_sample_rates(device_name,
+                                                                                 num_channels, dtype)
+                out.write('    Name: %s (Driver: %s) Sample Rates: %r\n' % (device_name,
+                                                                            hostapi_name,
+                                                                            srs))
 
     @property
     def data_generator(self):
@@ -92,13 +131,16 @@ class SoundServer:
             self.data_generator = None
         else:
             raise ValueError("The play method of SoundServer only takes instances of AudioStim objects or those that" +
-                             "inherit from this base classs. ")
+                             "inherit from this base class. ")
 
-    def start_stream(self, data_generator=None, num_channels=2, dtype='float32',
-                    sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005):
+    def start_stream(self,
+                     device=DEVICE_DEFAULT, num_channels=DEVICE_OUTPUT_NUM_CHANNELS,
+                     dtype=DEVICE_OUTPUT_DTYPE, sample_rate=DEVICE_SAMPLE_RATE,
+                     frames_per_buffer=0, suggested_output_latency=0.005):
         """
         Start a stream of audio data for playback to the device
 
+        :param device: The name of the audio device
         :param num_channels: The number of channels for playback, should be 1 or 2. Default is 1.
         :param dtype: The datatype of each samples. Default is 'float32' and the only type currently supported.
         :param sample_rate: The sample rate of the signal in Hz. Default is 44100 Hz
@@ -110,13 +152,12 @@ class SoundServer:
         :return: None
         """
 
-        # Keep a copy of the parameters for the stream
+        self._device = device
         self._num_channels = num_channels
         self._dtype = dtype
         self._sample_rate = sample_rate
         self._frames_per_buffer = frames_per_buffer
         self._suggested_output_latency = suggested_output_latency
-        self._start_data_generator = data_generator
 
         # Start the task
         self.task.start()
@@ -134,9 +175,6 @@ class SoundServer:
         # Initialize number of samples played to 0
         self.samples_played = 0
 
-        # Set the default device to the ASIO driver
-        sd.default.device = 'ASIO4ALL'
-
         # Lets keep track of some timing statistics during playback
 
         self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
@@ -145,15 +183,16 @@ class SoundServer:
         # Setup a dataset to store timing information logged from the callback
         self.timing_log_num_fields = 3
         self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
-                                              shape = [2048, self.timing_log_num_fields],
-                                              maxshape = [None, self.timing_log_num_fields], dtype = np.float64,
-                                              chunks = (2048, self.timing_log_num_fields))
+                                              shape=[2048, self.timing_log_num_fields],
+                                              maxshape=[None, self.timing_log_num_fields], dtype=np.float64,
+                                              chunks=(2048, self.timing_log_num_fields))
 
         # open stream using control
-        self._stream = sd.OutputStream(samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
-                                         latency=self._suggested_output_latency, channels=self._num_channels,
-                                         dtype=self._dtype,callback=self._make_callback(),
-                                         finished_callback=self._stream_end)
+        self._stream = sd.OutputStream(device=self._device,
+                                       samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
+                                       latency=self._suggested_output_latency, channels=self._num_channels,
+                                       dtype=self._dtype, callback=self._make_callback(),
+                                       finished_callback=self._stream_end)
 
         # # Setup data generator, the control has been setup to reference this classes data_generator field
         # if self._start_data_generator is None:
@@ -214,7 +253,7 @@ class SoundServer:
 
                 # If we have no data generator set, then play silence. If not, call its next method
                 if self._data_generator is None:
-                    producer_id = -1 # Lets code silence as -1
+                    producer_id = -1  # Lets code silence as -1
                     data = self._silence
                 else:
                     data_chunk = next(self._data_generator)
@@ -222,10 +261,11 @@ class SoundServer:
                     data = data_chunk.data.data
 
                 # Make extra sure the length of the data we are getting is the correct number of samples
-                assert(len(data) == frames)
+                assert (len(data) == frames)
 
             except StopIteration:
-                print('Audio generator produced StopIteration, something went wrong! Aborting playback', file=sys.stderr)
+                print('Audio generator produced StopIteration, something went wrong! Aborting playback',
+                      file=sys.stderr)
                 raise sd.CallbackAbort
 
             # Lets keep track of some running information
@@ -234,11 +274,11 @@ class SoundServer:
             # Update the number of samples played in the shared state counter
             if self.flyvr_shared_state is not None:
                 self.flyvr_shared_state.logger.log("/fictrac/soundcard_synchronization_info",
-                                np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM.value,
-                                          self.samples_played,
-                                          producer_id]))
+                                                   np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM.value,
+                                                             self.samples_played,
+                                                             producer_id]))
 
-                #self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
+                # self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
 
             if len(data) < len(outdata):
                 outdata.fill(0)
@@ -253,7 +293,8 @@ class SoundServer:
 
         return callback
 
-class SoundStreamProxy:
+
+class SoundStreamProxy(object):
     """
     The SoundStreamProxy class acts as an interface to a SoundServer object that is running on another process. It
     handles sending commands to the object on the other process.
@@ -302,44 +343,3 @@ class SoundStreamProxy:
         # Wait till the server goes away.
         while self.task.process.is_alive():
             time.sleep(0.1)
-
-
-def main():
-    from flyvr import SharedState
-
-    global TIMING_IDX
-    TIMING_IDX = 0
-
-    CHUNK_SIZE = 128
-    stim1 = SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000)
-    stim2 = SinStim(frequency=300, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000)
-    stims = [stim1, None]
-
-    # Setup logging server
-    log_server = DatasetLogServer()
-    logger = log_server.start_logging_server("test.h5")
-
-    shared_state = SharedState(None, logger)
-
-    sound_server = SoundServer(flyvr_shared_state=shared_state)
-    sound_client = sound_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
-
-    from common.mmtimer import MMTimer
-    def tick():
-        global TIMING_IDX
-        sound_client.play(stims[TIMING_IDX % 2])
-        TIMING_IDX = TIMING_IDX + 1
-
-    t1 = MMTimer(1000, tick)
-    t1.start(True)
-
-    while time.clock() < 10:
-        pass
-
-    # Close the stream down.
-    sound_client.close()
-    log_server.stop_logging_server()
-    log_server.wait_till_close()
-
-if __name__ == "__main__":
-    main()

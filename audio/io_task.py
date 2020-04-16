@@ -3,20 +3,30 @@ import threading
 import time
 
 import PyDAQmx as daq
-from PyDAQmx.DAQmxFunctions import *
-from PyDAQmx.DAQmxConstants import *
+# noinspection PyUnresolvedReferences
+from PyDAQmx.DAQmxFunctions import (DAQmxCreateTask, DAQmxCreateAOVoltageChan,
+                                    DAQmxCfgSampClkTiming, DAQmxStartTask,
+                                    DAQmxWriteAnalogScalarF64, DAQmxWaitForNextSampleClock, DAQmxStopTask,
+                                    DAQmxClearTask)
+# noinspection PyUnresolvedReferences
+from PyDAQmx.DAQmxConstants import (DAQmx_Val_RSE, DAQmx_Val_Volts, DAQmx_Val_Rising, DAQmx_Val_HWTimedSinglePoint,
+                                    DAQmx_Val_Acquired_Into_Buffer, DAQmx_Val_ContSamps,
+                                    DAQmx_Val_Transferred_From_Buffer,
+                                    DAQmx_Val_DoNotAllowRegen, DAQmx_Val_AllowRegen, DAQmx_Val_GroupByChannel,
+                                    DAQmx_Val_Auto, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
+                                    DAQmx_Val_Diff,
+                                    DAQmx_Val_ChanPerLine)
 
 import numpy as np
+from ctypes import byref, c_ulong
 
 from audio.attenuation import Attenuator
-from control.motor_control import BallControlSignal
-
 from audio.signal_producer import chunker, MixedSignal
-
-from common.concurrent_task import ConcurrentTask
 from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
-from common.plot_task import plot_task_daq
+from control.motor_control import BallControlSignal
 from control.two_photon_control import TwoPhotonController
+from common.concurrent_task import ConcurrentTask
+from common.plot_task import plot_task_daq
 
 DAQ_SAMPLE_RATE = 10000
 DAQ_NUM_OUTPUT_SAMPLES = 1000
@@ -24,11 +34,14 @@ DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 DAQ_NUM_INPUT_SAMPLES = 10000
 DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
 
+
+# noinspection PyPep8Naming
 class IOTask(daq.Task):
     """
     IOTask encapsulates the an input-output task that communicates with the NIDAQ. It works with a list of input or
     output channel names.
     """
+
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
                  num_samples_per_chan=DAQ_SAMPLE_RATE, num_samples_per_event=None, digital=False, has_callback=True,
                  shared_state=None, done_callback=None, use_RSE=True):
@@ -57,7 +70,7 @@ class IOTask(daq.Task):
         self.read = daq.int32()
         self.read_float64 = daq.float64()
 
-        self.limits=limits
+        self.limits = limits
         self.cha_type = cha_type
         self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
         self.cha_string = ", ".join(self.cha_name)
@@ -77,12 +90,13 @@ class IOTask(daq.Task):
                 if use_RSE:
                     self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
                 else:
-                    self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts, None)
+                    self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts,
+                                             None)
             else:
-                self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+                self.CreateDIChan(self.cha_string, "", DAQmx_Val_ChanPerLine)
 
             # Get the number of channels from the task
-            nChans = ctypes.c_ulong()
+            nChans = c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
 
@@ -94,10 +108,10 @@ class IOTask(daq.Task):
             if not self.digital:
                 self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
             else:
-                self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
+                self.CreateDOChan(self.cha_string, "", DAQmx_Val_ChanPerLine)
 
             # Get the number of channels from the task
-            nChans = ctypes.c_ulong()
+            nChans = c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
 
@@ -126,7 +140,8 @@ class IOTask(daq.Task):
                                maxshape=[None, 1], dtype=np.float64)
 
         if not digital:
-            self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.float64)  # init empty data array
+            self._data = np.zeros((self.num_samples_per_chan, self.num_channels),
+                                  dtype=np.float64)  # init empty data array
         else:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.uint8)
 
@@ -140,10 +155,9 @@ class IOTask(daq.Task):
             self._data_lock = threading.Lock()
             self._newdata_event = threading.Event()
             if self.cha_type is "output":
-
                 self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
                 # ensures continuous output and avoids collision of old and new data in buffer
-                #self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
+                # self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
                 self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
                 self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
 
@@ -176,7 +190,6 @@ class IOTask(daq.Task):
             chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_chan)
             self.data_gen = chunked_gen
 
-
     @property
     def data_recorders(self):
         return self._data_recorders
@@ -198,9 +211,11 @@ class IOTask(daq.Task):
         if self.cha_type == "input":
             raise ValueError("Cannot send on an input channel, it must be an output channel.")
         if self.digital:
-            self.WriteDigitalLines(data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, None, None)
+            self.WriteDigitalLines(data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, None,
+                                   None)
         else:
-            self.WriteAnalogF64(data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, daq.byref(self.read), None)
+            self.WriteAnalogF64(data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data,
+                                daq.byref(self.read), None)
 
     def EveryNCallback(self):
         with self._data_lock:
@@ -214,12 +229,13 @@ class IOTask(daq.Task):
             if self.cha_type is "input":
                 if not self.digital:
                     self.ReadAnalogF64(DAQmx_Val_Auto, 1.0, DAQmx_Val_GroupByScanNumber,
-                                   self._data, self.num_samples_per_chan * self.num_channels, daq.byref(self.read), None)
+                                       self._data, self.num_samples_per_chan * self.num_channels, daq.byref(self.read),
+                                       None)
                 else:
                     numBytesPerSamp = daq.int32()
                     self.ReadDigitalLines(self.num_samples_per_chan, 1.0, DAQmx_Val_GroupByScanNumber,
                                           self._data, self.num_samples_per_chan * self.num_channels,
-                                          byref(self.read),  byref(numBytesPerSamp), None)
+                                          byref(self.read), byref(numBytesPerSamp), None)
 
             elif self.cha_type is "output":
 
@@ -227,18 +243,19 @@ class IOTask(daq.Task):
                 if self.logger is not None and not self.digital:
                     self.logger.log("/fictrac/daq_synchronization_info",
                                     np.array([self.shared_state.FICTRAC_FRAME_NUM.value,
-                                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
+                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
 
                 if not self.digital:
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
-                                    self._data, daq.byref(self.read), None)
+                                        self._data, daq.byref(self.read), None)
 
                     # Keep track of how many samples we have written out in a global variable
                     if self.shared_state is not None:
                         with self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.get_lock():
                             self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += self._data.shape[0]
                 else:
-                    self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, self._data, None, None)
+                    self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely,
+                                           DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
             # Send the data to a control if requested.
             if self.data_recorders is not None:
@@ -262,6 +279,7 @@ class IOTask(daq.Task):
 
         return 0  # The function should return an integer
 
+
 def setup_playback_callbacks(stim, logger, state):
     """
     This function setups a control function for each stimulus in the playlist to be called when a set of data is
@@ -273,10 +291,11 @@ def setup_playback_callbacks(stim, logger, state):
     :param state: The shared state variable that contains options to the program.
     :return: None
     """
+
     def make_log_stim_playback(logger, state):
         def callback(event_message):
             logger.log("/output/history",
-                       np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]) )
+                       np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]))
 
         return callback
 
@@ -292,11 +311,12 @@ def setup_playback_callbacks(stim, logger, state):
 
     # Lets setup the logging dataset that these log events will be sent to
     logger.create("/output/history",
-                  shape=[2048,2], maxshape=[None, 2],
-                  chunks=(2048,2), dtype=np.int32)
+                  shape=[2048, 2], maxshape=[None, 2],
+                  chunks=(2048, 2), dtype=np.int32)
 
+
+# noinspection PyPep8Naming
 def io_task_main(message_pipe, state):
-
     try:
 
         taskAO = None
@@ -334,7 +354,8 @@ def io_task_main(message_pipe, state):
             # Make a sanity check, ensure that the number of channels for this audio stimulus matches the number of output
             # channels specified in configuration file.
             if audio_stim.num_channels != len(options.analog_out_channels):
-                raise ValueError("Number of analog output channels specified in config does not equal number specified in playlist!")
+                raise ValueError(
+                    "Number of analog output channels specified in config does not equal number specified in playlist!")
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
@@ -344,14 +365,15 @@ def io_task_main(message_pipe, state):
                 # Get the input and output channels from the options
                 output_chans = ["ao" + str(s) for s in options.analog_out_channels]
                 taskAO = IOTask(cha_name=output_chans, cha_type="output",
-                                num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES, num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
+                                num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
+                                num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                                 shared_state=state)
-
 
             input_chans = ["ai" + str(s) for s in options.analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
-                            num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES, num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
-                            shared_state=state,use_RSE=options.use_RSE)
+                            num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
+                            num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
+                            shared_state=state, use_RSE=options.use_RSE)
 
             taskDO = None
             two_photon_controller = None
@@ -394,7 +416,7 @@ def io_task_main(message_pipe, state):
                 taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
-                                       taskinitargs=[input_chans,taskAI.num_samples_per_chan,5])
+                                       taskinitargs=[input_chans, taskAI.num_samples_per_chan, 5])
 
             # Setup the display task to receive messages from recording task.
             taskAI.data_recorders = [disp_task]
@@ -411,17 +433,16 @@ def io_task_main(message_pipe, state):
                 # Connect AO start to AI start
                 taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-
             # Setup digital input recording
             if is_digital_in:
                 taskDI = IOTask(cha_name=options.digital_in_channels, cha_type="input",
                                 digital=True,
-                                num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES, num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
+                                num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
+                                num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
                                 shared_state=state)
 
                 # Connect DI start to AI start
                 taskDI.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
-
 
             # Message loop that waits for start signal
             while state.START_DAQ.value == 0 and state.is_running_well():
@@ -514,11 +535,12 @@ def io_task_main(message_pipe, state):
 
 
 def test_hardware_singlepoint(rate=10000.0):
-    taskHandle = TaskHandle()
+    taskHandle = daq.TaskHandle()
     samplesPerChannelWritten = daq.int32()
     isLate = daq.c_uint32()
 
-    stim = SinStim(frequency=250, amplitude=1, phase=0, sample_rate=rate, duration=2000, pre_silence=300, post_silence=300)
+    stim = SinStim(frequency=250, amplitude=1, phase=0, sample_rate=rate, duration=2000, pre_silence=300,
+                   post_silence=300)
     chunk_gen = chunker(stim.data_generator(), 100)
 
     try:
@@ -537,16 +559,17 @@ def test_hardware_singlepoint(rate=10000.0):
 
             write_index += 1
 
-            if write_index > stim.data.shape[0]:
+            if write_index >= stim.data.shape[0]:
                 write_index = 0
 
-    except DAQError as err:
+    except daq.DAQError as err:
         print("DAQmx Error: %s" % err)
     finally:
         if taskHandle:
             # DAQmx Stop Code
             DAQmxStopTask(taskHandle)
             DAQmxClearTask(taskHandle)
+
 
 def main():
     # task2P_DO = IOTask(cha_name=['port0/line0'], cha_type="output", digital=True,
@@ -558,6 +581,7 @@ def main():
     #     time.sleep(0.2)
 
     test_hardware_singlepoint(1000)
+
 
 if __name__ == "__main__":
     main()

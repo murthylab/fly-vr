@@ -23,13 +23,19 @@ class DatasetLogger:
     for creating and writing datasets. It can be called from multiple processes and threads in a safe manner.
     """
 
-    def __init__(self, sender_queue):
+    def __init__(self, sender_queue, log_filename=None):
         """
         Create the DatasetLogger for a specific message queue..
 
         :param sender_queue: The queue to send messages on.
+        :param log_filename: The path to the underlying h5 file
         """
         self._sender_queue = sender_queue
+        self._log_filename = log_filename
+
+    @property
+    def log_filename(self):
+        return self._log_filename
 
     def create(self, *args, **kwargs):
         """
@@ -93,11 +99,24 @@ class DatasetLogServer:
         """
         Create the logging server. Does not start the logging process.
         """
+        self.log_file_name = None
+
         self._log_task = ConcurrentTask(task=self._thread_main, comms="queue", taskinitargs=[])
 
         # For each dataset, we will keep track of the current write position. This will allow us to append to it if
         # nescessary. We will store the write positions as integers in a dictionary of dataset_names
         self.dataset_write_pos = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop_logging_server()
+        self.wait_till_close()
+
+    @property
+    def log_filename(self):
+        return self.log_filename
 
     def start_logging_server(self, filename):
         """
@@ -110,7 +129,7 @@ class DatasetLogServer:
         self.log_file_name = filename
         self._log_task.start()
 
-        return DatasetLogger(self._log_task.sender)
+        return DatasetLogger(self._log_task.sender, log_filename=filename)
 
     def stop_logging_server(self):
         """
@@ -149,7 +168,6 @@ class DatasetLogServer:
 
         # Close out the storage
         self._finalize_storage()
-
 
     def _initialize_storage(self):
         """

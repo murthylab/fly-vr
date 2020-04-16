@@ -1,5 +1,29 @@
 # Installation notes
 
+You need to be running an uptodate Windows 10 installation.
+
+This requires a NI DAQ (PCI-X series). To begin, install NI-DAQmx 19.6.X (from https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html#333268).
+The NI-DAQmx installer offers a number of options. You must install at least the following components
+* NI-DAQmx driver
+* NI Measurement and Automation Explorer 'NI MAX'
+* NI-DAQmx Support for C
+
+This also requires ASIO drivers for your audio device / soundcard. If you are not sure if you have dedicated ASIO
+drivers for your audio device (and it is recommended that you do) you should install ASIO4ALL (http://www.asio4all.org/, tested with 2.14).
+When installing, ensure you choose to install the 'Offline Control Panel'.
+
+## flyvr
+
+* Install Python 3.7.X
+* Create a virtual environment
+  `python -m venv`
+* Activate the virtual environment and install dependencies
+  `python -m pip install -r requirements.txt`
+* Run the tests  
+  `python -m pytest`
+
+## fictrac
+
 If you are using a Point Grey/FLIR camera, make sure the [FlyCapture SDK](https://www.flir.com/products/flycapture-sdk/) is installed. Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - for instance, C:\Program Files\Point Grey Research\FlyCapture2\bin64) and place it in your FicTrac directory. If it is named FlyCapture2_C_v100.dll rename it. I have included this version in the fictrac_calibration folder of the repo for now.
 
 For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases).
