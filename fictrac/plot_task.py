@@ -47,8 +47,8 @@ def plot_task_fictrac(disp_queue, flyvr_state,
 
     # Axes limits for each field
     field_ax_limits = {'speed': (0, .03),
-                       'direction': (0, 2*np.pi),
-                       'heading': (0, 2*np.pi),
+                       'direction': (0, 2 * np.pi),
+                       'heading': (0, 2 * np.pi),
                        'heading_diff': (0, 0.261799),
                        'del_rot_error': (0, 15000),
                        'del_rot_cam_vec': (-0.025, 0.025)}
@@ -64,7 +64,7 @@ def plot_task_fictrac(disp_queue, flyvr_state,
     backgrounds = []
     point_sets = []
     for chn in range(1, num_channels + 1):
-        field_name = fictrac_state_fields[chn-1]
+        field_name = fictrac_state_fields[chn - 1]
         ax = fig.add_subplot(num_channels, 1, chn)
         ax.set_title(field_name)
         backgrounds.append(fig.canvas.copy_from_bbox(ax.bbox))  # cache the background
@@ -108,22 +108,23 @@ def plot_task_fictrac(disp_queue, flyvr_state,
                         real_field = field.replace('_diff', '')
 
                         if real_field in ['heading', 'direction']:
-                            plot_data[sample_i, chan_i] = abs(angle_diff(getattr(d, real_field), getattr(last_d, real_field)))
+                            plot_data[sample_i, chan_i] = abs(
+                                angle_diff(getattr(d, real_field), getattr(last_d, real_field)))
                         else:
                             plot_data[sample_i, chan_i] = getattr(d, real_field) - getattr(last_d, real_field)
                     elif field.endswith('vec'):
                         plot_data[sample_i, chan_i] = getattr(d, field)[1]
                     else:
-                        plot_data[sample_i,chan_i] = getattr(d, field)
+                        plot_data[sample_i, chan_i] = getattr(d, field)
                     chan_i = chan_i + 1
                 last_d = d
                 sample_i = sample_i + 1
 
             for chn in range(num_channels):
-                fig.canvas.restore_region(backgrounds[chn])         # restore background
-                point_sets[chn].set_data(np.arange(num_history), plot_data[:,chn])
-                axes[chn].draw_artist(point_sets[chn])              # redraw just the points
-                #fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
+                fig.canvas.restore_region(backgrounds[chn])  # restore background
+                point_sets[chn].set_data(np.arange(num_history), plot_data[:, chn])
+                axes[chn].draw_artist(point_sets[chn])  # redraw just the points
+                # fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
 
             fig.canvas.draw()
             fig.canvas.flush_events()
@@ -133,7 +134,6 @@ def plot_task_fictrac(disp_queue, flyvr_state,
 
 
 def main_plot_fictrac():
-
     class _MockState(object):
         def is_running_well(self):
             return True

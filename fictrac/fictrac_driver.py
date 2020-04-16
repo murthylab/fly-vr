@@ -21,6 +21,7 @@ class FicTracDriver(object):
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
     calls a control function once for each time the tracking state of the insect is updated.
     """
+
     def __init__(self, config_file, console_ouput_file, track_change_callback=None, pgr_enable=False, plot_on=True):
         """
         Create the FicTrac driver object. This function will perform a check to see if the FicTrac program is present
@@ -81,17 +82,18 @@ class FicTracDriver(object):
 
         # Setup dataset to log FicTrac data to.
         state.logger.create("/fictrac/output", shape=[2048, NUM_FICTRAC_FIELDS],
-                                              maxshape=[None, NUM_FICTRAC_FIELDS], dtype=np.float64,
-                                              chunks=(2048, NUM_FICTRAC_FIELDS))
+                            maxshape=[None, NUM_FICTRAC_FIELDS], dtype=np.float64,
+                            chunks=(2048, NUM_FICTRAC_FIELDS))
 
         # Start FicTrac
         with open(self.console_output_file, "wb") as out:
 
-            self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out, stderr=subprocess.STDOUT)
+            self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out,
+                                                    stderr=subprocess.STDOUT)
 
             if self.plot_on:
                 self.plot_task = ConcurrentTask(task=plot_task_fictrac, comms="pipe",
-                                       taskinitargs=[state])
+                                                taskinitargs=[state])
                 self.plot_task.start()
 
             data = SHMEMFicTracState.from_buffer(shmem)
@@ -111,7 +113,7 @@ class FicTracDriver(object):
                     if new_frame_count - old_frame_count != 1 and state.RUN.value != 1:
                         self.fictrac_process.terminate()
                         print(("FicTrac frame counter jumped by more than 1! oldFrame = " +
-                                         str(old_frame_count) + ", newFrame = " + str(new_frame_count)))
+                               str(old_frame_count) + ", newFrame = " + str(new_frame_count)))
 
                     old_frame_count = new_frame_count
                     state.FICTRAC_FRAME_NUM.value = new_frame_count
@@ -141,11 +143,12 @@ class FicTracDriver(object):
         if self.fictrac_process.returncode is not None and self.fictrac_process.returncode != 0:
             state.RUN.value = 0
             state.RUNTIME_ERROR = -5
-            raise RuntimeError("FicTrac failed because of an application error. Consult the FicTrac console output file.")
+            raise RuntimeError(
+                "FicTrac failed because of an application error. Consult the FicTrac console output file.")
 
     def stop(self):
 
-        print ("Sending stop signal to FicTrac ... ")
+        print("Sending stop signal to FicTrac ... ")
 
         # We keep sending signals to the FicTrac process until it dies
         while self.fictrac_process.poll() is None:
