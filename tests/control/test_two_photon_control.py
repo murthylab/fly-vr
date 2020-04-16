@@ -1,5 +1,7 @@
 import pytest
+
 from audio.stimuli import SinStim, AudioStimPlaylist
+from audio.io_task import IOTask, DAQ_NUM_OUTPUT_SAMPLES, DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT
 from control.two_photon_control import TwoPhotonController
 
 
@@ -9,11 +11,13 @@ def stim1():
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                    attenuator=None)
 
+
 @pytest.fixture
 def stim2():
     return SinStim(frequency=330, amplitude=2.0, phase=0.0, sample_rate=40000,
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                    attenuator=None)
+
 
 @pytest.fixture
 def stim3():
@@ -86,3 +90,33 @@ def test_two_photon_no_sideeffects(stim1, stim2, stim3):
     next(playGen)
     data = next(play2P).data
     assert ((two_photon_control.next_signal[0:N, :] == data[0:N, :]).all())
+
+
+@pytest.mark.use_daq
+def test_io_a_output(tmpdir):
+    import time
+
+    import h5py
+
+    from common import SharedState
+    from common.logger import DatasetLogServer
+
+    with DatasetLogServer() as log_server:
+
+        shared_state = SharedState(None, logger=log_server.start_logging_server(tmpdir.join('test.h5').strpath))
+
+        taskAO = IOTask(cha_name=['ao1'], cha_type="output",
+                        num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
+                        num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
+                        shared_state=shared_state)
+
+        taskAO.StartTask()
+        for i in range(10):
+            time.sleep(0.1)
+
+        taskAO.StopTask()
+        taskAO.stop()
+        taskAO.ClearTask()
+
+    with h5py.File(shared_state.logger.log_filename, mode='r') as h5:
+        assert h5['fictrac']['daq_synchronization_info'].shape[-1] == 2  # 2 columns
