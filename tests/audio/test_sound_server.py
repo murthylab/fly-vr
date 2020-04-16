@@ -25,19 +25,17 @@ def test_play_sin(tmpdir):
 
     dest = tmpdir.join('test.h5').strpath
 
-    log_server = DatasetLogServer()
-    logger = log_server.start_logging_server(dest)
+    with DatasetLogServer() as log_server:
+        logger = log_server.start_logging_server(dest)
 
-    shared_state = SharedState(None, logger)
+        shared_state = SharedState(None, logger)
 
-    sound_server = SoundServer(flyvr_shared_state=shared_state)
-    sound_client = sound_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
-    sound_client.play(stim1)
-    time.sleep(1.5)
+        sound_server = SoundServer(flyvr_shared_state=shared_state)
+        sound_client = sound_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
+        sound_client.play(stim1)
+        time.sleep(1.5)
 
-    sound_client.close()
-    log_server.stop_logging_server()
-    log_server.wait_till_close()
+        sound_client.close()
 
     with h5py.File(dest, mode='r') as h5:
         assert '/fictrac/soundcard_synchronization_info' in h5
