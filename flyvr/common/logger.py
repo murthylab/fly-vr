@@ -1,12 +1,11 @@
-import numpy as np
 import os
-
-
-import h5py
 import time
 
-from audio.signal_producer import SignalProducer, SignalNextEventData
-from common.concurrent_task import ConcurrentTask
+import h5py
+import numpy as np
+
+from flyvr.audio.signal_producer import SignalProducer, SignalNextEventData
+from flyvr.common.concurrent_task import ConcurrentTask
 
 """
     The logger module implements a thread\process safe interface for logging datasets to a storage backend 
@@ -15,6 +14,7 @@ from common.concurrent_task import ConcurrentTask
     class which maintaints the log server and the DatasetLogger class which is a pickable class that can be sent to 
     other processes for sending log events.
 """
+
 
 class DatasetLogger:
     """
@@ -243,7 +243,7 @@ class DatasetCreateEvent(DatasetLogEvent):
         # Rather then reimplement all of h5py arguments for dataset create, we just take args and kwargs
         self.args = args
         self.kwargs = kwargs
-        super(DatasetCreateEvent,self).__init__(dataset_name)
+        super(DatasetCreateEvent, self).__init__(dataset_name)
 
     def process(self, server):
         """
@@ -254,6 +254,7 @@ class DatasetCreateEvent(DatasetLogEvent):
         :return: None
         """
         server.file.require_dataset(*self.args, **self.kwargs)
+
 
 class DatasetWriteEvent(DatasetLogEvent):
     """
@@ -277,7 +278,7 @@ class DatasetWriteEvent(DatasetLogEvent):
 
         self.append = append
 
-        super(DatasetWriteEvent,self).__init__(dataset_name)
+        super(DatasetWriteEvent, self).__init__(dataset_name)
 
     def process(self, server):
         """
@@ -321,11 +322,12 @@ class DatasetWriteEvent(DatasetLogEvent):
                 newsize = write_pos + self.obj.shape[0]
 
                 dset.resize(newsize, axis=0)
-                dset[write_pos:,:] = self.obj
+                dset[write_pos:, :] = self.obj
 
                 server.dataset_write_pos[self.dataset_name] = dset.shape[0]
 
         file_handle.flush()
+
 
 class AttributeWriteEvent(DatasetLogEvent):
     """
@@ -343,7 +345,7 @@ class AttributeWriteEvent(DatasetLogEvent):
         self.attribute_name = attribute_name
         self.obj = obj
 
-        super(AttributeWriteEvent,self).__init__(dataset_name)
+        super(AttributeWriteEvent, self).__init__(dataset_name)
 
     def process(self, server):
         """
@@ -366,9 +368,11 @@ class AttributeWriteEvent(DatasetLogEvent):
 
         file_handle.flush()
 
+
 def test_worker(msg_queue):
     while True:
-        print ("Test\n")
+        print("Test\n")
+
 
 def recursively_save_dict_contents_to_group(h5file, path, dic):
     """
@@ -397,43 +401,45 @@ def recursively_save_dict_contents_to_group(h5file, path, dic):
         elif isinstance(item, dict):
             recursively_save_dict_contents_to_group(h5file, path + key + '/', item)
         else:
-            raise ValueError('Cannot save %s type'%type(item))
+            raise ValueError('Cannot save %s type' % type(item))
 
 
 def make_event_metadata_dtype(metadata):
     type_desc = []
     for field_name in metadata:
         value = metadata[field_name]
-        type_desc.append( (field_name, type(value)) )
+        type_desc.append((field_name, type(value)))
 
 
 # These are some test dataset we will write to HDF5 to check things
-test1_dataset = np.zeros((1600,3))
-test1_dataset[:,0] = np.arange(0,1600)
-test1_dataset[:,1] = np.arange(0,1600)*2
-test1_dataset[:,2] = np.arange(0,1600)*3
+test1_dataset = np.zeros((1600, 3))
+test1_dataset[:, 0] = np.arange(0, 1600)
+test1_dataset[:, 1] = np.arange(0, 1600) * 2
+test1_dataset[:, 2] = np.arange(0, 1600) * 3
+
 
 # A worker thread main that writes the above dataset to the logger in chunks
 def log_event_worker(msg_queue, dataset_name, logger):
-
     logger.create(dataset_name, shape=[512, 3],
-                                maxshape=[None, 3],
-                                chunks=(512, 3),
-                                dtype=np.float64, scaleoffset=8)
+                  maxshape=[None, 3],
+                  chunks=(512, 3),
+                  dtype=np.float64, scaleoffset=8)
 
     # Write the test data in chunk_size chunks
     chunk_size = 8
     for i in range(200):
-        data_chunk = test1_dataset[i*chunk_size:(i*chunk_size+chunk_size), :]
+        data_chunk = test1_dataset[i * chunk_size:(i * chunk_size + chunk_size), :]
         logger.log(dataset_name, data_chunk)
 
-test2_dataset = {"data1": "This is a test", "data2": np.ones(shape=(3,2))}
+
+test2_dataset = {"data1": "This is a test", "data2": np.ones(shape=(3, 2))}
+
 
 def log_event_worker2(msg_queue, dataset_name, logger):
-        logger.log(dataset_name, test2_dataset)
+    logger.log(dataset_name, test2_dataset)
+
 
 def main():
-
     # If we have a test file already, delete it.
     try:
         os.remove('test.h5')
@@ -462,25 +468,26 @@ def main():
         pass
 
     # Make sure the HDF5 file has been created.
-    #assert(os.path.isfile('test.h5'))
+    # assert(os.path.isfile('test.h5'))
 
     # Now lets load the HDF5 file we just wrote and make sure it contains the correct stuff
     f = h5py.File('test.h5', 'r')
 
     # Check if the first dataset exists
-    #assert('test1' in f)
+    # assert('test1' in f)
 
     # Check if it is equal to the dataset we have stored in memory
-    #assert(np.array_equal(f['test1'], test1_dataset))
+    # assert(np.array_equal(f['test1'], test1_dataset))
 
     # Check if the second dataset exists and is equal
-    #assert('/deeper/test2/data1' in f)
-    #assert(f['/deeper/test2/data1'] == test2_dataset['data1'])
-    #assert('/deeper/test2/data2' in f and np.array_equal(f['/deeper/test2/data2'], test2_dataset['data2']))
+    # assert('/deeper/test2/data1' in f)
+    # assert(f['/deeper/test2/data1'] == test2_dataset['data1'])
+    # assert('/deeper/test2/data2' in f and np.array_equal(f['/deeper/test2/data2'], test2_dataset['data2']))
 
     f.close()
 
-    #os.remove('test.h5')
+    # os.remove('test.h5')
+
 
 if __name__ == "__main__":
     main()

@@ -6,6 +6,7 @@ timeproc = WINFUNCTYPE(None, c_uint, c_uint, DWORD, DWORD, DWORD)
 timeSetEvent = windll.winmm.timeSetEvent
 timeKillEvent = windll.winmm.timeKillEvent
 
+
 class MMTimer:
     """
     A simple class that invokes a control function at regular intervals. It uses the Windows Multimedia Timer. Code
@@ -14,6 +15,7 @@ class MMTimer:
     https://stackoverflow.com/questions/10717589/how-to-implement-high-speed-consistent-sampling
 
     """
+
     def _tick(self):
         self.tickFunc()
 
@@ -72,6 +74,7 @@ class MMTimer:
             if self.stopFunc:
                 self.stopFunc()
 
+
 def main():
     from .mmtimer import MMTimer
     import time
@@ -84,6 +87,7 @@ def main():
     t1.start(True)
     time.sleep(20)
     t1.stop()
+
 
 if __name__ == "__main__":
     main()

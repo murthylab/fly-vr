@@ -1,10 +1,11 @@
-from audio.signal_producer import ConstantSignal
-from audio.stimuli import SinStim, SquareWaveStim
-from control.callback import FlyVRCallback
-from audio.sound_server import SoundServer, SoundStreamProxy
 from collections import deque
 
-from video.video_server import VideoServer, VideoStreamProxy
+from flyvr.audio.signal_producer import ConstantSignal
+from flyvr.audio.stimuli import SinStim, SquareWaveStim
+from flyvr.control.callback import FlyVRCallback
+from flyvr.audio.sound_server import SoundServer, SoundStreamProxy
+from flyvr.video.video_server import VideoServer, VideoStreamProxy
+
 
 class ThresholdCallback(FlyVRCallback):
     """

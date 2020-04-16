@@ -2,7 +2,7 @@ import pytest
 from unittest import mock
 import math
 
-from audio.stimuli import AudioStim, MATFileStim
+from flyvr.audio.stimuli import AudioStim, MATFileStim
 
 def test__generate_data():
 

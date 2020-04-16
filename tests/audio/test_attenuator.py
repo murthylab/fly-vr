@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
 
-from audio.attenuation import Attenuator
-
-from audio.stimuli import AudioStim, SinStim, MATFileStim
+from flyvr.audio.attenuation import Attenuator
+from flyvr.audio.stimuli import AudioStim, SinStim, MATFileStim
 
 
 def test_attenuate():

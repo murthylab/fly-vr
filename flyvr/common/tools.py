@@ -1,5 +1,6 @@
 import ctypes
 
+
 def systime():
     """
     Query the windows performance counter to get the current time in milliseconds.
@@ -10,13 +11,14 @@ def systime():
     tics = ctypes.c_int64()
     freq = ctypes.c_int64()
 
-    #get ticks on the internal ~2MHz QPC clock
-    ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics)) 
-    #get the actual freq. of the internal ~2MHz QPC clock 
-    ctypes.windll.Kernel32.QueryPerformanceFrequency(ctypes.byref(freq)) 
+    # get ticks on the internal ~2MHz QPC clock
+    ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics))
+    # get the actual freq. of the internal ~2MHz QPC clock
+    ctypes.windll.Kernel32.QueryPerformanceFrequency(ctypes.byref(freq))
 
-    t_ms = tics.value*1e3/freq.value
+    t_ms = tics.value * 1e3 / freq.value
     return t_ms
+
 
 def which(program):
     """
@@ -43,8 +45,8 @@ def which(program):
 
     return None
 
-def get_flyvr_git_hash():
 
+def get_flyvr_git_hash():
     hash = None
     try:
 

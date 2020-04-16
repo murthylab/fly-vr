@@ -2,7 +2,7 @@ import pytest
 from unittest import mock
 import math
 
-from audio.stimuli import AudioStim, SinStim
+from flyvr.audio.stimuli import AudioStim, SinStim
 
 @pytest.fixture
 def stim():

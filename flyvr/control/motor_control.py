@@ -1,6 +1,6 @@
 import numpy as np
 
-from audio.signal_producer import SignalProducer, SampleChunk
+from flyvr.audio.signal_producer import SignalProducer, SampleChunk
 
 
 class BallControlSignal(SignalProducer):
@@ -10,7 +10,7 @@ class BallControlSignal(SignalProducer):
     in a simulation of closed loop experiments.
     """
 
-    def __init__(self, periods, durations, loop=True, sample_rate = 10000.0, next_event_callbacks=None):
+    def __init__(self, periods, durations, loop=True, sample_rate=10000.0, next_event_callbacks=None):
         """
         Create the BallControlSignal based on parameters.
 
@@ -37,7 +37,6 @@ class BallControlSignal(SignalProducer):
         sample_idx = 0
         i = 0
         for period in periods:
-
             # Create the signal for this part of the total signal. Generate the waveform with this period for the
             # correct duration.
             num_samples_period = int(period * (sample_rate / 1000))
@@ -55,7 +54,7 @@ class BallControlSignal(SignalProducer):
             # We are going to generate indices into the above signal of appropriate length
             sig_idx = np.mod(np.asarray([j for j in range(num_samples_in_duration)]), num_samples_period)
 
-            self._data[sample_idx:(sample_idx+num_samples_in_duration),:] = s[sig_idx,:]
+            self._data[sample_idx:(sample_idx + num_samples_in_duration), :] = s[sig_idx, :]
             sample_idx = sample_idx + num_samples_in_duration
             i = i + 1
 
@@ -79,5 +78,3 @@ class BallControlSignal(SignalProducer):
             else:
                 # We are done, just yield zeros.
                 yield SampleChunk(data=self._zero_signal, producer_id=self.producer_id)
-
-

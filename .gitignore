@@ -5,6 +5,7 @@ venv
 .pytest_cache
 .cache
 *.pyc
+*.egg-info
 my_config.txt
 data
 tests/test_data/fictrac/test.avi

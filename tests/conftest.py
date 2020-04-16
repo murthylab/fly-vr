@@ -1,9 +1,9 @@
 import pytest
 
-from audio.sound_server import SoundServer
-
 
 def _has_soundcard():
+    from flyvr.audio.sound_server import SoundServer
+
     # noinspection PyProtectedMember
     for _ in SoundServer._iter_compatible_output_devices(show_all=False):
         return True

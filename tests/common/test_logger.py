@@ -4,8 +4,8 @@ import pytest
 import os
 import time
 
-from common.logger import DatasetLogServer, DatasetLogger
-from common.concurrent_task import ConcurrentTask
+from flyvr.common.logger import DatasetLogServer, DatasetLogger
+from flyvr.common.concurrent_task import ConcurrentTask
 
 # These are some test dataset we will write to HDF5 to check things
 test1_dataset = np.zeros((1600,3))

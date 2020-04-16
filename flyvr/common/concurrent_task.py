@@ -2,6 +2,7 @@ from multiprocessing import Process, Queue, Pipe, Manager
 import time
 import sys
 
+
 class ConcurrentTask():
     """
     The ConcurrentTask class encapsulates functionality for creating, starting, stopping, and communicating with
@@ -10,6 +11,7 @@ class ConcurrentTask():
     ensure the underlying process will finnish processing all data sent to it before terminating. If you don't care
     about this, pipe should be fine.
     """
+
     def __init__(self, task, taskinitargs=[], comms='queue'):
         """
         Create the underlying data structures for running the task, but do not start it.

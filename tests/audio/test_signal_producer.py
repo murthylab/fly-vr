@@ -1,8 +1,8 @@
 import numpy as np
 import math
 
-from audio.stimuli import SinStim
-from audio.signal_producer import SampleChunk, SignalProducer, MixedSignal, chunker, ConstantSignal
+from flyvr.audio.stimuli import SinStim
+from flyvr.audio.signal_producer import SampleChunk, SignalProducer, MixedSignal, chunker, ConstantSignal
 
 
 def check_chunker(test_gen, chunk_size):

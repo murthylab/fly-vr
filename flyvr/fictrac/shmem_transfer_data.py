@@ -4,6 +4,7 @@ import ctypes
 # The number of FicTrac fields in the output file
 NUM_FICTRAC_FIELDS = 23
 
+
 class SHMEMFicTracState(ctypes.Structure):
     """
     This class represents the FicTrac tracking state. These are the exact same values written to the output log file
@@ -54,6 +55,7 @@ def fictrac_state_to_vec(s):
                      s.seq_num
                      ])
 
+
 class SHMEMFicTracSignals(ctypes.Structure):
     """
     This class gives a set of variables used to send signals to the FicTrac program.
@@ -65,11 +67,12 @@ class SHMEMFicTracSignals(ctypes.Structure):
     def send_close(self):
         self.close_signal_var = 1
 
+
 def print_fictrac_state(data):
     state_string = ""
     for field_name, field_type in data._fields_:
         field = getattr(data, field_name)
-        if(isinstance(field, float) | isinstance(field, int)):
+        if (isinstance(field, float) | isinstance(field, int)):
             state_string = state_string + str(field) + "\t"
         else:
             state_string = state_string + str(field[0]) + "\t" + str(field[1]) + "\t" + str(field[2]) + "\t"

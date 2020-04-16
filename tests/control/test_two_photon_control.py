@@ -1,8 +1,10 @@
 import pytest
 
-from audio.stimuli import SinStim, AudioStimPlaylist
-from audio.io_task import IOTask, DAQ_NUM_OUTPUT_SAMPLES, DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT
-from control.two_photon_control import TwoPhotonController
+from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
+from flyvr.audio.io_task import IOTask, DAQ_NUM_OUTPUT_SAMPLES, DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT
+from flyvr.control.two_photon_control import TwoPhotonController
+from flyvr.common import SharedState
+from flyvr.common.logger import DatasetLogServer
 
 
 @pytest.fixture
@@ -29,7 +31,6 @@ def stim3():
 def test_two_photon_control(stim1, stim2, stim3):
     stims = [stim1, stim2, stim3]
     stimList = AudioStimPlaylist(stims, shuffle_playback=False)
-
 
     two_photon_control = TwoPhotonController(start_channel_name="line0/port0",
                                              stop_channel_name="line0/por1",
@@ -97,9 +98,6 @@ def test_io_a_output(tmpdir):
     import time
 
     import h5py
-
-    from common import SharedState
-    from common.logger import DatasetLogServer
 
     with DatasetLogServer() as log_server:
 

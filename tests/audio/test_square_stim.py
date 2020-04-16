@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import signal
-from audio.stimuli import SquareWaveStim
+
+from flyvr.audio.stimuli import SquareWaveStim
 
 
 def test_square_stim():

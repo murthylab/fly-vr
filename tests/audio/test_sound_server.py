@@ -1,7 +1,9 @@
 import pytest
 
-from audio.sound_server import SoundServer
-from audio.stimuli import SinStim
+from flyvr.audio.sound_server import SoundServer
+from flyvr.audio.stimuli import SinStim
+from flyvr.common import SharedState
+from flyvr.common.logger import DatasetLogServer
 
 
 @pytest.mark.use_soundcard
@@ -16,9 +18,6 @@ def test_list_devices():
 def test_play_sin(tmpdir):
     import time
     import h5py
-
-    from common import SharedState
-    from common.logger import DatasetLogServer
 
     CHUNK_SIZE = 128
     stim1 = SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000)

@@ -5,8 +5,8 @@ import queue
 import h5py
 import numpy as np
 
-from fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals
-from common.mmtimer import MMTimer
+from flyvr.common.mmtimer import MMTimer
+from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals
 
 
 class ReplayFictrac(object):
@@ -62,7 +62,7 @@ class ReplayFictrac(object):
         # use a queue as a simple tick-tock threadsafe rate-limiter
         tick = queue.Queue(maxsize=1)
 
-        print('ticking at %.1fhz (every %s ms)' % (1./dt, ms))
+        print('ticking at %.1fhz (every %s ms)' % (1. / dt, ms))
 
         t1 = MMTimer(int(ms), lambda: tick.put_nowait(None))
         t1.start(True)

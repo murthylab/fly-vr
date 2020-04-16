@@ -1,12 +1,14 @@
 import time
 import configargparse
 
+
 # A custom action to process command line options that are
 # comma separated lists. Splits and trims whitespace.
 class CommaListParser(configargparse.Action):
     def __call__(self, parser, args, values, option_string=None):
         x = [x.strip() for x in values.split(',')]
         setattr(args, self.dest, x)
+
 
 # A custom action to process command line options that are
 # comma separated lists of numbers. Splits and trims whitespace, then converts to floats.
@@ -15,8 +17,8 @@ class CommaListNumParser(configargparse.Action):
         x = [float(x.strip()) for x in values.split(',')]
         setattr(args, self.dest, x)
 
-def validatate_args(options):
 
+def validatate_args(options):
     if options.ball_control_enable:
         # Make sure the user has passed in the appropriate parameters
         if not options.ball_control_periods:
@@ -26,7 +28,9 @@ def validatate_args(options):
             raise ValueError("Ball control is enabled but no ball_control_durations parameter has been specified.")
 
         if len(options.ball_control_periods) != len(options.ball_control_durations):
-            raise ValueError("ball_control_periods and ball_control_durations must have same length, one duration for each period.")
+            raise ValueError(
+                "ball_control_periods and ball_control_durations must have same length, one duration for each period.")
+
 
 # need to add photosensor argument (and logic)
 # need to add in calibration path argument
@@ -105,11 +109,11 @@ def parse_arguments(args=None):
                         default=False)
     parser.add_argument("--start_delay", type=float,
                         help="Delay the start of playback and acquisition from FicTrac tracking by this many seconds. " +
-                        "The default is 0 seconds.",
+                             "The default is 0 seconds.",
                         default=0.0)
     parser.add_argument("--callback", type=str,
                         help='Filename of Python code that contains implementaion of FlyVRCallback class. Used to plugin' +
-                        'custom control logic for closed loop experiments.', default=None)
+                             'custom control logic for closed loop experiments.', default=None)
     parser.add_argument("--ball_control_enable", action="store_true",
                         default=False,
                         help='Enable control signals for stepper motor controlling ball motion. Used for testing of closed loop setup.')
@@ -128,7 +132,7 @@ def parse_arguments(args=None):
                         default=True,
                         help='Whether the ball control signal should loop idefinitely or not.')
 
-    #required = "stim_playlist".split()
+    # required = "stim_playlist".split()
     required = "".split()
 
     if args:

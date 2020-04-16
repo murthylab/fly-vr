@@ -1,35 +1,31 @@
 import sys
 
-from common.tools import get_flyvr_git_hash
-
 if sys.version_info[0] < 3:
     raise Exception("FlyVR has been upgraded to require Python 3. If running on setup machine. "
                     "Activate Anaconda conda environment from command line with command 'activate fly_vr_env'")
 
+import time
+import traceback
+from multiprocessing import freeze_support
+
 import numpy as np
 import pyglet.media
 
-import time
-from multiprocessing import freeze_support
-
-import traceback
-
-from audio import io_task
-from audio.attenuation import Attenuator
-from audio.stimuli import SinStim, AudioStimPlaylist
-
-from common import SharedState
-from common.build_arg_parser import parse_arguments
-from common.concurrent_task import ConcurrentTask
-from common.logger import DatasetLogger, DatasetLogServer
-from control.callback import FlyVRCallback
-from control.threshold_callback import ThresholdCallback
-
-from fictrac.fictrac_driver import FicTracDriver
-from fictrac.fictrac_driver import fictrac_poll_run_main
+from flyvr.audio import io_task
+from flyvr.audio.attenuation import Attenuator
+from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
+from flyvr.common import SharedState
+from flyvr.common.build_arg_parser import parse_arguments
+from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.common.logger import DatasetLogger, DatasetLogServer
+from flyvr.common.tools import get_flyvr_git_hash
+from flyvr.control.callback import FlyVRCallback
+from flyvr.control.threshold_callback import ThresholdCallback
+from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
 
 
-def main():
+def main_launcher():
+    freeze_support()
 
     # Get the arguments passed
     try:
@@ -64,8 +60,8 @@ def main():
 
 
         print('setup')
-        from video.video_server import VideoServer, VideoStreamProxy
-        from video.stimuli import LoomingDot
+        from flyvr.video.video_server import VideoServer, VideoStreamProxy
+        from flyvr.video.stimuli import LoomingDot
         from time import sleep
         video_server = VideoServer(stimName=options.visual_stimulus,calibration_file=options.screen_calibration,shared_state=state)
         video_client = video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
@@ -146,6 +142,3 @@ def main():
         # Return the RUNTIME_ERROR code as our return value
         return(0)
 
-if __name__ == '__main__':
-    freeze_support()
-    main()

@@ -6,10 +6,10 @@ import time
 
 import numpy as np
 
-from common.tools import which
-from common.concurrent_task import ConcurrentTask
-from fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
-from fictrac.plot_task import plot_task_fictrac
+from flyvr.common.tools import which
+from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
+from flyvr.fictrac.plot_task import plot_task_fictrac
 
 
 def fictrac_poll_run_main(message_pipe, tracDrv, state):

@@ -1,10 +1,10 @@
 import numpy as np
 import h5py as h5
 
-from control.motor_control import BallControlSignal
-from audio.signal_producer import MixedSignal
-from audio.stimuli import SinStim, AudioStimPlaylist
-from control.two_photon_control import TwoPhotonController
+from flyvr.control.motor_control import BallControlSignal
+from flyvr.audio.signal_producer import MixedSignal
+from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
+from flyvr.control.two_photon_control import TwoPhotonController
 
 
 def test_ball_control_signal():

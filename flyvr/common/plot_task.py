@@ -1,13 +1,14 @@
-import matplotlib.pyplot as plt
-import warnings
-import matplotlib.cbook
-import numpy as np
 import time
-
+import warnings
 from collections import deque
 
-from common.concurrent_task import ConcurrentTask
-from fictrac.shmem_transfer_data import SHMEMFicTracState
+import matplotlib.pyplot as plt
+import matplotlib.cbook
+import numpy as np
+
+from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState
+
 
 def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_history=10):
     """
@@ -26,7 +27,8 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
 
     # Setup a queue for caching the historical data received so we can plot history of samples up to
     # some N
-    data_history = deque([np.zeros((chunk_size, num_channels)) for i in range(num_chunks_history)], maxlen=num_chunks_history)
+    data_history = deque([np.zeros((chunk_size, num_channels)) for i in range(num_chunks_history)],
+                         maxlen=num_chunks_history)
 
     warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
     plt.ion()
@@ -42,7 +44,7 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
     point_sets = []
     for chn in range(1, num_channels + 1):
         ax = fig.add_subplot(num_channels, 1, chn)
-        ax.set_title(channel_names[chn-1])
+        ax.set_title(channel_names[chn - 1])
         backgrounds.append(fig.canvas.copy_from_bbox(ax.bbox))  # cache the background
         # ax.axis([0, num_chunks_history * chunk_size, 1.5, 2.5])
         ax.axis([0, num_chunks_history * chunk_size, -limit, limit])
@@ -77,14 +79,14 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
                 # Turned the queued chunks into a flat array
                 sample_i = 0
                 for d in data_history:
-                    plot_data[sample_i:(sample_i+chunk_size),:] = d
+                    plot_data[sample_i:(sample_i + chunk_size), :] = d
                     sample_i = sample_i + chunk_size
 
                 for chn in range(num_channels):
-                    fig.canvas.restore_region(backgrounds[chn])         # restore background
-                    point_sets[chn].set_data(np.arange(num_chunks_history*chunk_size), plot_data[:,chn])
-                    axes[chn].draw_artist(point_sets[chn])              # redraw just the points
-                    #fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
+                    fig.canvas.restore_region(backgrounds[chn])  # restore background
+                    point_sets[chn].set_data(np.arange(num_chunks_history * chunk_size), plot_data[:, chn])
+                    axes[chn].draw_artist(point_sets[chn])  # redraw just the points
+                    # fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
 
                 fig.canvas.draw()
                 fig.canvas.flush_events()
@@ -115,8 +117,8 @@ def plot_task_fictrac(disp_queue, fictrac_state_fields=['speed', 'direction', 'h
 
     # Axes limits for each field
     field_ax_limits = {'speed': (0, .03),
-                       'direction': (0, 2*np.pi),
-                       'heading': (0, 2*np.pi)}
+                       'direction': (0, 2 * np.pi),
+                       'heading': (0, 2 * np.pi)}
 
     # Setup a queue for caching the historical data received so we can plot history of samples up to
     # some N
@@ -129,7 +131,7 @@ def plot_task_fictrac(disp_queue, fictrac_state_fields=['speed', 'direction', 'h
     backgrounds = []
     point_sets = []
     for chn in range(1, num_channels + 1):
-        field_name = fictrac_state_fields[chn-1]
+        field_name = fictrac_state_fields[chn - 1]
         ax = fig.add_subplot(num_channels, 1, chn)
         ax.set_title(field_name)
         backgrounds.append(fig.canvas.copy_from_bbox(ax.bbox))  # cache the background
@@ -158,21 +160,22 @@ def plot_task_fictrac(disp_queue, fictrac_state_fields=['speed', 'direction', 'h
         for d in data_history:
             chan_i = 0
             for field in fictrac_state_fields:
-                plot_data[sample_i,chan_i] = getattr(d, field)
+                plot_data[sample_i, chan_i] = getattr(d, field)
                 chan_i = chan_i + 1
             sample_i = sample_i + 1
 
         for chn in range(num_channels):
-            fig.canvas.restore_region(backgrounds[chn])         # restore background
-            point_sets[chn].set_data(np.arange(num_history), plot_data[:,chn])
-            axes[chn].draw_artist(point_sets[chn])              # redraw just the points
-            #fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
+            fig.canvas.restore_region(backgrounds[chn])  # restore background
+            point_sets[chn].set_data(np.arange(num_history), plot_data[:, chn])
+            axes[chn].draw_artist(point_sets[chn])  # redraw just the points
+            # fig.canvas.blit(axes[chn].bbox)                    # fill in the axes rectangle
 
         fig.canvas.draw()
         fig.canvas.flush_events()
 
     # clean up
     plt.close(fig)
+
 
 def test_fictrac_plot():
     disp_task = ConcurrentTask(task=plot_task_fictrac, comms="pipe",
@@ -194,16 +197,16 @@ def test_fictrac_plot():
             speed = 0
             dspeed = 0.01
 
-        if direction > np.pi*2:
+        if direction > np.pi * 2:
             ddir = -0.03
         if direction < 0:
             direction = 0
             ddir = 0.01
 
         state = SHMEMFicTracState()
-        state.speed = speed + np.random.rand()/10
+        state.speed = speed + np.random.rand() / 10
         state.direction = direction
-        state.heading = direction + np.pi/4
+        state.heading = direction + np.pi / 4
 
         disp_task.send(state)
 

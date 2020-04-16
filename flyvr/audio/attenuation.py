@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
-import audio.stimuli
+import flyvr.audio.stimuli
+
 
 class Attenuator(object):
     def __init__(self, attenuation_factors):
@@ -13,8 +14,8 @@ class Attenuator(object):
     def load_from_file(cls, filename):
         af = np.loadtxt(filename)
 
-        frequencies = af[:,0]
-        factors = af[:,1]
+        frequencies = af[:, 0]
+        factors = af[:, 1]
 
         attenuation_factors = dict(list(zip(frequencies, factors)))
 
@@ -36,13 +37,11 @@ class Attenuator(object):
             try:
                 attenuation_factor = self.attenuation_factors[frequency]
             except:
-            # If we don't find it, then we need to linearly interpolate between the
-            # values to get the right factor.
+                # If we don't find it, then we need to linearly interpolate between the
+                # values to get the right factor.
 
-                interpolator = interp1d(list(self.attenuation_factors.keys()), list(self.attenuation_factors.values()), kind='linear')
+                interpolator = interp1d(list(self.attenuation_factors.keys()), list(self.attenuation_factors.values()),
+                                        kind='linear')
                 attenuation_factor = interpolator(frequency)
 
         return data * attenuation_factor
-
-
-

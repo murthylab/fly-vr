@@ -3,39 +3,26 @@ import threading
 import time
 
 import PyDAQmx as daq
-# noinspection PyUnresolvedReferences
-from PyDAQmx.DAQmxFunctions import (DAQmxCreateTask, DAQmxCreateAOVoltageChan,
-                                    DAQmxCfgSampClkTiming, DAQmxStartTask,
-                                    DAQmxWriteAnalogScalarF64, DAQmxWaitForNextSampleClock, DAQmxStopTask,
-                                    DAQmxClearTask)
-# noinspection PyUnresolvedReferences
-from PyDAQmx.DAQmxConstants import (DAQmx_Val_RSE, DAQmx_Val_Volts, DAQmx_Val_Rising, DAQmx_Val_HWTimedSinglePoint,
-                                    DAQmx_Val_Acquired_Into_Buffer, DAQmx_Val_ContSamps,
-                                    DAQmx_Val_Transferred_From_Buffer,
-                                    DAQmx_Val_DoNotAllowRegen, DAQmx_Val_AllowRegen, DAQmx_Val_GroupByChannel,
-                                    DAQmx_Val_Auto, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
-                                    DAQmx_Val_Diff,
-                                    DAQmx_Val_ChanPerLine)
+from PyDAQmx.DAQmxFunctions import *
+from PyDAQmx.DAQmxConstants import *
 
 import numpy as np
-from ctypes import byref, c_ulong
 
-from audio.attenuation import Attenuator
-from audio.signal_producer import chunker, MixedSignal
-from audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
-from control.motor_control import BallControlSignal
-from control.two_photon_control import TwoPhotonController
-from common.concurrent_task import ConcurrentTask
-from common.plot_task import plot_task_daq
+from flyvr.audio.attenuation import Attenuator
+from flyvr.audio.signal_producer import chunker, MixedSignal
+from flyvr.audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
+from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.common.plot_task import plot_task_daq
+from flyvr.control.two_photon_control import TwoPhotonController
+from flyvr.control.motor_control import BallControlSignal
 
 DAQ_SAMPLE_RATE = 10000
-DAQ_NUM_OUTPUT_SAMPLES = 1000
+DAQ_NUM_OUTPUT_SAMPLES = 800
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 50
 DAQ_NUM_INPUT_SAMPLES = 10000
 DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
 
 
-# noinspection PyPep8Naming
 class IOTask(daq.Task):
     """
     IOTask encapsulates the an input-output task that communicates with the NIDAQ. It works with a list of input or
@@ -44,7 +31,7 @@ class IOTask(daq.Task):
 
     def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
                  num_samples_per_chan=DAQ_SAMPLE_RATE, num_samples_per_event=None, digital=False, has_callback=True,
-                 shared_state=None, done_callback=None, use_RSE=True):
+                 shared_state=None, done_callback=None):
         # check inputs
         daq.Task.__init__(self)
 
@@ -87,16 +74,12 @@ class IOTask(daq.Task):
 
         if self.cha_type is "input":
             if not self.digital:
-                if use_RSE:
-                    self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
-                else:
-                    self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_Diff, -limits, limits, DAQmx_Val_Volts,
-                                             None)
+                self.CreateAIVoltageChan(self.cha_string, "", DAQmx_Val_RSE, -limits, limits, DAQmx_Val_Volts, None)
             else:
-                self.CreateDIChan(self.cha_string, "", DAQmx_Val_ChanPerLine)
+                self.CreateDIChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
             # Get the number of channels from the task
-            nChans = c_ulong()
+            nChans = ctypes.c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
 
@@ -108,10 +91,10 @@ class IOTask(daq.Task):
             if not self.digital:
                 self.CreateAOVoltageChan(self.cha_string, "", -limits, limits, DAQmx_Val_Volts, None)
             else:
-                self.CreateDOChan(self.cha_string, "", DAQmx_Val_ChanPerLine)
+                self.CreateDOChan(self.cha_string, "", daq.DAQmx_Val_ChanPerLine)
 
             # Get the number of channels from the task
-            nChans = c_ulong()
+            nChans = ctypes.c_ulong()
             self.GetTaskNumChans(nChans)
             self.num_channels = nChans.value
 
@@ -315,7 +298,6 @@ def setup_playback_callbacks(stim, logger, state):
                   chunks=(2048, 2), dtype=np.int32)
 
 
-# noinspection PyPep8Naming
 def io_task_main(message_pipe, state):
     try:
 
@@ -373,7 +355,7 @@ def io_task_main(message_pipe, state):
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
-                            shared_state=state, use_RSE=options.use_RSE)
+                            shared_state=state)
 
             taskDO = None
             two_photon_controller = None
@@ -535,7 +517,7 @@ def io_task_main(message_pipe, state):
 
 
 def test_hardware_singlepoint(rate=10000.0):
-    taskHandle = daq.TaskHandle()
+    taskHandle = TaskHandle()
     samplesPerChannelWritten = daq.int32()
     isLate = daq.c_uint32()
 
@@ -559,10 +541,10 @@ def test_hardware_singlepoint(rate=10000.0):
 
             write_index += 1
 
-            if write_index >= stim.data.shape[0]:
+            if write_index > stim.data.shape[0]:
                 write_index = 0
 
-    except daq.DAQError as err:
+    except DAQError as err:
         print("DAQmx Error: %s" % err)
     finally:
         if taskHandle:

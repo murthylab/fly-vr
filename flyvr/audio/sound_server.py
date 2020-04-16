@@ -5,10 +5,9 @@ import multiprocessing
 import numpy as np
 import sounddevice as sd
 
-from audio.stimuli import AudioStim
-from audio.io_task import chunker
-
-from common.concurrent_task import ConcurrentTask
+from flyvr.audio.stimuli import AudioStim
+from flyvr.audio.io_task import chunker
+from flyvr.common.concurrent_task import ConcurrentTask
 
 
 class SoundServer:

@@ -6,7 +6,7 @@ from PyDAQmx.DAQmxConstants import *
 from PyDAQmx.DAQmxFunctions import *
 
 
-from audio.signal_producer import SignalProducer, SampleChunk
+from flyvr.audio.signal_producer import SignalProducer, SampleChunk
 
 
 class TwoPhotonController(SignalProducer):

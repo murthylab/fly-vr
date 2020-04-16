@@ -3,8 +3,8 @@ import math
 from unittest import mock
 import numpy as np
 
-from audio.signal_producer import chunker
-from audio.stimuli import SinStim, AudioStimPlaylist
+from flyvr.audio.signal_producer import chunker
+from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
 
 @pytest.fixture
 def stim1():

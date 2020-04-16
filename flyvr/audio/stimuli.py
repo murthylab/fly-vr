@@ -1,14 +1,15 @@
 import abc
-import numpy as np
-import scipy
-from scipy import io
-from scipy import signal
-import pandas as pd
 import os.path
 import time
-import h5py
 
-from audio.signal_producer import SignalProducer, SampleChunk, MixedSignal, ConstantSignal
+import h5py
+import numpy as np
+import scipy
+import pandas as pd
+from scipy import io
+from scipy import signal
+
+from flyvr.audio.signal_producer import SignalProducer, SampleChunk, MixedSignal, ConstantSignal
 
 
 class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
@@ -20,7 +21,7 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
     methods.
     """
 
-    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence = 0, post_silence = 0, attenuator=None,
+    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence=0, post_silence=0, attenuator=None,
                  frequency=None, max_value=10.0, min_value=-10.0, next_event_callbacks=None):
         """
         Create an audio stimulus object that encapsulates the generation of the underlying audio
@@ -71,7 +72,7 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
         :return: The silence signal.
         :rtype: numpy.ndarray
         """
-        return np.zeros(int(np.ceil((silence_duration/1000.0) * self.sample_rate)))
+        return np.zeros(int(np.ceil((silence_duration / 1000.0) * self.sample_rate)))
 
     def _add_silence(self, data):
         """
@@ -294,7 +295,6 @@ class SinStim(AudioStim):
 
     def __init__(self, frequency, amplitude, phase, sample_rate, duration, intensity=1.0, pre_silence=0,
                  post_silence=0, attenuator=None, next_event_callbacks=None):
-
         # Initiatialize the base class members
         super(SinStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
                                       pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
@@ -375,11 +375,10 @@ class SquareWaveStim(AudioStim):
 
     def __init__(self, frequency, duty_cycle, amplitude, sample_rate, duration, intensity=1.0, pre_silence=0,
                  post_silence=0, attenuator=None, next_event_callbacks=None):
-
         # Initiatialize the base class members
         super(SquareWaveStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
-                                      pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
-                                      frequency=frequency, next_event_callbacks=next_event_callbacks)
+                                             pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
+                                             frequency=frequency, next_event_callbacks=next_event_callbacks)
 
         self.__duty_cycle = duty_cycle
         self.__amplitude = amplitude
@@ -443,8 +442,8 @@ class SquareWaveStim(AudioStim):
 
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
         data = self.amplitude * signal.square(T * 2 * np.pi * self.frequency, duty=self.duty_cycle)
-        data = np.append(np.zeros(int(self.pre_silence * self.sample_rate)),data)
-        data = np.append(data,np.zeros(int(self.post_silence * self.sample_rate)))
+        data = np.append(np.zeros(int(self.pre_silence * self.sample_rate)), data)
+        data = np.append(data, np.zeros(int(self.post_silence * self.sample_rate)))
         return data
 
 
@@ -511,6 +510,7 @@ class MATFileStim(AudioStim):
 
 class AudioStimPlaylist(SignalProducer):
     """A simple class that provides a generator for a sequence of AudioStim objects."""
+
     def __init__(self, stims, shuffle_playback=False, next_event_callbacks=None):
 
         # Attach event next callbacks to this object, since it is a signal producer
@@ -520,15 +520,16 @@ class AudioStimPlaylist(SignalProducer):
         self.shuffle_playback = shuffle_playback
 
         # We need to create a dictionary that describes the state of stimulus playlist
-        self.event_message = {"name" : "AudioStimulusPlaylist",
-                              "stimuli" : [stim.event_message for stim in stims],
-                              "shuffle_playback" : shuffle_playback}
+        self.event_message = {"name": "AudioStimulusPlaylist",
+                              "stimuli": [stim.event_message for stim in stims],
+                              "shuffle_playback": shuffle_playback}
 
         # If we want to shuffle things, get a random permutation.
         if (self.shuffle_playback):
             self.random_seed = int(time.time())
 
     """Lets make the class iterable since it is just a wrapper around a list of stimuli."""
+
     def __iter__(self):
         return iter(self._stims)
 
@@ -541,7 +542,7 @@ class AudioStimPlaylist(SignalProducer):
 
         def parse_list(x):
             if isinstance(x, str):
-                return x.replace('[','').replace(']','').split()
+                return x.replace('[', '').replace(']', '').split()
             else:
                 return [x]
 
@@ -572,7 +573,7 @@ class AudioStimPlaylist(SignalProducer):
             print(chan_names)
 
             def throw_error(msg):
-                return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row+2, msg))
+                return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row + 2, msg))
 
             # Now, parse the parameter fields to make sure they have the correct number of fields.
             try:
@@ -610,8 +611,11 @@ class AudioStimPlaylist(SignalProducer):
                     # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=500.0, intensity=1.0, pre_silence=1.0,
                     #     post_silence=1.0)
                     # ["stimfilename", "freq", "rate", "silencepre", "silencepost", "intensity"]
-                    chan = SquareWaveStim(frequency=frequencies[chan_idx], duty_cycle=0.75, amplitude=intensities[chan_idx], sample_rate=1e4, duration=data['rate'][row]*1000.0, intensity=1.0, pre_silence=data['silencepre'][row],
-                        post_silence=data['silencepost'][row])
+                    chan = SquareWaveStim(frequency=frequencies[chan_idx], duty_cycle=0.75,
+                                          amplitude=intensities[chan_idx], sample_rate=1e4,
+                                          duration=data['rate'][row] * 1000.0, intensity=1.0,
+                                          pre_silence=data['silencepre'][row],
+                                          post_silence=data['silencepost'][row])
                 else:
                     if frequencies[chan_idx] == -1:
                         atten = None
@@ -696,25 +700,16 @@ class AudioStimPlaylist(SignalProducer):
             stim_idx = stim_idx + 1
 
             # If we are at the end, then either go back to beginning or reshuffle
-            if(stim_idx == len(playback_order)):
+            if (stim_idx == len(playback_order)):
                 stim_idx = 0
 
-                if(shuffle_playback):
+                if (shuffle_playback):
                     playback_order = rng.permutation(len(playback_order))
-
-
-
-
-
-
-
-
-
-
 
 
 class VideoStimPlaylist(SignalProducer):
     """A simple class that provides a generator for a sequence of AudioStim objects."""
+
     def __init__(self, stims, shuffle_playback=False, next_event_callbacks=None):
 
         # Attach event next callbacks to this object, since it is a signal producer
@@ -724,15 +719,16 @@ class VideoStimPlaylist(SignalProducer):
         self.shuffle_playback = shuffle_playback
 
         # We need to create a dictionary that describes the state of stimulus playlist
-        self.event_message = {"name" : "VideoStimulusPlaylist",
-                              "stimuli" : [stim.event_message for stim in stims],
-                              "shuffle_playback" : shuffle_playback}
+        self.event_message = {"name": "VideoStimulusPlaylist",
+                              "stimuli": [stim.event_message for stim in stims],
+                              "shuffle_playback": shuffle_playback}
 
         # If we want to shuffle things, get a random permutation.
         if (self.shuffle_playback):
             self.random_seed = int(time.time())
 
     """Lets make the class iterable since it is just a wrapper around a list of stimuli."""
+
     def __iter__(self):
         return iter(self._stims)
 
@@ -745,7 +741,7 @@ class VideoStimPlaylist(SignalProducer):
 
         def parse_list(x):
             if isinstance(x, str):
-                return x.replace('[','').replace(']','').split()
+                return x.replace('[', '').replace(']', '').split()
             else:
                 return [x]
 
@@ -774,7 +770,7 @@ class VideoStimPlaylist(SignalProducer):
             chan_names = stim_string.split(';')
 
             def throw_error(msg):
-                return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row+2, msg))
+                return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row + 2, msg))
 
             # Now, parse the parameter fields to make sure they have the correct number of fields.
             try:
@@ -811,8 +807,9 @@ class VideoStimPlaylist(SignalProducer):
                     # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
                     #     post_silence=5.0)
 
-                    chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=5.0, intensity=1.0, pre_silence=5.0,
-                        post_silence=5.0)
+                    chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=5.0,
+                                          intensity=1.0, pre_silence=5.0,
+                                          post_silence=5.0)
                 else:
                     if frequencies[chan_idx] == -1:
                         atten = None
@@ -894,8 +891,8 @@ class VideoStimPlaylist(SignalProducer):
             stim_idx = stim_idx + 1
 
             # If we are at the end, then either go back to beginning or reshuffle
-            if(stim_idx == len(playback_order)):
+            if (stim_idx == len(playback_order)):
                 stim_idx = 0
 
-                if(shuffle_playback):
+                if (shuffle_playback):
                     playback_order = rng.permutation(len(playback_order))

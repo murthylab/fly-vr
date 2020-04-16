@@ -6,7 +6,7 @@ import collections
 import numpy as np
 import matplotlib.pyplot as plt
 
-from fictrac.shmem_transfer_data import SHMEMFicTracState
+from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState
 
 
 def angle_diff(angle1, angle2):

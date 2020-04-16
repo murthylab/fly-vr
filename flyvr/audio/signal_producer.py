@@ -2,25 +2,30 @@ import numpy as np
 import abc
 import copy
 
+
 class SignalNextEventData(object):
     """
     A class that encapsulates all the data that SignalProducer's need to send to their control
     functions when a next generator event occurs.
     """
+
     def __init__(self, producer_id, channels, metadata, num_samples):
         self.producer_id = producer_id
         self.metadata = metadata
         self.num_samples = num_samples
         self.channels = np.atleast_1d(channels)
 
+
 class SampleChunk(object):
     """
     A class that encapsulated numpy arrays containing sample data along with metadata information. This allows us to
     record attributes like where the data was produced.
     """
+
     def __init__(self, data, producer_id):
         self.data = data
         self.producer_id = producer_id
+
 
 class SignalProducer(object, metaclass=abc.ABCMeta):
     """
@@ -132,6 +137,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         data = next(self.data_generator()).data
         return data.shape[0]
 
+
 def chunker(gen, chunk_size=100):
     """
     A function that takes a generator function that outputs arbitrary size SampleChunk objects. These object contain
@@ -164,11 +170,12 @@ def chunker(gen, chunk_size=100):
 
         # We want to add at most chunk_size samples to a chunk. We need to see if the current data will fit. If it does,
         # copy the whole thing. If it doesn't, just copy what will fit.
-        sz = min(chunk_size-curr_chunk_sample, num_samples-curr_data_sample)
+        sz = min(chunk_size - curr_chunk_sample, num_samples - curr_data_sample)
         if data.ndim == 1:
             next_chunk[curr_chunk_sample:(curr_chunk_sample + sz)] = data[curr_data_sample:(curr_data_sample + sz)]
         else:
-            next_chunk[curr_chunk_sample:(curr_chunk_sample+sz), :] = data[curr_data_sample:(curr_data_sample + sz), :]
+            next_chunk[curr_chunk_sample:(curr_chunk_sample + sz), :] = data[curr_data_sample:(curr_data_sample + sz),
+                                                                        :]
 
         curr_chunk_sample = curr_chunk_sample + sz
         curr_data_sample = curr_data_sample + sz
@@ -259,10 +266,9 @@ class MixedSignal(SignalProducer):
                 if chunks[i].data.ndim == 1:
                     self._data[:, channel_idx] = chunks[i].data
                 else:
-                    self._data[:, channel_idx:channel_idx+self.chunk_widths[i]] = chunks[i].data
+                    self._data[:, channel_idx:channel_idx + self.chunk_widths[i]] = chunks[i].data
 
                 channel_idx = channel_idx + self.chunk_widths[i]
-
 
             # We are about to yield, send an event to our callbacks
             self.trigger_next_callback(message_data=self.event_message, num_samples=self._data.shape[0])
@@ -276,24 +282,23 @@ class ConstantSignal(SignalProducer):
     """
 
     def __init__(self, constant, num_samples=1, next_event_callbacks=None):
-
         # Attach event next callbacks to this object, since it is a signal producer
         super(ConstantSignal, self).__init__(next_event_callbacks=next_event_callbacks)
 
         self.constant = constant
 
-        self.chunk = SampleChunk(data=np.ones(num_samples, dtype=self.dtype)*self.constant,
+        self.chunk = SampleChunk(data=np.ones(num_samples, dtype=self.dtype) * self.constant,
                                  producer_id=self.producer_id)
 
         self.event_message['constant'] = constant
 
     def data_generator(self):
         while True:
-
             # We are about to yield, send an event to our callbacks
             self.trigger_next_callback(message_data=self.event_message, num_samples=self.chunk.data.shape[0])
 
             yield self.chunk
+
 
 def data_generator_test(channels=1, num_samples=10000, dtype=np.float64):
     '''generator yields next chunk of data for output'''

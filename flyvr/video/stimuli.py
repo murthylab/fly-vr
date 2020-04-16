@@ -5,6 +5,7 @@ from scipy import signal
 import h5py
 import abc
 
+
 class VideoStim(object, metaclass=abc.ABCMeta):
     """
     The VideoStim class is base class meant to encapsulate common functionality and implementation details found in
@@ -14,7 +15,8 @@ class VideoStim(object, metaclass=abc.ABCMeta):
     methods.
     """
 
-    def __init__(self, sample_rate, duration, window=None, intensity=1.0, pre_silence = 0, post_silence = 0, attenuator=None,
+    def __init__(self, sample_rate, duration, window=None, intensity=1.0, pre_silence=0, post_silence=0,
+                 attenuator=None,
                  frequency=None, max_value=10.0, min_value=-10.0, next_event_callbacks=None):
         """
         Create an audio stimulus object that encapsulates the generation of the underlying audio
@@ -67,7 +69,7 @@ class VideoStim(object, metaclass=abc.ABCMeta):
         :return: The silence signal.
         :rtype: numpy.ndarray
         """
-        return np.zeros(int(np.ceil((silence_duration/1000.0) * self.sample_rate)))
+        return np.zeros(int(np.ceil((silence_duration / 1000.0) * self.sample_rate)))
 
     def _add_silence(self, data):
         """
@@ -280,6 +282,7 @@ class VideoStim(object, metaclass=abc.ABCMeta):
         self.__frequency = frequency
         self.data = self._generate_data()
 
+
 class LoomingDot(VideoStim):
     """
        The LoomingDot class provides a simple interface for generating sinusoidal audio stimulus data
@@ -289,13 +292,12 @@ class LoomingDot(VideoStim):
 
     def __init__(self, window, intensity=1.0, pre_silence=0,
                  post_silence=0, attenuator=None, next_event_callbacks=None):
-
         # Initiatialize the base class members
         super(LoomingDot, self).__init__(window=window, sample_rate=sample_rate, duration=duration, intensity=intensity,
-                                      pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
-                                      frequency=frequency, next_event_callbacks=next_event_callbacks)
+                                         pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
+                                         frequency=frequency, next_event_callbacks=next_event_callbacks)
 
-        self.screen = visual.GratingStim(win=mywin, size=5, pos=[0,0], sf=50, color=-1)
+        self.screen = visual.GratingStim(win=mywin, size=5, pos=[0, 0], sf=50, color=-1)
 
         # self.__amplitude = amplitude
         # self.__phase = phase
