@@ -39,5 +39,5 @@ def test_play_sin(tmpdir):
     log_server.stop_logging_server()
     log_server.wait_till_close()
 
-    with h5py.File(dest) as h5:
+    with h5py.File(dest, mode='r') as h5:
         assert '/fictrac/soundcard_synchronization_info' in h5
