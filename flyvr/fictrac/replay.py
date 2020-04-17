@@ -58,7 +58,7 @@ class ReplayFictrac(object):
 
     def replay(self, fps='auto'):
         if fps == 'auto':
-            ts = self._ds[:][21]
+            ts = self._ds[:, 21]
             dt = abs(np.median(np.diff(ts)))
         else:
             dt = 1. / fps
