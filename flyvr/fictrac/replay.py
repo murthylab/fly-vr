@@ -1,6 +1,7 @@
 import mmap
 import ctypes
 import queue
+import os.path
 
 import h5py
 import numpy as np
@@ -30,6 +31,9 @@ class ReplayFictrac(object):
         self._send_row(0)
 
     def _send_row(self, idx):
+        """
+        returns: fn, ts
+        """
         r = self._ds[idx].tolist()  # to python std types (all floats)
 
         self._fictrac_state.del_rot_cam_vec = tuple(r[1:4])
@@ -49,6 +53,8 @@ class ReplayFictrac(object):
 
         # write the frame counter last as the other processes
         self._fictrac_state.frame_cnt = int(r[0])
+
+        return r[0], r[21]
 
     def replay(self, fps='auto'):
         if fps == 'auto':
@@ -76,3 +82,42 @@ class ReplayFictrac(object):
 
             if self._fictrac_signals.close_signal_var == 1:
                 break
+
+
+class FicTracDriverReplay(object):
+    """ quacks like FicTracDriver for replaying a previous experiment """
+
+    class StateReplayFictrac(ReplayFictrac):
+
+        def __init__(self, state, *args, **kwargs):
+            self._state = state
+            super().__init__(*args, **kwargs)
+
+        def _send_row(self, idx):
+            fn, ts = super()._send_row(idx)
+            if idx == 1:
+                self._state.FICTRAC_READY.value = 1
+            self._state.FICTRAC_FRAME_NUM.value = int(fn)
+
+    def __init__(self, config_file, *args, **kwargs):
+        if not os.path.splitext(config_file)[1] == '.h5':
+            raise ValueError('you must supply a previous experiment h5 file containing fictrac output')
+        self._h5_path = config_file
+
+    def run(self, message_pipe, state):
+        replay = FicTracDriverReplay.StateReplayFictrac(state, self._h5_path)
+        replay.replay()
+        state.FICTRAC_READY.value = 0
+        state.RUN.value = 0
+
+
+def main_replay():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--fps', type=float, default=0, help='play back fictrac data at this fps '
+                                                             '(0 = rate at which it was recorded)')
+    parser.add_argument('h5file', nargs=1, metavar='PATH', help='path to h5 file of previous flyvr session')
+    args = parser.parse_args()
+
+    r = ReplayFictrac(args.h5file[0])
+    r.replay('auto' if args.fps <= 0 else args.fps)

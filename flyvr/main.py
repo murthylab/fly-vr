@@ -21,12 +21,12 @@ from flyvr.common.tools import get_flyvr_git_hash
 from flyvr.control.callback import FlyVRCallback
 from flyvr.control.threshold_callback import ThresholdCallback
 from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
+from flyvr.fictrac.replay import FicTracDriverReplay
 
 
 def main_launcher():
     freeze_support()
 
-    # Get the arguments passed
     try:
         options = parse_arguments()
     except ValueError as ex:
@@ -82,9 +82,11 @@ def main_launcher():
             # fictrac velocity threshold
             fictrac_callback = ThresholdCallback(shared_state=state)
 
-            tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                    None, options.pgr_cam_enable,
-                                    plot_on=options.fictrac_plot_state)
+            if options.fictrac_config.endswith('.h5'):
+                tracDrv = FicTracDriverReplay(options.fictrac_config)
+            else:
+                tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
+                                        pgr_enable=options.pgr_cam_enable)
 
             # Run the task
             print("Starting FicTrac ... ")

@@ -23,14 +23,11 @@ setup(
         'pytest==5.4.1',
         'pytest-cov==2.8.1',
     ],
-    extras_require={
-        'bloscpack': ['bloscpack']
-    },
     entry_points={
         'console_scripts': [
             'flyvr = flyvr.main:main_launcher',
-            'imgstore-save = imgstore.apps:main_saver',
-            'imgstore-test = imgstore.apps:main_test',
+            'flyvr-fictrac-replay = flyvr.fictrac.replay:main_replay',
+            'flyvr-fictrac-plot = flyvr.fictrac.plot_task:main_plot_fictrac',
         ]
     },
 )

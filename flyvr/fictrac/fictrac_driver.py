@@ -7,13 +7,11 @@ import time
 import numpy as np
 
 from flyvr.common.tools import which
-from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
-from flyvr.fictrac.plot_task import plot_task_fictrac
 
 
-def fictrac_poll_run_main(message_pipe, tracDrv, state):
-    tracDrv.run(message_pipe, state)
+def fictrac_poll_run_main(message_pipe, trac_drviver, state):
+    trac_drviver.run(message_pipe, state)
 
 
 class FicTracDriver(object):
@@ -22,22 +20,19 @@ class FicTracDriver(object):
     calls a control function once for each time the tracking state of the insect is updated.
     """
 
-    def __init__(self, config_file, console_ouput_file, track_change_callback=None, pgr_enable=False, plot_on=True):
+    def __init__(self, config_file, console_ouput_file, pgr_enable=False):
         """
         Create the FicTrac driver object. This function will perform a check to see if the FicTrac program is present
         on the path. If it is not, it will throw an exception.
 
         :param str config_file: The path to the configuration file that should be passed to the FicTrac command.
         :param str console_output_file: The path to the file where console output should be stored.
-        :param track_change_callback: A FlyVRCallback class which is called once everytime tracking status changes. See
-        control.FlyVRCallback for example.
         :param bool pgr_enable: Is Point Grey camera support needed. This just decides which executable to call, either
         'FicTrac' or 'FicTrac-PGR'.
         """
 
         self.config_file = config_file
         self.console_output_file = console_ouput_file
-        self.track_change_callback = track_change_callback
         self.pgr_enable = pgr_enable
 
         self.fictrac_bin = 'FicTrac'
@@ -57,8 +52,6 @@ class FicTracDriver(object):
         self.fictrac_process = None
         self.fictrac_signals = None
 
-        self.plot_on = plot_on
-
     def run(self, message_pipe, state):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
@@ -67,11 +60,6 @@ class FicTracDriver(object):
 
         :return:
         """
-
-        # Setup anything the callback needs.
-        if self.track_change_callback is not None:
-            self.track_change_callback.setup_callback()
-
         # Open or create the shared memory region for accessing FicTrac's state
         shmem = mmap.mmap(-1, ctypes.sizeof(SHMEMFicTracState), "FicTracStateSHMEM")
 
@@ -90,11 +78,6 @@ class FicTracDriver(object):
 
             self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out,
                                                     stderr=subprocess.STDOUT)
-
-            if self.plot_on:
-                self.plot_task = ConcurrentTask(task=plot_task_fictrac, comms="pipe",
-                                                taskinitargs=[state])
-                self.plot_task.start()
 
             data = SHMEMFicTracState.from_buffer(shmem)
             first_frame_count = data.frame_cnt
@@ -125,19 +108,12 @@ class FicTracDriver(object):
                     # Log the FicTrac data to our master log file.
                     state.logger.log('/fictrac/output', fictrac_state_to_vec(data_copy))
 
-                    if self.track_change_callback is not None:
-                        self.track_change_callback.process_callback(data_copy)
-
                 # If we detect it is time to shutdown, kill the FicTrac process
                 if not state.is_running_well():
                     self.stop()
                     break
 
         state.FICTRAC_READY.value = 0
-
-        # Call the callback shutdown code.
-        if self.track_change_callback is not None:
-            self.track_change_callback.shutdown_callback()
 
         # Get the fic trac process return code
         if self.fictrac_process.returncode is not None and self.fictrac_process.returncode != 0:

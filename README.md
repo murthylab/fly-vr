@@ -51,6 +51,13 @@ TLDR;
 
 * `flyvr -c empty.config.py`
 
+## Usage of Individual Utilities
+
+* `$ flyvr-fictrac-plot`  
+  show a realtime plot of fictrac state
+* `$ flyvr-fictrac-replay`  
+  replay fictrac data from a previously recorded experiment record_file
+
 # Installation
 
 You need to be running an up-to-date Windows 10 installation.
