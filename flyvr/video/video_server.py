@@ -765,7 +765,7 @@ class VideoServer:
                     # only really need to do this every few frames?
                     self.logger.log("/video/daq_synchronization_info",
                                     np.array([self.frameNum,
-                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
+                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN]))
 
     def _stream_end(self):
         """

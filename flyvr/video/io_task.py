@@ -225,8 +225,8 @@ class IOTask(daq.Task):
                 # Log output syncrhonization info only if the logger is valid and the task is not digital.
                 if self.logger is not None and not self.digital:
                     self.logger.log("/fictrac/daq_synchronization_info",
-                                    np.array([self.shared_state.FICTRAC_FRAME_NUM.value,
-                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value]))
+                                    np.array([self.shared_state.FICTRAC_FRAME_NUM,
+                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN]))
 
                 if not self.digital:
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
@@ -234,8 +234,8 @@ class IOTask(daq.Task):
 
                     # Keep track of how many samples we have written out in a global variable
                     if self.shared_state is not None:
-                        with self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.get_lock():
-                            self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.value += self._data.shape[0]
+                        self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN = \
+                            self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN + self._data.shape[0]
                 else:
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely,
                                            DAQmx_Val_GroupByScanNumber, self._data, None, None)
@@ -427,11 +427,11 @@ def io_task_main(message_pipe, state):
                 taskDI.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             # Message loop that waits for start signal
-            while state.START_DAQ.value == 0 and state.is_running_well():
+            while state.START_DAQ == 0 and state.is_running_well():
                 time.sleep(0.2)
 
             # We received the start signal, lets set it back to 0
-            state.START_DAQ.value = 0
+            state.START_DAQ = 0
 
             # Start the display and logging tasks
             disp_task.start()
@@ -455,7 +455,7 @@ def io_task_main(message_pipe, state):
             taskAI.StartTask()
 
             # Signal that the DAQ is ready and acquiring samples
-            state.DAQ_READY.value = 1
+            state.DAQ_READY = 1
 
             while state.is_running_well():
                 if message_pipe.poll(0.1):
@@ -510,7 +510,7 @@ def io_task_main(message_pipe, state):
         if taskAI is not None:
             taskAI.ClearTask()
 
-        state.DAQ_READY.value = 0
+        state.DAQ_READY = 0
 
     except Exception as e:
         state.runtime_error(e, -2)

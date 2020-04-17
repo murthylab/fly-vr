@@ -96,8 +96,8 @@ class FicTracDriverReplay(object):
         def _send_row(self, idx):
             fn, ts = super()._send_row(idx)
             if idx == 1:
-                self._state.FICTRAC_READY.value = 1
-            self._state.FICTRAC_FRAME_NUM.value = int(fn)
+                self._state.FICTRAC_READY = 1
+            self._state.FICTRAC_FRAME_NUM = int(fn)
 
     def __init__(self, config_file, *args, **kwargs):
         if not os.path.splitext(config_file)[1] == '.h5':
@@ -107,8 +107,8 @@ class FicTracDriverReplay(object):
     def run(self, message_pipe, state):
         replay = FicTracDriverReplay.StateReplayFictrac(state, self._h5_path)
         replay.replay()
-        state.FICTRAC_READY.value = 0
-        state.RUN.value = 0
+        state.FICTRAC_READY = 0
+        state.RUN = 0
 
 
 def main_replay():

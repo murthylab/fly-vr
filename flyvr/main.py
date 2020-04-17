@@ -94,7 +94,7 @@ def main_launcher():
             fictrac_task.start()
 
             # Wait till FicTrac is processing frames
-            while state.FICTRAC_READY.value == 0 and state.is_running_well():
+            while state.FICTRAC_READY == 0 and state.is_running_well():
                 time.sleep(0.2)
 
         if state.is_running_well():
@@ -104,10 +104,10 @@ def main_launcher():
 
             # Send a signal to the DAQ to start playback and acquisition
             sys.stdout.write("Starting DAQ tasks ... \n")
-            state.START_DAQ.value = 1
+            state.START_DAQ = 1
 
             # Wait until we get a ready message from the DAQ task
-            while state.DAQ_READY.value == 0 and state.is_running_well():
+            while state.DAQ_READY == 0 and state.is_running_well():
                 time.sleep(0.2)
 
             # Wait till the user presses enter to end session
@@ -123,7 +123,7 @@ def main_launcher():
         print("Shutting down ... ")
 
         if state is not None:
-            state.RUN.value = 0
+            state.RUN = 0
 
         # Wait until all the tasks are finished.
         if daqTask is not None:

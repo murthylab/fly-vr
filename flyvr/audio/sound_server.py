@@ -273,7 +273,7 @@ class SoundServer:
             # Update the number of samples played in the shared state counter
             if self.flyvr_shared_state is not None:
                 self.flyvr_shared_state.logger.log("/fictrac/soundcard_synchronization_info",
-                                                   np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM.value,
+                                                   np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                              self.samples_played,
                                                              producer_id]))
 

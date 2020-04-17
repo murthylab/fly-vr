@@ -91,15 +91,15 @@ class FicTracDriver(object):
                     # If this is our first frame incremented, then send a signal to the
                     # that we have started processing frames
                     if old_frame_count == first_frame_count:
-                        state.FICTRAC_READY.value = 1
+                        state.FICTRAC_READY = 1
 
-                    if new_frame_count - old_frame_count != 1 and state.RUN.value != 1:
+                    if new_frame_count - old_frame_count != 1 and state.RUN != 1:
                         self.fictrac_process.terminate()
                         print(("FicTrac frame counter jumped by more than 1! oldFrame = " +
                                str(old_frame_count) + ", newFrame = " + str(new_frame_count)))
 
                     old_frame_count = new_frame_count
-                    state.FICTRAC_FRAME_NUM.value = new_frame_count
+                    state.FICTRAC_FRAME_NUM = new_frame_count
 
                     # Copy the current state.
                     data_copy = SHMEMFicTracState()
@@ -113,11 +113,11 @@ class FicTracDriver(object):
                     self.stop()
                     break
 
-        state.FICTRAC_READY.value = 0
+        state.FICTRAC_READY = 0
 
         # Get the fic trac process return code
         if self.fictrac_process.returncode is not None and self.fictrac_process.returncode != 0:
-            state.RUN.value = 0
+            state.RUN = 0
             state.RUNTIME_ERROR = -5
             raise RuntimeError(
                 "FicTrac failed because of an application error. Consult the FicTrac console output file.")
