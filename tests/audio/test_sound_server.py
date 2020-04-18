@@ -19,7 +19,6 @@ def test_play_sin(tmpdir):
     import time
     import h5py
 
-    CHUNK_SIZE = 128
     stim1 = SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000)
 
     dest = tmpdir.join('test.h5').strpath
@@ -30,7 +29,8 @@ def test_play_sin(tmpdir):
         shared_state = SharedState(None, logger)
 
         sound_server = SoundServer(flyvr_shared_state=shared_state)
-        sound_client = sound_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
+        sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
+                                                 suggested_output_latency=0.002)
         sound_client.play(stim1)
         time.sleep(1.5)
 

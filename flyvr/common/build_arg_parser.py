@@ -41,6 +41,7 @@ def parse_arguments(args=None):
     # Setup program command line argument parser
     parser = configargparse.ArgumentParser()
     parser.add('-c', '--config', required=True, is_config_file=True, help='Path to a configuration file.')
+    parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
     parser.add_argument("-p", "--stim_playlist", dest="stim_playlist",
                         help="A playlist file of auditory stimuli")
     parser.add_argument("-a", "--attenuation_file", dest="attenuation_file",
@@ -62,7 +63,7 @@ def parse_arguments(args=None):
     parser.add_argument("--addSyncOutput", action="store_true",
                         help="Send a 5V power signal to the last AO channel for visual synchronization.",
                         default=False)
-    parser.add_argument('-v', "--visual_stimulus",
+    parser.add_argument("--visual_stimulus",
                         type=str,
                         help="A pre-defined visual stimulus",
                         default='grating')

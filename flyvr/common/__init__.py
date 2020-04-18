@@ -1,7 +1,22 @@
+import re
 import sys
+import mmap
+import ctypes
 import traceback
 
-from multiprocessing import Value
+from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer
+
+
+class SHMEMFlyVRState(ctypes.Structure):
+    _fields_ = [
+        ('run', ctypes.c_int),
+        ('runtime_error', ctypes.c_int),
+        ('daq_ready', ctypes.c_int),
+        ('start_daq', ctypes.c_int),
+        ('fictrac_ready', ctypes.c_int),
+        ('daq_output_num_samples_written', ctypes.c_int),
+        ('sound_output_num_samples_written', ctypes.c_int),
+    ]
 
 
 # noinspection PyPep8Naming
@@ -10,93 +25,92 @@ class SharedState(object):
     A class to represent the shared state between our concurrent tasks. We can add values to this shared state and they
     will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
     """
-    def __init__(self, options, logger):
 
-        # Lets store the options passed to the program. This does not need to be stored in a thread
-        # safe manner.
+    def __init__(self, options, logger):
+        # Lets store the options passed to the program.
         self._options = options
         self._logger = logger
 
-        self._run = Value('i', 1)
-        self._runtime_error = Value('i', 0)
-        self._daq_ready = Value('i', 0)
-        self._start_daq = Value('i', 0)
-        self._fictrac_ready = Value('i', 0)
-        self._fictrac_frame_num = Value('i', 0)
-        self._daq_output_num_samples_written = Value('i', 0)
-        self._sound_output_num_samples_written = Value('i', 0)
+        # noinspection PyTypeChecker
+        buf = mmap.mmap(-1,
+                        ctypes.sizeof(SHMEMFlyVRState),
+                        "FlyVRStateSHMEM",
+                        access=mmap.ACCESS_WRITE)
+        # print('Shared State: 0x%x' % ctypes.addressof(ctypes.c_void_p.from_buffer(buf)))
+        self._shmem_state = SHMEMFlyVRState.from_buffer(buf)
+        self._fictrac_shmem_state = new_mmap_shmem_buffer()
+
+        # on unix (mmap) and windows (CreateFileMapping) initialize the memory block to zero upon creation
 
     @property
     def SOUND_OUTPUT_NUM_SAMPLES_WRITTEN(self):
         """ total number of sound samples written """
-        return self._sound_output_num_samples_written.value
+        return self._shmem_state.sound_output_num_samples_written
 
     @SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.setter
     def SOUND_OUTPUT_NUM_SAMPLES_WRITTEN(self, v):
-        self._sound_output_num_samples_written.value = v
+        self._shmem_state.sound_output_num_samples_written = int(v)
 
     @property
     def DAQ_OUTPUT_NUM_SAMPLES_WRITTEN(self):
         """ total number of samples written to the DAQ """
-        return self._daq_output_num_samples_written.value
+        return self._shmem_state.daq_output_num_samples_written
 
     @DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.setter
     def DAQ_OUTPUT_NUM_SAMPLES_WRITTEN(self, v):
-        self._daq_output_num_samples_written.value = v
+        self._shmem_state.daq_output_num_samples_written = int(v)
 
     @property
     def FICTRAC_READY(self):
         """ FicTrac is running an processing frames """
-        return self._fictrac_ready.value
+        return self._shmem_state.fictrac_ready
 
     @FICTRAC_READY.setter
     def FICTRAC_READY(self, v):
-        self._fictrac_ready.value = v
+        self._shmem_state.fictrac_ready = int(v)
 
     @property
     def FICTRAC_FRAME_NUM(self):
         """ FicTrac frame number """
-        return self._fictrac_frame_num.value
-
-    @FICTRAC_FRAME_NUM.setter
-    def FICTRAC_FRAME_NUM(self, v):
-        self._fictrac_frame_num.value = v
+        return self._fictrac_shmem_state.frame_cnt
 
     @property
     def START_DAQ(self):
         """ DAQ should start playback and acquisition """
-        return self._start_daq.value
+        return self._shmem_state.start_daq
 
     @START_DAQ.setter
     def START_DAQ(self, v):
-        self._start_daq.value = v
+        self._shmem_state.start_daq = int(v)
 
     @property
     def RUN(self):
         """ the current run state """
-        return self._run.value
+        # XOR with 1 because this must be init to true in a safe manner yet the underlying memory block is
+        # initialized to zero
+        return self._shmem_state.run ^ 1
 
     @RUN.setter
     def RUN(self, v):
-        self._run.value = v
+        self._shmem_state.run = int(v) ^ 1
 
     @property
     def RUNTIME_ERROR(self):
         """  a value to indicate a runtime error occurred and the whole of flyvr program should close """
-        return self._runtime_error.value
+        return self._shmem_state.runtime_error
 
     @RUNTIME_ERROR.setter
     def RUNTIME_ERROR(self, v):
-        self._runtime_error.value = v
+        self._shmem_state.runtime_error = int(v)
 
     @property
     def DAQ_READY(self):
         """ the daq is aquiring samples """
-        return self._daq_ready.value
+        return self._shmem_state.daq_ready
 
     @DAQ_READY.setter
     def DAQ_READY(self, v):
-        self._daq_ready.value = v
+        self._shmem_state.daq_ready = int(v)
 
     @property
     def logger(self):
@@ -108,6 +122,18 @@ class SharedState(object):
         """ runtime / command line config options """
         return self._options
 
+    def _iter_state(self):
+        for n in dir(self):
+            if re.match(r"""[A-Z]+""", n):
+                yield n, getattr(self, n)
+
+    def print_state(self, out=None):
+        out = sys.stdout if out is None else out
+        out.write('\033[2J')
+        for n, v in self._iter_state():
+            out.write(f'{n}: {v}\n')
+        out.flush()
+
     def is_running_well(self):
         return self.RUNTIME_ERROR == 0 and self.RUN != 0
 
@@ -116,3 +142,23 @@ class SharedState(object):
         traceback.print_exc()
         self.RUN = 0
         self.RUNTIME_ERROR = -1
+
+
+def main_print_state():
+    import time
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--forever', action='store_true',
+                        help='print state continuously (default is to print once and exit)')
+    args = parser.parse_args()
+
+    s = SharedState(None, None)
+
+    while True:
+        s.print_state()
+        if args.forever:
+            time.sleep(1)
+        else:
+            break
+

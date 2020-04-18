@@ -5,6 +5,7 @@ if sys.version_info[0] < 3:
                     "Activate Anaconda conda environment from command line with command 'activate fly_vr_env'")
 
 import time
+import logging
 import traceback
 from multiprocessing import freeze_support
 
@@ -15,7 +16,7 @@ from flyvr.audio.attenuation import Attenuator
 from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
 from flyvr.common import SharedState
 from flyvr.common.build_arg_parser import parse_arguments
-from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.common.concurrent_task import ConcurrentTaskThreaded as ConcurrentTask
 from flyvr.common.logger import DatasetLogger, DatasetLogServer
 from flyvr.common.tools import get_flyvr_git_hash
 from flyvr.control.callback import FlyVRCallback
@@ -53,21 +54,17 @@ def main_launcher():
         # !!!!!!!!!!!!!!!!
         # Put in code for running LED here
         # Right now using AudioStim function fromfilename to LED out
-        daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
+        daqTask = ConcurrentTask(task=io_task.io_task_loop, comms="pipe", taskinitargs=[state])
         daqTask.start()
 
         print('Setup Video')
         from flyvr.video.video_server import VideoServer, VideoStreamProxy
-        from flyvr.video.stimuli import LoomingDot
         from time import sleep
         video_server = VideoServer(stimName=options.visual_stimulus,calibration_file=options.screen_calibration,shared_state=state)
-        video_client = video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
+        video_client = video_server.start_stream()
         print('Waiting For Video')
         sleep(10)    # takes a bit for the video_server thread to create the psychopy window
         video_client.play(None)
-        # print(video_server.getWindow())
-        # stim = LoomingDot(window=video_server.getWindow())
-        # video_client.play(stim)
 
         # If the user specifies a FicTrac config file, turn on tracking by start the tracking task
         fictrac_task = None
@@ -115,6 +112,8 @@ def main_launcher():
         video_client.close()
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         state.runtime_error(e, -1)
 
     finally:
@@ -125,11 +124,11 @@ def main_launcher():
 
         # Wait until all the tasks are finished.
         if daqTask is not None:
-            while daqTask.process.is_alive():
+            while daqTask.is_alive():
                 time.sleep(0.1)
 
         if fictrac_task is not None:
-            while fictrac_task.process.is_alive():
+            while fictrac_task.is_alive():
                 time.sleep(0.1)
 
         if log_server is not None:

@@ -1,5 +1,3 @@
-import mmap
-import ctypes
 import queue
 import os.path
 
@@ -7,7 +5,7 @@ import h5py
 import numpy as np
 
 from flyvr.common.mmtimer import MMTimer
-from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals
+from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer
 
 
 class ReplayFictrac(object):
@@ -20,13 +18,8 @@ class ReplayFictrac(object):
             self._f.close()
             raise ValueError('h5 file does not contain fictrac output')
 
-        shmem = mmap.mmap(-1, ctypes.sizeof(SHMEMFicTracState), "FicTracStateSHMEM")
-        shmem_signals = mmap.mmap(-1, ctypes.sizeof(ctypes.c_int32), "FicTracStateSHMEM_SIGNALS")
-
-        # noinspection PyTypeChecker
-        self._fictrac_state = SHMEMFicTracState.from_buffer(shmem)
-        # noinspection PyTypeChecker
-        self._fictrac_signals = SHMEMFicTracSignals.from_buffer(shmem_signals)
+        self._fictrac_state = new_mmap_shmem_buffer()
+        self._fictrac_signals = new_mmap_signals_buffer()
 
         self._send_row(0)
 
@@ -68,9 +61,9 @@ class ReplayFictrac(object):
         # use a queue as a simple tick-tock threadsafe rate-limiter
         tick = queue.Queue(maxsize=1)
 
-        print('ticking at %.1fhz (every %s ms)' % (1. / dt, ms))
+        print('Fictrac replay at %.1fhz (every %s ms)' % (1. / dt, ms))
 
-        t1 = MMTimer(int(ms), lambda: tick.put_nowait(None))
+        t1 = MMTimer(int(ms), lambda: tick.put(None, block=True, timeout=min(0.5, 10.*dt)))
         t1.start(True)
 
         for idx in range(len(self._ds)):
@@ -95,9 +88,7 @@ class FicTracDriverReplay(object):
 
         def _send_row(self, idx):
             fn, ts = super()._send_row(idx)
-            if idx == 1:
-                self._state.FICTRAC_READY = 1
-            self._state.FICTRAC_FRAME_NUM = int(fn)
+            self._state.FICTRAC_READY = 1
 
     def __init__(self, config_file, *args, **kwargs):
         if not os.path.splitext(config_file)[1] == '.h5':

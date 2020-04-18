@@ -1,10 +1,11 @@
+import pytest
 import os
 
 import numpy as np
 import h5py
 
 from flyvr.common.logger import DatasetLogServer, DatasetLogger
-from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.common.concurrent_task import ConcurrentTask, ConcurrentTaskThreaded
 
 # These are some test dataset we will write to HDF5 to check things
 test1_dataset = np.zeros((1600, 3))
@@ -88,30 +89,29 @@ def test_logger(tmpdir):
 
     f.close()
 
-    os.remove('test.h5')
 
-
-def test_logger_task(tmpdir):
+@pytest.mark.parametrize('task_cls', (ConcurrentTask, ConcurrentTaskThreaded), ids=('multiprocessing', 'threaded'))
+def test_logger_task(tmpdir, task_cls):
     path = tmpdir.join('test.h5').strpath
 
     server = DatasetLogServer()
     logger = server.start_logging_server(path)
 
     # Start two processes that will be send log messages simultaneouslly
-    task1 = ConcurrentTask(task=log_event_worker, taskinitargs=["test1", logger, 8])
-    task2 = ConcurrentTask(task=log_event_worker2, taskinitargs=["/deeper/test2/", logger])
+    task1 = task_cls(task=log_event_worker, taskinitargs=["test1", logger, 8])
+    task2 = task_cls(task=log_event_worker2, taskinitargs=["/deeper/test2/", logger])
     task1.start()
     task2.start()
 
     # Wait until they are done
-    while task1.process.is_alive() and task2.process.is_alive():
+    while task1.is_alive() and task2.is_alive():
         pass
 
     # Stop the logging server
     server.stop_logging_server()
 
     # Wait till it is done
-    while server._log_task.process.is_alive():
+    while server._log_task.is_alive():
         pass
 
     f = h5py.File(path, 'r')

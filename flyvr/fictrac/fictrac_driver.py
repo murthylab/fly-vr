@@ -1,5 +1,4 @@
 import os
-import mmap
 import ctypes
 import subprocess
 import time
@@ -7,7 +6,8 @@ import time
 import numpy as np
 
 from flyvr.common.tools import which
-from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState, SHMEMFicTracSignals, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
+from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer, \
+    SHMEMFicTracState, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
 
 
 def fictrac_poll_run_main(message_pipe, trac_drviver, state):
@@ -60,13 +60,7 @@ class FicTracDriver(object):
 
         :return:
         """
-        # Open or create the shared memory region for accessing FicTrac's state
-        shmem = mmap.mmap(-1, ctypes.sizeof(SHMEMFicTracState), "FicTracStateSHMEM")
-
-        # Open or create another shared memory region, this one lets us signal to fic trac to shutdown.
-        shmem_signals = mmap.mmap(-1, ctypes.sizeof(ctypes.c_int32), "FicTracStateSHMEM_SIGNALS")
-
-        self.fictrac_signals = SHMEMFicTracSignals.from_buffer(shmem_signals)
+        self.fictrac_signals = new_mmap_signals_buffer()
 
         # Setup dataset to log FicTrac data to.
         state.logger.create("/fictrac/output", shape=[2048, NUM_FICTRAC_FIELDS],
@@ -79,7 +73,7 @@ class FicTracDriver(object):
             self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out,
                                                     stderr=subprocess.STDOUT)
 
-            data = SHMEMFicTracState.from_buffer(shmem)
+            data = new_mmap_shmem_buffer()
             first_frame_count = data.frame_cnt
             old_frame_count = data.frame_cnt
             print("Waiting for FicTrac updates in shared memory ... ")
@@ -99,7 +93,6 @@ class FicTracDriver(object):
                                str(old_frame_count) + ", newFrame = " + str(new_frame_count)))
 
                     old_frame_count = new_frame_count
-                    state.FICTRAC_FRAME_NUM = new_frame_count
 
                     # Copy the current state.
                     data_copy = SHMEMFicTracState()

@@ -1,31 +1,22 @@
-import traceback
 import time
 import sys
 import os.path
-import threading
 import multiprocessing
-from multiprocessing import Event
 
 import h5py
 import numpy as np
 
-from flyvr.video.stimuli import VideoStim, LoomingDot
 from flyvr.common.concurrent_task import ConcurrentTask
-from flyvr.common.logger import DatasetLogServer
 
 from psychopy import visual, core, event
 from psychopy.visual.windowwarp import Warper
 
 
-# Take a look at audio/sound_server.py. This is a set of classes that implement a client server setup for the audio output to the sound card. You can 
-# follow this model I think pretty closely. You can have a VisualServer class whose job it is to kick off a ConcurrentTask object (see SoundServer.start_stream).
-# The ConcurrentTask will run a function (or method, see SoundServer._sound_server_main) that handles pushing the graphics to the display. The start_stream
-# method also returns another class that implements the client facing API for the server (see SoundStreamProxy). This client API in your case will probably have methods to
-# change the stimuli in realtime. The client communicates with the server via a message queue that is setup automatically by ConcurrentTask. These messages can
-# be as complicated as you need them to be to implement your API. 
+class VideoStim(object):
+    pass
 
 
-class VideoServer:
+class VideoServer(object):
     """
     The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
     stimulii via a sound card. It handles the configuration of the sound card with low latency ASIO drivers (required to
@@ -246,7 +237,8 @@ class VideoServer:
                 # N passes of square moving left and right
                 # square moving randomly in/out?
                 # alternate the square being an ON and and OFF stimulus
-                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0, self.yOffset], sf=50, color=-1)
+                self.sf = 50
+                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0, self.yOffset], sf=self.sf, color=-1)
                 NUM_VIDEO_FIELDS = 12
                 # for now fields are:
                 # 0: frameNum
@@ -278,7 +270,7 @@ class VideoServer:
                 # N passes of square moving left and right
                 # square moving randomly in/out?
                 # alternate the square being an ON and and OFF stimulus
-                image_names = ['Z:/adamjc/mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in
+                image_names = ['mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in
                                range(-179, 181)]
 
                 self.imgs = [visual.ImageStim(win=self.mywin, image=Image.open(img_nm).convert('L')) for img_nm in
@@ -325,7 +317,7 @@ class VideoServer:
                 # N passes of square moving left and right
                 # square moving randomly in/out?
                 # alternate the square being an ON and and OFF stimulus
-                image_names = ['Z:/adamjc/mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in
+                image_names = ['mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in
                                range(-179, 181)]
 
                 self.imgs = [visual.ImageStim(win=self.mywin, image=Image.open(img_nm).convert('L')) for img_nm in
@@ -399,37 +391,8 @@ class VideoServer:
             raise ValueError("The play method of VideoServer only takes instances of VisualStim objects or those that" +
                              "inherit from this base classs. ")
 
-    # def start_stream(self, data_generator=None, num_channels=2, dtype='float32',
-    #                 sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005):
-    def start_stream(self, data_generator=None, num_channels=2, dtype='float32',
-                     sample_rate=44100, frames_per_buffer=0, suggested_output_latency=0.005):
-        """
-        Start a stream of audio data for playback to the device
-
-        :param num_channels: The number of channels for playback, should be 1 or 2. Default is 1.
-        :param dtype: The datatype of each samples. Default is 'float32' and the only type currently supported.
-        :param sample_rate: The sample rate of the signal in Hz. Default is 44100 Hz
-        :param frames_per_buffer: The number of frames to output per write to the sound card. This will effect latency.
-        try to keep it as a power of 2 or better yet leave it to 0 and allow the sound card to pick it based on your
-        suggested latency. Default is 0.
-        :param suggested_output_latency: The suggested latency in seconds for output playback. Set as low as possible
-        without glitches in audio. Default is 0.005 seconds.
-        :return: None
-        """
-
-        # Keep a copy of the parameters for the stream
-        self._num_channels = num_channels
-        self._dtype = dtype
-        self._sample_rate = sample_rate
-        self._frames_per_buffer = frames_per_buffer
-        self._suggested_output_latency = suggested_output_latency
-        self._start_data_generator = data_generator
-
-        # self._stream = None
-
-        # Start the task
+    def start_stream(self):
         self.task.start()
-
         return VideoStreamProxy(self)
 
     def getWindow(self):
@@ -883,46 +846,36 @@ class VideoStreamProxy:
         self.play("KILL")
 
         # Wait till the server goes away.
-        while self.task.process.is_alive():
+        while self.task.is_alive():
             time.sleep(0.1)
 
 
-def main():
-    from common import SharedState
-    from common.mmtimer import MMTimer
+def main_video_server():
+    import sys
 
-    global TIMING_IDX
-    TIMING_IDX = 0
+    from flyvr.common import SharedState
+    from flyvr.common.logger import DatasetLogServerThreaded
+    from flyvr.common.build_arg_parser import parse_arguments
 
-    CHUNK_SIZE = 128
-    stim1 = LoomingDot(param1=200, param2=1.0)
-    stims = [stim1, None]
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
 
-    # Setup logging server
-    log_server = DatasetLogServer()
-    logger = log_server.start_logging_server("test.h5")
+    class _MockPipe:
+        def poll(self, *args):
+            return False
 
-    shared_state = SharedState(None, logger)
+    with DatasetLogServerThreaded() as log_server:
+        logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
+        state = SharedState(options=options, logger=logger)
 
-    video_server = VideoServer(flyvr_shared_state=shared_state)
-    video_client = video_server.start_stream(frames_per_buffer=CHUNK_SIZE, suggested_output_latency=0.002)
+        video_server = VideoServer(stimName=options.visual_stimulus,
+                                   calibration_file=options.screen_calibration,
+                                   shared_state=state)
+        video_client = video_server.start_stream()
 
-    def tick():
-        global TIMING_IDX
-        sound_client.play(stims[TIMING_IDX % 2])
-        TIMING_IDX = TIMING_IDX + 1
-
-    t1 = MMTimer(1000, tick)
-    t1.start(True)
-
-    while time.clock() < 10:
-        pass
-
-    # Close the stream down.
-    sound_client.close()
-    log_server.stop_logging_server()
-    log_server.wait_till_close()
-
-
-if __name__ == "__main__":
-    main()
+        print('Waiting For Video')
+        time.sleep(10)  # takes a bit for the video_server thread to create the psychopy window
+        video_client.play(None)

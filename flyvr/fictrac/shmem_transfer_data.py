@@ -1,5 +1,7 @@
-import numpy as np
+import mmap
 import ctypes
+
+import numpy as np
 
 # The number of FicTrac fields in the output file
 NUM_FICTRAC_FIELDS = 23
@@ -78,3 +80,15 @@ def print_fictrac_state(data):
             state_string = state_string + str(field[0]) + "\t" + str(field[1]) + "\t" + str(field[2]) + "\t"
 
     print(state_string)
+
+
+def new_mmap_shmem_buffer():
+    buf = mmap.mmap(-1, ctypes.sizeof(SHMEMFicTracState), "FicTracStateSHMEM")
+    # noinspection PyTypeChecker
+    return SHMEMFicTracState.from_buffer(buf)
+
+
+def new_mmap_signals_buffer():
+    buf = mmap.mmap(-1, ctypes.sizeof(ctypes.c_int32), "FicTracStateSHMEM_SIGNALS")
+    # noinspection PyTypeChecker
+    return SHMEMFicTracSignals.from_buffer(buf)

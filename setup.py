@@ -28,6 +28,10 @@ setup(
             'flyvr = flyvr.main:main_launcher',
             'flyvr-fictrac-replay = flyvr.fictrac.replay:main_replay',
             'flyvr-fictrac-plot = flyvr.fictrac.plot_task:main_plot_fictrac',
+            'flyvr-daq = flyvr.audio.io_task:main_io',
+            'flyvr-print-state = flyvr.common:main_print_state',
+            'flyvr-audio = flyvr.audio.sound_server:main_sound_server',
+            'flyvr-video = flyvr.video.video_server:main_video_server',
         ]
     },
 )

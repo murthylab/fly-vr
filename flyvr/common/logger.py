@@ -1,11 +1,9 @@
-import os
 import time
 
 import h5py
 import numpy as np
 
-from flyvr.audio.signal_producer import SignalProducer, SignalNextEventData
-from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.common.concurrent_task import ConcurrentTask, ConcurrentTaskThreaded
 
 """
     The logger module implements a thread\process safe interface for logging datasets to a storage backend 
@@ -16,7 +14,7 @@ from flyvr.common.concurrent_task import ConcurrentTask
 """
 
 
-class DatasetLogger:
+class DatasetLogger(object):
     """
     DatasetLogger is basically a proxy class for sending log events to the DatasetLogServer. This logger class should
     only be instantiated by DatasetLogServer and returned from a call to start_logging_server(). It provides an API
@@ -88,12 +86,15 @@ class DatasetLogger:
             pass
 
 
-class DatasetLogServer:
+class DatasetLogServer(object):
     """
     The DatasetLogServer implements the backend of a thread\process safe interface for logging datasets to a storage
     backend (HDF5 file currently). It implements this via running a separate logging process with a message queue that
     receives logging events from other processes.
     """
+
+    task_cls = ConcurrentTask
+    logger_cls = DatasetLogger
 
     def __init__(self):
         """
@@ -101,7 +102,7 @@ class DatasetLogServer:
         """
         self.log_file_name = None
 
-        self._log_task = ConcurrentTask(task=self._thread_main, comms="queue", taskinitargs=[])
+        self._log_task = self.task_cls(task=self._log_main, comms="queue", taskinitargs=[])
 
         # For each dataset, we will keep track of the current write position. This will allow us to append to it if
         # nescessary. We will store the write positions as integers in a dictionary of dataset_names
@@ -129,7 +130,7 @@ class DatasetLogServer:
         self.log_file_name = filename
         self._log_task.start()
 
-        return DatasetLogger(self._log_task.sender, log_filename=filename)
+        return self.logger_cls(self._log_task.sender, log_filename=filename)
 
     def stop_logging_server(self):
         """
@@ -140,7 +141,7 @@ class DatasetLogServer:
         self._log_task.close()
         self.log_file_name = None
 
-    def _thread_main(self, frame_queue):
+    def _log_main(self, frame_queue):
         """
         The main of the logging process.
 
@@ -192,8 +193,19 @@ class DatasetLogServer:
         self.file.close()
 
     def wait_till_close(self):
-        while self._log_task.process.is_alive():
+        while self._log_task.is_alive():
             time.sleep(0.1)
+
+
+class DatasetLoggerExplicitFictrac(DatasetLogger):
+
+    pass
+
+
+class DatasetLogServerThreaded(DatasetLogServer):
+
+    task_cls = ConcurrentTaskThreaded
+    logger_cls = DatasetLoggerExplicitFictrac
 
 
 class DatasetLogEvent:

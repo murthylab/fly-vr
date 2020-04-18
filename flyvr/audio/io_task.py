@@ -48,6 +48,10 @@ class IOTask(daq.Task):
         # check inputs
         daq.Task.__init__(self)
 
+        _digital = 'digital' if digital else 'analog'
+        print(f'DAQ:{dev_name}: {_digital}{cha_type}/{cha_name} (limits: {limits}, SR: {rate}, nSamp/ch: {num_samples_per_chan}, '
+              f'nSamp/event: {num_samples_per_event}, RSE: {use_RSE})')
+
         self.dev_name = dev_name
 
         if not isinstance(cha_name, list):
@@ -316,7 +320,7 @@ def setup_playback_callbacks(stim, logger, state):
 
 
 # noinspection PyPep8Naming
-def io_task_main(message_pipe, state):
+def io_task_loop(message_pipe, state):
     print("Starting DAQ process")
     try:
 
@@ -447,6 +451,7 @@ def io_task_main(message_pipe, state):
                 taskDI.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             # Message loop that waits for start signal
+            print("Waiting for START_DAQ")
             while state.START_DAQ == 0 and state.is_running_well():
                 time.sleep(0.2)
 
@@ -535,6 +540,29 @@ def io_task_main(message_pipe, state):
 
     except Exception as e:
         state.runtime_error(e, -2)
+
+
+def main_io():
+    import sys
+
+    from flyvr.common import SharedState
+    from flyvr.common.logger import DatasetLogServerThreaded
+    from flyvr.common.build_arg_parser import parse_arguments
+
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
+
+    class _MockPipe:
+        def poll(self, *args):
+            return False
+
+    with DatasetLogServerThreaded() as log_server:
+        logger = log_server.start_logging_server(options.record_file.replace('.h5', '.daq.h5'))
+        state = SharedState(options=options, logger=logger)
+        io_task_loop(_MockPipe(), state)
 
 
 def test_hardware_singlepoint(rate=10000.0):

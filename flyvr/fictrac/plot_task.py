@@ -1,4 +1,3 @@
-import mmap
 import ctypes
 import warnings
 import collections
@@ -6,7 +5,7 @@ import collections
 import numpy as np
 import matplotlib.pyplot as plt
 
-from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState
+from flyvr.fictrac.shmem_transfer_data import SHMEMFicTracState, new_mmap_shmem_buffer
 
 
 def angle_diff(angle1, angle2):
@@ -29,9 +28,6 @@ def plot_task_fictrac(disp_queue, flyvr_state,
     :param disp_queue: The message queue from which data is sent for plotting.
     :return: None
     """
-
-    # Open or create the shared memory region for accessing FicTrac's state
-    shmem = mmap.mmap(-1, ctypes.sizeof(SHMEMFicTracState), "FicTracStateSHMEM")
 
     import matplotlib.cbook
     warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
@@ -83,7 +79,7 @@ def plot_task_fictrac(disp_queue, flyvr_state,
     fig.show()
 
     RUN = True
-    data = SHMEMFicTracState.from_buffer(shmem)
+    data = new_mmap_shmem_buffer()
     first_frame_count = data.frame_cnt
     old_frame_count = data.frame_cnt
     while flyvr_state.is_running_well():

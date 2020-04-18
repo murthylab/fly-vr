@@ -1,9 +1,17 @@
-from multiprocessing import Process, Queue, Pipe, Manager
 import time
 import sys
 
+from multiprocessing import Process, Pipe, Manager
+# noinspection PyUnresolvedReferences
+from multiprocessing.dummy import Process as _DummyProcess
 
-class ConcurrentTask():
+
+class _DummyProcessDaemonThread(_DummyProcess):
+    daemon = True
+
+
+class ConcurrentTask(object):
+
     """
     The ConcurrentTask class encapsulates functionality for creating, starting, stopping, and communicating with
     a process thread. This class is basically a wrapper of multiprocessing.Process that allows for two different
@@ -11,6 +19,10 @@ class ConcurrentTask():
     ensure the underlying process will finnish processing all data sent to it before terminating. If you don't care
     about this, pipe should be fine.
     """
+
+    pipe_cls = Pipe
+    process_cls = Process
+    manager_cls = Manager
 
     def __init__(self, task, taskinitargs=[], comms='queue'):
         """
@@ -34,7 +46,7 @@ class ConcurrentTask():
             raise ValueError("comms argument must either be 'queue' or 'pipe'")
 
         taskinitargs.insert(0, self._receiver)  # prepend queue, i.e. sink end of pipe or end of queue
-        self.process = Process(target=task, args=tuple(taskinitargs))
+        self._process = self.process_cls(target=task, args=tuple(taskinitargs))
 
     def send(self, data):
         """
@@ -51,11 +63,14 @@ class ConcurrentTask():
     def sender(self):
         return self._sender
 
+    def is_alive(self):
+        return self._process.is_alive()
+
     def start(self):
         """
         Call start on the underlying multiprocessing.Process object.
         """
-        self.process.start()
+        self._process.start()
 
     def finish(self, verbose=False, sleepduration=1, sleepcycletimeout=5, maxsleepcycles=100000000):
         """
@@ -86,7 +101,13 @@ class ConcurrentTask():
     def close(self):
         self.send(None)
         time.sleep(0.5)
-        self.process.terminate()
+
+        try:
+            self._process.terminate()
+        except AttributeError:
+            # multiprocessing.dummy
+            pass
+
         time.sleep(0.5)
 
         if not self.comms is "queue":
@@ -94,3 +115,8 @@ class ConcurrentTask():
 
             if self._receiver is not None:
                 self._receiver.close()
+
+
+class ConcurrentTaskThreaded(ConcurrentTask):
+
+    process_cls = _DummyProcessDaemonThread

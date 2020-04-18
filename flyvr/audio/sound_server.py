@@ -50,6 +50,8 @@ class SoundServer:
     DEVICE_OUTPUT_NUM_CHANNELS = 2
     DEVICE_SAMPLE_RATE = 44100
 
+    DEFAULT_CHUNK_SIZE = 128
+
     @staticmethod
     def get_audio_output_device_supported_sample_rates(device, channels, dtype, verbose=False):
         supported_samplerates = []
@@ -340,5 +342,38 @@ class SoundStreamProxy(object):
         self.play("KILL")
 
         # Wait till the server goes away.
-        while self.task.process.is_alive():
+        while self.task.is_alive():
             time.sleep(0.1)
+
+
+def main_sound_server():
+    import sys
+
+    from flyvr.common import SharedState
+    from flyvr.common.logger import DatasetLogServerThreaded
+    from flyvr.common.build_arg_parser import parse_arguments
+
+    from flyvr.audio.stimuli import SinStim
+
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
+
+    class _MockPipe:
+        def poll(self, *args):
+            return False
+
+    with DatasetLogServerThreaded() as log_server:
+        logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
+        state = SharedState(options=options, logger=logger)
+
+        sound_server = SoundServer(flyvr_shared_state=state)
+
+        sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
+                                                 suggested_output_latency=0.002)
+
+
+        sound_client.play(SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000))
+        time.sleep(2.)
