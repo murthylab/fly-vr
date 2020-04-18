@@ -317,6 +317,7 @@ def setup_playback_callbacks(stim, logger, state):
 
 # noinspection PyPep8Naming
 def io_task_main(message_pipe, state):
+    print("Starting DAQ process")
     try:
 
         taskAO = None
@@ -359,6 +360,7 @@ def io_task_main(message_pipe, state):
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
+            print("Initializing DAQ Tasks")
 
             taskAO = None
             if is_analog_out:
@@ -454,6 +456,7 @@ def io_task_main(message_pipe, state):
             # Start the display and logging tasks
             disp_task.start()
 
+            print("Starting DAQ Tasks ")
             if taskAO is not None:
                 # Arm the AO task
                 # It won't start until the start trigger signal arrives from the AI task

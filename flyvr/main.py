@@ -50,21 +50,19 @@ def main_launcher():
         # experimental log file.
         # logger.log(dataset_name='/', attribute_name='flyvr_git_hash', obj=get_flyvr_git_hash())
 
-        print("Initializing DAQ Tasks ... ")
         # !!!!!!!!!!!!!!!!
         # Put in code for running LED here
         # Right now using AudioStim function fromfilename to LED out
         daqTask = ConcurrentTask(task=io_task.io_task_main, comms="pipe", taskinitargs=[state])
         daqTask.start()
 
-
-        print('setup')
+        print('Setup Video')
         from flyvr.video.video_server import VideoServer, VideoStreamProxy
         from flyvr.video.stimuli import LoomingDot
         from time import sleep
         video_server = VideoServer(stimName=options.visual_stimulus,calibration_file=options.screen_calibration,shared_state=state)
         video_client = video_server.start_stream(frames_per_buffer=128, suggested_output_latency=0.002)
-        print('pause...')
+        print('Waiting For Video')
         sleep(10)    # takes a bit for the video_server thread to create the psychopy window
         video_client.play(None)
         # print(video_server.getWindow())
@@ -89,7 +87,7 @@ def main_launcher():
                                         pgr_enable=options.pgr_cam_enable)
 
             # Run the task
-            print("Starting FicTrac ... ")
+            print("Starting FicTrac")
             fictrac_task = ConcurrentTask(task=fictrac_poll_run_main, comms="pipe", taskinitargs=[tracDrv, state])
             fictrac_task.start()
 
@@ -99,11 +97,11 @@ def main_launcher():
 
         if state.is_running_well():
 
-            print(("Delaying start by " + str(options.start_delay) + " ..."))
+            print("Delaying start by " + str(options.start_delay) + " ...")
             time.sleep(options.start_delay)
 
             # Send a signal to the DAQ to start playback and acquisition
-            sys.stdout.write("Starting DAQ tasks ... \n")
+            print("Signalling DAQ Start")
             state.START_DAQ = 1
 
             # Wait until we get a ready message from the DAQ task
