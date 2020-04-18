@@ -90,3 +90,34 @@ def test_logger(tmpdir):
 
     os.remove('test.h5')
 
+
+def test_logger_task(tmpdir):
+    path = tmpdir.join('test.h5').strpath
+
+    server = DatasetLogServer()
+    logger = server.start_logging_server(path)
+
+    # Start two processes that will be send log messages simultaneouslly
+    task1 = ConcurrentTask(task=log_event_worker, taskinitargs=["test1", logger, 8])
+    task2 = ConcurrentTask(task=log_event_worker2, taskinitargs=["/deeper/test2/", logger])
+    task1.start()
+    task2.start()
+
+    # Wait until they are done
+    while task1.process.is_alive() and task2.process.is_alive():
+        pass
+
+    # Stop the logging server
+    server.stop_logging_server()
+
+    # Wait till it is done
+    while server._log_task.process.is_alive():
+        pass
+
+    f = h5py.File(path, 'r')
+
+    assert ('test1' in f)
+    assert (np.array_equal(f['test1'], test1_dataset))
+    assert ('/deeper/test2/data1' in f)
+    assert (f['/deeper/test2/data1'].value == test2_dataset['data1'].encode())
+    assert ('/deeper/test2/data2' in f and np.array_equal(f['/deeper/test2/data2'], test2_dataset['data2']))
