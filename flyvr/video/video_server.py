@@ -8,48 +8,376 @@ import numpy as np
 
 from flyvr.common.concurrent_task import ConcurrentTask
 
+from PIL import Image
 from psychopy import visual, core, event
 from psychopy.visual.windowwarp import Warper
 
 
+class _Dottable(dict):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
 class VideoStim(object):
-    pass
+    NAME = 'grating'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, **params):
+        self.p = _Dottable(params)
+
+    def initialize(self, win):
+        raise NotImplementedError
+
+    def update(self, win, logger, frame_num):
+        raise NotImplementedError
+
+    def draw(self):
+        raise NotImplementedError
+
+    def describe(self):
+        d = {'name': self.NAME}
+        d.update(self.p)
+        return d
+
+    def update_params(self, **params):
+        # noinspection PyCallByClass
+        dict.update(self.p, params)
+
+    @classmethod
+    def log_name(cls):
+        return "/video/stimulus/{}".format(cls.NAME)
+
+    @classmethod
+    def create_log(cls, logger):
+        logger.create(cls.log_name(),
+                      shape=[2048, cls.NUM_VIDEO_FIELDS],
+                      maxshape=[None, cls.NUM_VIDEO_FIELDS], dtype=np.float64,
+                      chunks=(2048, cls.NUM_VIDEO_FIELDS))
+
+
+class NoStim(VideoStim):
+    NAME = 'none'
+    NUM_VIDEO_FIELDS = 1
+
+    def initialize(self, win):
+        pass
+
+    def update(self, win, logger, frame_num):
+        logger.log(self.log_name(),
+                   np.array([frame_num]))
+
+    def draw(self):
+        pass
+
+
+# noinspection PyUnresolvedReferences
+class GratingStim(VideoStim):
+    NAME = 'grating'
+    NUM_VIDEO_FIELDS = 7
+
+    # for now fields are:
+    # 0: frameNum
+    # 1: background color: [-1, 1]
+    # 2: object 1: 1 = grating, ...
+    # 3: object 1: size
+    # 4: object 1: phase
+    # 5: object 1: color
+    # 6: object 1: phase
+
+    def __init__(self, sf=50, stim_size=5, stim_color=-1, bg_color=0.5):
+        super().__init__(sf=int(sf),
+                         stim_size=int(stim_size),
+                         stim_color=int(stim_color),
+                         bg_color=float(bg_color))
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.GratingStim(win=win, size=self.p.stim_size,
+                                         pos=[0, 0], sf=self.p.sf,
+                                         color=self.p.stim_color, phase=0)
+
+    def update(self, win, logger, frame_num):
+        self.screen.setPhase(0.05, '+')
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             1,
+                             self.p.sf,
+                             self.p.stim_size,
+                             self.p.stim_color,
+                             self.screen.phase[0]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+class MovingSquareStim(VideoStim):
+    NAME = 'moving_square'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, size=(0.25, 0.25), speed=(0.01, 0), offset=(0.2, -0.5),
+                 bg_color=-1, fg_color=1):
+        super().__init__(size=[float(size[0]), float(size[1])],
+                         speed=[float(speed[0]), float(speed[1])],
+                         offset=[float(offset[0]), float(offset[1])],
+                         bg_color=float(bg_color), fg_color=float(fg_color))
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.Rect(win=win,
+                                  size=self.p.size, pos=self.p.offset,
+                                  lineColor=None, fillColor=self.p.fg_color)
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        self.screen.pos += self.p.speed
+        if self.screen.pos[0] >= 1:
+            self.screen.pos[0] = -1
+        if self.screen.pos[1] >= 1:
+            self.screen.pos[1] = -1
+            self.screen.pos[1] = -1
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+class PipStim(VideoStim):
+    NAME = 'pipstim'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, filename='pipStim.mat', offset=(0.2, -0.5), bg_color=-1, fg_color=1):
+        super().__init__(offset=[float(offset[0]), float(offset[1])],
+                         bg_color=float(bg_color), fg_color=float(fg_color))
+
+        with h5py.File(filename, 'r') as f:
+            self._tdis = f['tDis'][:, 0]
+            self._tang = f['tAng'][:, 0]
+
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.Rect(win=win,
+                                  size=(0.25, 0.25), pos=self.p.offset,
+                                  lineColor=None, fillColor=self.p.fg_color)
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        xoffset, yoffset = self.p.offset
+
+        self.screen.pos = self._tang[round(frame_num)] / 180 + xoffset, yoffset
+        self.screen.size = 1 / self._tdis[round(frame_num)], 1 / self._tdis[round(frame_num)]
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+class LoomingStim(VideoStim):
+
+    NAME = 'looming'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, size_min=0.05, size_max=0.8, speed=0.01, offset=(0.2, -0.5),
+                 bg_color=-1, fg_color=1):
+        super().__init__(size_min=float(size_min), size_max=float(size_max), speed=float(speed),
+                         offset=[float(offset[0]), float(offset[1])],
+                         bg_color=float(bg_color), fg_color=float(fg_color))
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.Rect(win=win,
+                                  size=self.p.size_min, pos=self.p.offset,
+                                  lineColor=None, fillColor=self.p.fg_color)
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        self.screen.size += self.p.speed
+        if self.screen.size[0] > self.p.size_max:
+            self.screen.size = (self.p.size_min, self.p.size_min)
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+class MayaModel(VideoStim):
+
+    NAME = 'maya_model'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, bg_color=(178 / 256) * 2 - 1, frame_start=10000, offset=(0.2, -0.5)):
+        super().__init__(bg_color=float(bg_color),
+                         offset=[float(offset[0]), float(offset[1])])
+
+        self._imgs = self.screen = None
+        self._image_names = ['mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in range(-179, 181)]
+
+        angles = np.load('mayamodel/angles_fly19.npy')
+        top_y = np.load('mayamodel/tops_fly19.npy')
+        bottom_y = np.load('mayamodel/bottoms_fly19.npy')
+        left_x = np.load('mayamodel/lefts_fly19.npy')
+        right_x = np.load('mayamodel/rights_fly19.npy')
+
+        self._angles = angles[frame_start:]
+        self._img_pos = [(left_x[frame_start:] + right_x[frame_start:]) / 2,
+                         (top_y[frame_start:] + bottom_y[frame_start:]) / 2]
+        self._img_size = [right_x[frame_start:] - left_x[frame_start:],
+                          top_y[frame_start:] - bottom_y[frame_start:]]
+
+    def initialize(self, win):
+        self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
+        self.screen = self._imgs[0]
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        xoffset, yoffset = self.p.offset
+
+        # right now moving at 30 Hz but projecting at 60 Hz
+        self.screen = self._imgs[self._angles[round(frame_num / 2)]]
+        self.screen.pos = [self._img_pos[0][round(frame_num / 2)] + xoffset,
+                           self._img_pos[1][round(frame_num / 2)] + yoffset]
+        self.screen.size = [self._img_size[0][round(frame_num / 2)],
+                            self._img_size[1][round(frame_num / 2)]]
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             2,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+class OptModel(VideoStim):
+
+    NAME = 'opt_model'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, bg_color=(178 / 256) * 2 - 1, offset=(0.2, -0.5)):
+        super().__init__(bg_color=float(bg_color),
+                         offset=[float(offset[0]), float(offset[1])])
+
+        self._imgs = self.screen = None
+
+        self._image_names = ['mayamodel/femalefly360deg/fly' + str(i) + '.png' for i in range(-179, 181)]
+
+        angles_v = np.load('mayamodel/forwardvelocity/angles_optstim.npy')
+
+        ty_v = np.load('mayamodel/forwardvelocity/tops_optstim.npy')
+        by_v = np.load('mayamodel/forwardvelocity/bottoms_optstim.npy')
+        lx_v = np.load('mayamodel/forwardvelocity/lefts_optstim.npy')
+        rx_v = np.load('mayamodel/forwardvelocity/rights_optstim.npy')
+
+        angles_p = np.load('mayamodel/pulse/angles_optstim.npy')
+
+        ty_p = np.load('mayamodel/pulse/tops_optstim.npy')
+        by_p = np.load('mayamodel/pulse/bottoms_optstim.npy')
+        lx_p = np.load('mayamodel/pulse/lefts_optstim.npy')
+        rx_p = np.load('mayamodel/pulse/rights_optstim.npy')
+
+        self._angles = angles_v[:300]
+        self._angles = np.append(self._angles, angles_p[:300])
+        self._img_pos = np.array([(lx_v[:300] + rx_v[:300]) / 2, (ty_v[:300] + by_v[:300]) / 2])
+        self._img_pos = np.append(self._img_pos,
+                                  np.array([(lx_p[:300] + rx_p[:300]) / 2, (ty_p[:300] + by_p[:300]) / 2]),
+                                  axis=1)
+
+        self._img_size = [rx_v[:300] - lx_v[:300], ty_v[:300] - by_v[:300]]
+        self._img_size = np.append(self._img_size, np.array([rx_p[:300] - lx_p[:300], ty_p[:300] - by_p[:300]]),
+                                   axis=1)
+
+        for ii in range(300, 3300, 300):
+            self._angles = np.append(self._angles, angles_v[ii:ii + 300])
+            self._angles = np.append(self._angles, angles_p[ii:ii + 300])
+
+            self._img_pos = np.append(self._img_pos, np.array(
+                [(lx_v[ii:ii + 300] + rx_v[ii:ii + 300]) / 2, (ty_v[ii:ii + 300] + by_v[ii:ii + 300]) / 2]),
+                                     axis=1)
+            self._img_pos = np.append(self._img_pos, np.array(
+                [(lx_p[ii:ii + 300] + rx_p[ii:ii + 300]) / 2, (ty_p[ii:ii + 300] + by_p[ii:ii + 300]) / 2]),
+                                     axis=1)
+
+            self._img_size = np.append(self._img_size, np.array(
+                [rx_v[ii:ii + 300] - lx_v[ii:ii + 300], ty_v[ii:ii + 300] - by_v[ii:ii + 300]]), axis=1)
+            self._img_size = np.append(self._img_size, np.array(
+                [rx_p[ii:ii + 300] - lx_p[ii:ii + 300], ty_p[ii:ii + 300] - by_p[ii:ii + 300]]), axis=1)
+
+    def initialize(self, win):
+        self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
+        self.screen = self._imgs[0]
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        xoffset, yoffset = self.p.offset
+
+        # right now moving at 30 Hz but projecting at 60 Hz
+        self.screen = self._imgs[self._angles[round(frame_num / 2)]]
+        self.screen.pos = [self._img_pos[0][round(frame_num / 2)] + xoffset,
+                           self._img_pos[1][round(frame_num / 2)] + yoffset]
+        self.screen.size = [self._img_size[0][round(frame_num / 2)],
+                            self._img_size[1][round(frame_num / 2)]]
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             2,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim)
+
+
+def stimulus_factory(name, **params):
+    for s in STIMS:
+        if name == s.NAME:
+            return s(**params)
+    raise ValueError("VideoStimulus '%s' not found" % name)
 
 
 class VideoServer(object):
-    """
-    The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
-    stimulii via a sound card. It handles the configuration of the sound card with low latency ASIO drivers (required to
-    be present on the system) and low latency settings. It also tracks information about the number and timing of
-    samples be outputed within its device control so synchronization with other data sources in the experiment can be
-    made.
-    """
 
-    def __init__(self, stimName=None, shared_state=None, calibration_file=None):
-        """
-        Setup the initial state of the sound server. This does not open any devices for play back. The start_stream
-        method must be invoked before playback can begin.
-        """
+    def __init__(self, stim=None, shared_state=None, calibration_file=None):
+        self._initial_stim = stim
+        self.stim = self.mywin = self.synchRect = None
 
-        if stimName is None:
-            stimName = 'grating'
-
-        self.stimName = stimName
-        # also need the code to set the colors to blue
-
-        self.synchSignal = 0
-
+        self.samples_played = self.sync_signal = 0
         self.calibration_file = calibration_file
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = shared_state
         self.logger = shared_state.logger
-
-        # No data generator has been set yet
-        self._data_generator = None
-
-        # Once, we no the block size and number of channels, we will pre-allocate a block of silence data
-        self._silence = None
 
         # Setup a stream end event, this is how the control will signal to the main thread when it exits.
         self.stream_end_event = multiprocessing.Event()
@@ -60,343 +388,22 @@ class VideoServer(object):
         self.logger.create("/video/daq_synchronization_info", shape=[1024, 2], maxshape=[None, 2],
                            dtype=np.int64,
                            chunks=(1024, 2))
+        for stimcls in STIMS:
+            stimcls.create_log(self.logger)
 
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
 
-    @property
-    def data_generator(self):
-        """
-        Get the instance of a generator for producing audio samples for playback
-
-        :return: A generator instance that will yield the next chunk of sample data for playback
-        :rtype: Generator
-        """
-        return self._data_generator
-
-    @data_generator.setter
-    def data_generator(self, data_generator):
-        """
-        Set the generator that will yield the next sample of data.
-
-        :param data_generator: A generator instance.
-        """
-
-        # If the stream has been setup and
-        # If the generator the user is passing is None, then just set it. Otherwise, we need to set it but make sure
-        # it is chunked up into the appropriate blocksize.
-        if data_generator is None:
-            self._data_generator = None
-        else:
-            self._data_generator = chunker(data_generator, chunk_size=self._stream.blocksize)
-
     def _play(self, stim):
-        """
-        Play a video stimulus. This method invokes the data generator of the stimulus to
-        generate the data.
-
-        :param stim: An instance of AudioStim or a class that inherits from it.
-        :return: None
-        """
-
-        # Make sure the user passed and AudioStim instance
-        if isinstance(stim, VideoStim):
-            self.data_generator = stim.data_generator()
-        elif stim is None:
-            # self.synchRect = visual.Rect(win=self.mywin, size=(0.25,0.25), pos=[0.5,0.5], lineColor=None, fillColor='grey')
-            self.synchRect = visual.Rect(win=self.mywin, size=(0.25, 0.25), pos=[0.75, -0.75], lineColor=None,
-                                         fillColor='grey')
-            # self.data_generator = None
-            self.yOffset = -0.5
-            self.xOffset = 0.2
-            # NIVEDITA: this changes stimulus size for movingSquare_OFF
-            self.stimSize = 0.25
-            self.direction = 1
-            self.frameNum = 0
-            self.internalCount = 0
-            self.countCurrStim = 0
-            self.currStim = 0
-            if self.stimName == 'grating':
-
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: frameNum
-                # 1: background color: [-1, 1]
-                # 2: object 1: 1 = grating, ...
-                # 3: object 1: size
-                # 4: object 1: phase
-                # 5: object 1: color
-                # 6: object 1: phase
-
-                self.sf = 50
-                self.stimSize = 5
-                self.stimColor = -1
-
-                self.screen = visual.GratingStim(win=self.mywin, size=self.stimSize, pos=[0, 0], sf=self.sf,
-                                                 color=self.stimColor, phase=0)
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-            elif self.stimName == 'looming_OFF':
-                self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[self.xOffset, self.yOffset], lineColor=None,
-                                          fillColor='black')
-
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: background color: [-1, 1]
-                # 1: object 1: 0 = rectangle, 1 = grating, ...
-                # 2: object 1: x
-                # 3: object 1: y
-                # 4: object 1: height
-                # 5: object 1: width
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-
-            elif self.stimName == 'movingSquare_OFF':
-                print('square!')
-                self.screen = visual.Rect(win=self.mywin, size=(self.stimSize, self.stimSize),
-                                          pos=[self.xOffset, self.yOffset], lineColor=None, fillColor='black')
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: frameNum
-                # 0: background color: [-1, 1]
-                # 1: object 1: 0 = rectangle, 1 = grating, ...
-                # 2: object 1: height
-                # 3: object 1: width
-                # 4: object 1: x
-                # 5: object 1: y
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-            elif self.stimName == 'pipStim_OFF':
-                print('pipStim!')
-                self.yOffset = -0.5
-                self.frameNum = 0
-                self.screen = visual.Rect(win=self.mywin, size=(0.25, 0.25), pos=[self.xOffset, self.yOffset],
-                                          lineColor=None, fillColor='black')
-                f = h5py.File('e:/fly-vr-adam/fly-vr/pipStim.mat', 'r')
-                self.tDis = f['tDis'][:, 0]
-                self.tAng = f['tAng'][:, 0]
-
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: frameNum
-                # 0: background color: [-1, 1]
-                # 1: object 1: 0 = rectangle, 1 = grating, ...
-                # 2: object 1: height
-                # 3: object 1: width
-                # 4: object 1: x
-                # 5: object 1: y
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-            elif self.stimName == 'dPR1Stim':
-                print('dPR1Stim!')
-                self.yOffset = -0.25
-                self.frameNum = 0
-                self.screen = visual.Rect(win=self.mywin, size=(0.25, 0.25), pos=[0, self.yOffset], lineColor=None,
-                                          fillColor='black')
-                f = h5py.File('pipStim.mat', 'r')
-                self.tDis = f['tDis'][:, 0]
-                self.tAng = f['tAng'][:, 0]
-                self.currStim = 0
-                self.countCurrStim = 0
-                self.angleOffset = 0
-
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: frameNum
-                # 0: background color: [-1, 1]
-                # 1: object 1: 0 = rectangle, 1 = grating, ...
-                # 2: object 1: height
-                # 3: object 1: width
-                # 4: object 1: x
-                # 5: object 1: y
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-            elif self.stimName == 'grating_and_moving_switch':
-                self.yOffset = 0.25
-                # N = 2 seconds
-                # what is the logic:
-                # N = 5 for how many seconds?
-                # N passes of grating alternately moving left and right
-                # N passes of square moving left and right
-                # square moving randomly in/out?
-                # alternate the square being an ON and and OFF stimulus
-                self.sf = 50
-                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0, self.yOffset], sf=self.sf, color=-1)
-                NUM_VIDEO_FIELDS = 12
-                # for now fields are:
-                # 0: frameNum
-                # 1: background color: [-1, 1]
-                # 2: object 1: 0 = rectangle
-                # 3: object 1: height
-                # 4: object 1: width
-                # 5: object 1: x
-                # 6: object 1: y
-                # 7: object 1: 1 = grating, ...
-                # 8: object 1: size
-                # 9: object 1: sf
-                # 10: object 1: color
-                # 11: object 1: phase
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-            elif self.stimName == 'maya_model':
-                from PIL import Image
-
-                self.yOffset = -0
-                # N = 2 seconds
-                # what is the logic:
-                # N = 5 for how many seconds?
-                # N passes of grating alternately moving left and right
-                # N passes of square moving left and right
-                # square moving randomly in/out?
-                # alternate the square being an ON and and OFF stimulus
-                image_names = ['mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in
-                               range(-179, 181)]
-
-                self.imgs = [visual.ImageStim(win=self.mywin, image=Image.open(img_nm).convert('L')) for img_nm in
-                             image_names]
-                self.screen = self.imgs[0]
-
-                self.angles = np.load('mayamodel/angles_fly19.npy')
-
-                top_y = np.load('mayamodel/tops_fly19.npy')
-                bottom_y = np.load('mayamodel/bottoms_fly19.npy')
-                left_x = np.load('mayamodel/lefts_fly19.npy')
-                right_x = np.load('mayamodel/rights_fly19.npy')
-
-                frame_start = 10000
-                self.angles = self.angles[frame_start:]
-                self.img_pos = [(left_x[frame_start:] + right_x[frame_start:]) / 2,
-                                (top_y[frame_start:] + bottom_y[frame_start:]) / 2]
-                self.img_size = [right_x[frame_start:] - left_x[frame_start:],
-                                 top_y[frame_start:] - bottom_y[frame_start:]]
-
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: frameNum
-                # 1: background color: [-1, 1]
-                # 2: object 1: 2 = 3D_model
-                # 3: object 1: height
-                # 4: object 1: width
-                # 5: object 1: x
-                # 6: object 1: y
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-            elif self.stimName == 'opt_model':
-                from PIL import Image
-
-                self.yOffset = -0
-                # N = 2 seconds
-                # what is the logic:
-                # N = 5 for how many seconds?
-                # N passes of grating alternately moving left and right
-                # N passes of square moving left and right
-                # square moving randomly in/out?
-                # alternate the square being an ON and and OFF stimulus
-                image_names = ['mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in
-                               range(-179, 181)]
-
-                self.imgs = [visual.ImageStim(win=self.mywin, image=Image.open(img_nm).convert('L')) for img_nm in
-                             image_names]
-                self.screen = self.imgs[0]
-
-                angles_v = np.load('mayamodel/forwardvelocity/angles_optstim.npy')
-
-                ty_v = np.load('mayamodel/forwardvelocity/tops_optstim.npy')
-                by_v = np.load('mayamodel/forwardvelocity/bottoms_optstim.npy')
-                lx_v = np.load('mayamodel/forwardvelocity/lefts_optstim.npy')
-                rx_v = np.load('mayamodel/forwardvelocity/rights_optstim.npy')
-
-                angles_p = np.load('mayamodel/pulse/angles_optstim.npy')
-
-                ty_p = np.load('mayamodel/pulse/tops_optstim.npy')
-                by_p = np.load('mayamodel/pulse/bottoms_optstim.npy')
-                lx_p = np.load('mayamodel/pulse/lefts_optstim.npy')
-                rx_p = np.load('mayamodel/pulse/rights_optstim.npy')
-
-                self.angles = angles_v[:300]
-                self.angles = np.append(self.angles, angles_p[:300])
-                self.img_pos = np.array([(lx_v[:300] + rx_v[:300]) / 2, (ty_v[:300] + by_v[:300]) / 2])
-                self.img_pos = np.append(self.img_pos,
-                                         np.array([(lx_p[:300] + rx_p[:300]) / 2, (ty_p[:300] + by_p[:300]) / 2]),
-                                         axis=1)
-
-                self.img_size = [rx_v[:300] - lx_v[:300], ty_v[:300] - by_v[:300]]
-                self.img_size = np.append(self.img_size, np.array([rx_p[:300] - lx_p[:300], ty_p[:300] - by_p[:300]]),
-                                          axis=1)
-
-                for ii in range(300, 3300, 300):
-                    self.angles = np.append(self.angles, angles_v[ii:ii + 300])
-                    self.angles = np.append(self.angles, angles_p[ii:ii + 300])
-
-                    self.img_pos = np.append(self.img_pos, np.array(
-                        [(lx_v[ii:ii + 300] + rx_v[ii:ii + 300]) / 2, (ty_v[ii:ii + 300] + by_v[ii:ii + 300]) / 2]),
-                                             axis=1)
-                    self.img_pos = np.append(self.img_pos, np.array(
-                        [(lx_p[ii:ii + 300] + rx_p[ii:ii + 300]) / 2, (ty_p[ii:ii + 300] + by_p[ii:ii + 300]) / 2]),
-                                             axis=1)
-
-                    self.img_size = np.append(self.img_size, np.array(
-                        [rx_v[ii:ii + 300] - lx_v[ii:ii + 300], ty_v[ii:ii + 300] - by_v[ii:ii + 300]]), axis=1)
-                    self.img_size = np.append(self.img_size, np.array(
-                        [rx_p[ii:ii + 300] - lx_p[ii:ii + 300], ty_p[ii:ii + 300] - by_p[ii:ii + 300]]), axis=1)
-
-                print(self.angles.shape)
-                print(self.img_pos.shape)
-                print(self.img_size.shape)
-                NUM_VIDEO_FIELDS = 7
-                # for now fields are:
-                # 0: frameNum
-                # 1: background color: [-1, 1]
-                # 2: object 1: 2 = 3D_model
-                # 3: object 1: height
-                # 4: object 1: width
-                # 5: object 1: x
-                # 6: object 1: y
-                # need to figure out how to log this information in the h5 file (a text field?)
-
-                self.logger.create("/video/stimulus", shape=[2048, NUM_VIDEO_FIELDS],
-                                   maxshape=[None, NUM_VIDEO_FIELDS], dtype=np.float64,
-                                   chunks=(2048, NUM_VIDEO_FIELDS))
-
-            self.synchRect.draw()
-            self.screen.draw()
-            self.mywin.update()
-            # self.data_generator = stim.data_generator()
-        else:
-            raise ValueError("The play method of VideoServer only takes instances of VisualStim objects or those that" +
-                             "inherit from this base classs. ")
+        print("Playing: %r" % stim)
+        assert isinstance(stim, VideoStim)
+        assert self.mywin
+        stim.initialize(self.mywin)
+        self.stim = stim
 
     def start_stream(self):
         self.task.start()
         return VideoStreamProxy(self)
-
-    def getWindow(self):
-        return self.mywin
 
     def _video_server_main(self, msg_receiver):
         """
@@ -406,31 +413,10 @@ class VideoServer(object):
         :return: None
         """
 
-        # Initialize number of samples played to 0
-        self.samples_played = 0
-        # self.mywin = visual.Window([608,684],
-        #      useFBO = True)
+        self.mywin = visual.Window([608, 684], monitor='DLP', screen=1, useFBO=True, color=0)
 
-        # need the code to automatically connect to the projector, set the colors to 7 bits,
-        # set the frame rate to be 180 Hz, the projector to blue and the power to the blue LED
-
-        # to some (pre-defined? parameterized?) voltage/amperage
-        # traceback.print_stack()
-
-        # create the window for the visual stimulus on the DLP (screen = 1)
-
-        if self.stimName[-4:] == '_OFF':
-            self.bgColor = 1
-
-        elif self.stimName[-3:] == '_ON':
-            self.bgColor = -1
-        elif self.stimName == 'maya_model' or self.stimName == 'opt_model':
-            self.bgColor = (178 / 256) * 2 - 1
-        else:
-            self.bgColor = 0.5
-
-        self.mywin = visual.Window([608, 684], monitor='DLP', screen=1,
-                                   useFBO=True, color=self.bgColor)
+        self.synchRect = visual.Rect(win=self.mywin, size=(0.25, 0.25), pos=[0.75, -0.75],
+                                     lineColor=None, fillColor='grey')
 
         if self.calibration_file is not None:
             warpfile = self.calibration_file
@@ -455,280 +441,35 @@ class VideoServer(object):
                                  flipHorizontal=False,
                                  flipVertical=False)
 
-        # self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
-        # self.callback_timing_log_index = 0
+        if self._initial_stim is not None:
+            self._play(self._initial_stim)
 
-        # Setup a dataset to store timing information logged from the callback
-        # self.timing_log_num_fields = 3
-        # self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
-        #                                       shape = [2048, self.timing_log_num_fields],
-        #                                       maxshape = [None, self.timing_log_num_fields], dtype = np.float64,
-        #                                       chunks = (2048, self.timing_log_num_fields))
-
-        # Setup up for playback of silence.
-        self.data_generator = None
-
-        # Loop until the stream end event is set.
-        # as opposed to the audio, I think what I want to do here is just update the stimulus on 
-        # every iteration of the loop
-        playingStim = False
         while (not (self.stream_end_event.is_set() and self.flyvr_shared_state is not None and \
                     (self.flyvr_shared_state.is_running_well()))) and \
                 (not (self.stream_end_event.is_set())):
 
-            # Pipe.recv() is blocking so let's check first, otherwise we can loop the visual stimulus
-            # (the visual stim should eventually probably move to its own thread)
             if msg_receiver.poll():
-                # Wait for a message to come
                 msg = msg_receiver.recv()
-                if isinstance(msg, VideoStim) or msg is None:
+                if isinstance(msg, VideoStim):
                     self._play(msg)
-                    playingStim = True
-            else:
-                if playingStim:
-                    # these stimuli need to be turned into classes
-                    if self.stimName == 'grating':
-                        self.screen.setPhase(0.05, '+')
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  1,
-                                                  self.sf,
-                                                  self.stimSize,
-                                                  self.stimColor,
-                                                  self.screen.phase[0]]))
-                    elif self.stimName == 'looming_OFF':
-                        # NIVEDITA: this changes looming speed
-                        self.screen.size += 0.01
-                        # NIVEDITA: this sets maximum looming size
-                        if (self.screen.size > 0.8).any():
-                            self.screen.size = (0.05, 0.05)
+                else:
+                    raise NotImplementedError
 
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  0,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size[0], self.screen.size[1]]))
+            if self.stim is not None:
+                self.stim.update(self.mywin, self.logger, frame_num=self.samples_played)
+                self.stim.draw()
 
-                    elif self.stimName == 'movingSquare_OFF':
-                        # print('move!')
-                        self.screen.pos += [0.01, 0]
-                        if self.screen.pos[0] >= 1:
-                            self.screen.pos[0] = 0
+                if self.sync_signal > 60 * 10:
+                    self.synchRect.fillColor = 'black'
+                    self.synch_signal = 0
+                elif self.sync_signal > 60 * 5:
+                    self.synchRect.fillColor = 'white'
 
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  0,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size[0], self.screen.size[1]]))
+                self.synchRect.draw()
+                self.mywin.update()
 
-                    elif self.stimName == 'pipStim_OFF':
-                        self.frameNum += 1
-                        # print((self.tAng.shape,self.tDis.shape))
-                        # print((self.tAng[self.frameNum]/180,1/self.tDis[self.frameNum]))
-
-                        self.screen.pos = [self.tAng[round(self.frameNum)] / 180 + self.xOffset, self.yOffset]
-                        self.screen.size = 1 / self.tDis[round(self.frameNum)]
-
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  0,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size, self.screen.size]))
-
-                    elif self.stimName == 'opt_model':
-                        self.frameNum += 1
-                        # print((self.tAng.shape,self.tDis.shape))
-                        # print((self.tAng[self.frameNum]/180,1/self.tDis[self.frameNum]))
-
-                        # right now moving at 30 Hz but projecting at 60 Hz
-
-                        self.screen = self.imgs[self.angles[round(self.frameNum / 2)]]
-                        # print(self.img_pos)
-                        # print(round(self.frameNum/2))
-                        # print(print(self.img_pos[0][10]))
-                        # print(print(self.img_pos[0,10]))
-                        # print(self.img_pos[0,round(self.frameNum/2)])
-                        # print('ello?')
-                        self.screen.pos = [self.img_pos[0][round(self.frameNum / 2)] + self.xOffset,
-                                           self.img_pos[1][round(self.frameNum / 2)] + self.yOffset]
-                        self.screen.size = [self.img_size[0][round(self.frameNum / 2)],
-                                            self.img_size[1][round(self.frameNum / 2)]]
-
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  2,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size[0], self.screen.size[1]]))
-
-                    elif self.stimName == 'maya_model':
-                        self.frameNum += 1
-                        # print((self.tAng.shape,self.tDis.shape))
-                        # print((self.tAng[self.frameNum]/180,1/self.tDis[self.frameNum]))
-
-                        # right now moving at 30 Hz but projecting at 60 Hz
-
-                        self.screen = self.imgs[self.angles[round(self.frameNum / 2)]]
-                        # print(self.img_pos)
-                        # print(round(self.frameNum/2))
-                        # print(print(self.img_pos[0][10]))
-                        # print(print(self.img_pos[0,10]))
-                        # print(self.img_pos[0,round(self.frameNum/2)])
-                        # print('ello?')
-                        self.screen.pos = [self.img_pos[0][round(self.frameNum / 2)] + self.xOffset,
-                                           self.img_pos[1][round(self.frameNum / 2)] + self.yOffset]
-                        self.screen.size = [self.img_size[0][round(self.frameNum / 2)],
-                                            self.img_size[1][round(self.frameNum / 2)]]
-
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  2,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size[0], self.screen.size[1]]))
-
-                    elif self.stimName == 'dPR1Stim':
-                        switchStim = 60 * 20
-                        self.frameNum += 1
-                        self.countCurrStim += 1
-                        if self.countCurrStim > switchStim:
-                            self.countCurrStim = 0
-                            # currStim: 0,1,2,3 = center, OFF, right, OFF
-                            if self.currStim == 0:
-                                self.currStim = 1
-                                self.angleOffset = -1
-                            elif self.currStim == 1:
-                                self.currStim = 2
-                                self.angleOffset = 0.5
-                            elif self.currStim == 2:
-                                self.currStim = 3
-                                self.angleOffset = -1
-                            else:
-                                self.currStim = 0
-                                self.angleOffset = 0
-
-                        self.screen.pos = [self.angleOffset + self.tAng[round(self.frameNum)] / 180, self.yOffset]
-                        self.screen.size = 1 / self.tDis[round(self.frameNum)]
-
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  0,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size, self.screen.size]))
-
-                    elif self.stimName == 'grating_and_moving_switch':
-                        # switchStim = 60*2.5*2
-                        switchStim = 60 * 2.5 * 20
-                        internalSwitch = 60 * 2.5
-                        self.frameNum += 1
-                        self.countCurrStim += 1
-                        self.internalCount += 1
-
-                        if self.countCurrStim > switchStim:
-                            self.countCurrStim = 0
-                            self.currStim += 1
-                            if self.currStim > 3:
-                                self.currStim = 0
-
-                            if self.currStim == 0 or self.currStim == 2:
-                                self.screen = visual.GratingStim(win=self.mywin, size=5, pos=[0, self.yOffset], sf=50,
-                                                                 color=-1)
-                            elif self.currStim == 1:
-                                # movingDot ON
-                                self.bgColor = -1
-                                self.mywin.color = self.bgColor
-                                self.screen = visual.Rect(win=self.mywin, size=(self.stimSize, self.stimSize),
-                                                          pos=[self.xOffset, self.yOffset], lineColor=None,
-                                                          fillColor='white')
-                            elif self.currStim == 3:
-                                # movingDot OFF
-                                self.bgColor = 1
-                                self.mywin.color = self.bgColor
-                                self.screen = visual.Rect(win=self.mywin, size=(self.stimSize, self.stimSize),
-                                                          pos=[self.xOffset, self.yOffset], lineColor=None,
-                                                          fillColor='black')
-
-                            # currStim: 0,1,2,3 = center, OFF, right, OFF
-
-                        if self.internalCount > internalSwitch:
-                            self.internalCount = 0
-                            self.direction *= -1
-
-                        if self.currStim == 0 or self.currStim == 2:
-
-                            if self.direction > 0:
-                                self.screen.setPhase(0.05, '+')
-                            else:
-                                self.screen.setPhase(0.05, '-')
-
-                            self.logger.log("/video/stimulus",
-                                            np.array([self.frameNum,
-                                                      self.bgColor,
-                                                      0,
-                                                      0, 0,
-                                                      0, 0,
-                                                      1,
-                                                      self.sf,
-                                                      self.stimSize,
-                                                      self.stimColor,
-                                                      self.screen.phase[0]]))
-
-                        if self.currStim == 1 or self.currStim == 3:
-                            self.screen.pos += [self.direction * 0.01, 0]
-
-                            if self.screen.pos[0] >= 1:
-                                self.screen.pos[0] = 0
-                            elif self.screen.pos[0] <= -1:
-                                self.screen.pos[0] = 0
-
-                            self.logger.log("/video/stimulus",
-                                            np.array([self.frameNum,
-                                                      self.bgColor,
-                                                      0,
-                                                      self.screen.pos[0], self.screen.pos[1],
-                                                      self.screen.size[0], self.screen.size[1],
-                                                      1,
-                                                      0,
-                                                      0,
-                                                      0]))
-
-                        # self.screen = visual.Rect(win=self.mywin, size=0.05, pos=[self.xOffset,self.yOffset], lineColor=None, fillColor='black')
-
-
-                    elif self.stimName == 'MATfile':
-                        pass
-                        # print('move!')
-                        self.screen.pos += [0.01, 0]
-                        if self.screen.pos[0] >= 1:
-                            self.screen.pos[0] = -1
-
-                        self.logger.log("/video/stimulus",
-                                        np.array([self.frameNum,
-                                                  self.bgColor,
-                                                  0,
-                                                  self.screen.pos[0], self.screen.pos[1],
-                                                  self.screen.size[0], self.screen.size[1]]))
-
-                    if self.synchSignal > 60 * 10:
-                        self.synchRect.fillColor = 'black'
-                        self.synchSignal = 0
-                    elif self.synchSignal > 60 * 5:
-                        self.synchRect.fillColor = 'white'
-
-                    self.synchSignal += 1
-                    self.synchRect.draw()
-                    self.screen.draw()
-                    self.mywin.update()
-
-                    # only really need to do this every few frames?
-                    self.logger.log("/video/daq_synchronization_info",
-                                    np.array([self.frameNum,
-                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN]))
+                self.samples_played += 1
+                self.sync_signal += 1
 
     def _stream_end(self):
         """
@@ -737,66 +478,6 @@ class VideoServer(object):
 
         # Trigger the event that marks a stream end, the main loop thread is waiting on this.
         self.stream_end_event.set()
-
-    def _make_callback(self):
-        """
-        Make control for the stream playback. Reference self.data_generator to get samples.
-
-        :return: A control function to provide sounddevice.
-        """
-
-        # Create a control function that uses the provided data generator to get sample blocks
-        def callback(outdata, frames, time_info, status):
-
-            if status.output_underflow:
-                print('Output underflow: increase blocksize?', file=sys.stderr)
-                raise sd.CallbackAbort
-
-            # Make sure all is good
-            assert not status
-
-            # Make sure all is good in the rest of the application
-            if not self.flyvr_shared_state.is_running_well():
-                raise sd.CallbackStop()
-
-            try:
-
-                # If we have no data generator set, then play silence. If not, call its next method
-                if self._data_generator is None:
-                    producer_id = -1  # Lets code silence as -1
-                    data = self._silence
-                else:
-                    data_chunk = next(self._data_generator)
-                    producer_id = data_chunk.producer_id
-                    data = data_chunk.data.data
-
-                # Make extra sure the length of the data we are getting is the correct number of samples
-                assert (len(data) == frames)
-
-            except StopIteration:
-                print('Audio generator produced StopIteration, something went wrong! Aborting playback',
-                      file=sys.stderr)
-                raise sd.CallbackAbort
-
-            # Lets keep track of some running information
-            self.samples_played = self.samples_played + frames
-
-            # Update the number of samples played in the shared state counter
-
-            # self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
-
-            if len(data) < len(outdata):
-                outdata.fill(0)
-                raise sd.CallbackStop
-            else:
-
-                if data.ndim == 1 and self._num_channels == 2:
-                    outdata[:, 0] = data
-                    outdata[:, 1] = data
-                else:
-                    outdata[:] = data
-
-        return callback
 
 
 class VideoStreamProxy:
@@ -856,6 +537,7 @@ def main_video_server():
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
     from flyvr.common.build_arg_parser import parse_arguments
+    from flyvr.common.ipc import PlaylistReciever
 
     try:
         options = parse_arguments()
@@ -867,15 +549,33 @@ def main_video_server():
         def poll(self, *args):
             return False
 
+    pr = PlaylistReciever()
+
     with DatasetLogServerThreaded() as log_server:
-        logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
+        logger = log_server.start_logging_server(options.record_file.replace('.h5', '.video_server.h5'))
         state = SharedState(options=options, logger=logger)
 
-        video_server = VideoServer(stimName=options.visual_stimulus,
+        if options.visual_stimulus:
+            stim = stimulus_factory(options.visual_stimulus)
+        else:
+            stim = None
+
+        video_server = VideoServer(stim=stim,
                                    calibration_file=options.screen_calibration,
                                    shared_state=state)
         video_client = video_server.start_stream()
 
         print('Waiting For Video')
         time.sleep(10)  # takes a bit for the video_server thread to create the psychopy window
-        video_client.play(None)
+
+        while True:
+            elem = pr.get_next_element()
+            if elem:
+                try:
+                    defn = elem['video']
+                    stim = stimulus_factory(defn['name'], **defn.get('configuration', {}))
+                    video_client.play(stim)
+                except KeyError:
+                    print("Ignoring Message")
+                except Exception as exc:
+                    print("-------", exc)
