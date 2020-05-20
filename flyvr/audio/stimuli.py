@@ -555,6 +555,36 @@ def stimulus_factory(**conf):
         return _legacy_factory(conf['stimFileName'], conf['rate'], conf['trial'], conf['silencePre'],
                                conf['silencePost'], conf['delayPost'], conf['intensity'], conf['freq'])
     except KeyError:
+        name = conf.pop('name')
+        if name == 'sin':
+            return SinStim(frequency=conf['frequency'],
+                           amplitude=conf['amplitude'],
+                           phase=conf.get('phase', 0.0),
+                           sample_rate=conf.get('sample_rate', 44100),
+                           duration=conf['duration'],
+                           pre_silence=conf.get('pre_silence', 0),
+                           post_silence=conf.get('post_silence', 0))
+        elif name == 'matfile':
+            return MATFileStim(filename=conf['filename'],
+                               frequency=conf['frequency'],
+                               sample_rate=conf.get('sample_rate', 44100),
+                               intensity=conf['amplitude'],
+                               pre_silence=conf.get('pre_silence', 0),
+                               post_silence=conf.get('post_silence', 0))
+
+        elif name == 'optooff':
+            return ConstantSignal(0.0)
+        elif name == "optoon":
+            return ConstantSignal(5.0)
+        elif name == "square":
+            return SquareWaveStim(frequency=conf['frequency'],
+                                  amplitude=conf['amplitude'],
+                                  duty_cycle=conf.get('duty_cycle', 0.5),
+                                  sample_rate=conf.get('sample_rate', 44100),
+                                  duration=conf['duration'],
+                                  pre_silence=conf.get('pre_silence', 0),
+                                  post_silence=conf.get('post_silence', 0))
+
         return NotImplementedError
 
 

@@ -126,8 +126,13 @@ class SoundServer:
         """
 
         # Make sure the user passed and AudioStim instance
-        if isinstance(stim, (AudioStim, MixedSignal)):
+        if isinstance(stim, AudioStim):
+            if stim.sample_rate != self._sample_rate:
+                raise ValueError('AudioStim not at server samplerate: %s' % self._sample_rate)
             print('Playing: %r' % stim)
+            self.data_generator = stim.data_generator()
+        elif isinstance(stim, MixedSignal):
+            print('Playing Mixed Signal: %r' % stim)
             self.data_generator = stim.data_generator()
         elif stim is None:
             self.data_generator = None
@@ -354,7 +359,7 @@ def main_sound_server():
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
     from flyvr.common.build_arg_parser import parse_arguments
-    from flyvr.audio.stimuli import SinStim, legacy_factory
+    from flyvr.audio.stimuli import legacy_factory, stimulus_factory
     from flyvr.common.ipc import PlaylistReciever
 
     try:
@@ -381,11 +386,15 @@ def main_sound_server():
         while True:
             elem = pr.get_next_element()
             if elem:
-                try:
+                if 'audio_legacy' in elem:
                     stim, = legacy_factory([elem['audio_legacy']], None)
+                elif 'audio' in elem:
+                    stim = stimulus_factory(**elem['audio'])
+                else:
+                    print("Ignoring Message")
+
+                if stim is not None:
                     sound_client.play(stim)
-                except KeyError:
-                    pass  # not for us
 
         # P = "C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/"
         # if 0:
