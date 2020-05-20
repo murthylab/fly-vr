@@ -88,8 +88,8 @@ def main_ipc_send():
     # noinspection PyBroadException
     try:
         dat = json.loads(sys.argv[1])
-    except Exception:
-        print("PARSE ERROR:\t", sys.argv[1])
+    except json.JSONDecodeError as exc:
+        print("PARSE ERROR:\t\n\t", (sys.argv[1], exc))
         sys.exit(1)
 
     send = PlaylistSender()
@@ -105,4 +105,4 @@ def main_ipc_send():
 
     send.process(**dat)
     send.close(block=True)
-    print(dat)
+    print("SENT: %r" % dat)
