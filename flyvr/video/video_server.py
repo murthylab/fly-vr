@@ -545,10 +545,6 @@ def main_video_server():
         sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
         sys.exit(-1)
 
-    class _MockPipe:
-        def poll(self, *args):
-            return False
-
     pr = PlaylistReciever()
 
     with DatasetLogServerThreaded() as log_server:
