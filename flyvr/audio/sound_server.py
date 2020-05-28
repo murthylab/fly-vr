@@ -354,8 +354,8 @@ def main_sound_server():
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
     from flyvr.common.build_arg_parser import parse_arguments
-
-    from flyvr.audio.stimuli import SinStim
+    from flyvr.audio.stimuli import SinStim, legacy_factory
+    from flyvr.common.ipc import PlaylistReciever
 
     try:
         options = parse_arguments()
@@ -367,6 +367,8 @@ def main_sound_server():
         def poll(self, *args):
             return False
 
+    pr = PlaylistReciever()
+
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
         state = SharedState(options=options, logger=logger)
@@ -376,6 +378,29 @@ def main_sound_server():
         sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
                                                  suggested_output_latency=0.002)
 
+        while True:
+            elem = pr.get_next_element()
+            if elem:
+                try:
+                    stim, = legacy_factory([elem['audio_legacy']], None)
+                    sound_client.play(stim)
+                except KeyError:
+                    pass  # not for us
 
-        sound_client.play(SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000))
-        time.sleep(2.)
+        # P = "C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/"
+        # if 0:
+        #     lines = ["sin	10000	1	5000	10500	0	4	250"]
+        # else:
+        #     import os.path
+        #     with open(os.path.join(P, 'IPI36_8pulses_randomTiming.txt'), 'rt') as f:
+        #         lines = f.readlines()[1:]
+        #
+        # stims = legacy_factory(lines, P)
+        # print(stims)
+        #
+        #
+        # #sound_client.play(SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000))
+        #
+        # sound_client.play(stims[-1])
+        # while 1:
+        #     time.sleep(1)

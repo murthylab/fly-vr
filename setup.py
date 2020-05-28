@@ -32,6 +32,7 @@ setup(
             'flyvr-print-state = flyvr.common:main_print_state',
             'flyvr-audio = flyvr.audio.sound_server:main_sound_server',
             'flyvr-video = flyvr.video.video_server:main_video_server',
+            'flyvr-ipc-send = flyvr.common.ipc:main_ipc_send',
         ]
     },
 )
