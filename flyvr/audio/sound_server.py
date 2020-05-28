@@ -353,20 +353,11 @@ class SoundStreamProxy(object):
             time.sleep(0.1)
 
 
-def main_sound_server():
-    import sys
-
+def run_sound_server(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
-    from flyvr.common.build_arg_parser import parse_arguments
     from flyvr.audio.stimuli import legacy_factory, stimulus_factory
     from flyvr.common.ipc import PlaylistReciever
-
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
 
     class _MockPipe:
         def poll(self, *args):
@@ -396,20 +387,34 @@ def main_sound_server():
                 if stim is not None:
                     sound_client.play(stim)
 
-        # P = "C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/"
-        # if 0:
-        #     lines = ["sin	10000	1	5000	10500	0	4	250"]
-        # else:
-        #     import os.path
-        #     with open(os.path.join(P, 'IPI36_8pulses_randomTiming.txt'), 'rt') as f:
-        #         lines = f.readlines()[1:]
-        #
-        # stims = legacy_factory(lines, P)
-        # print(stims)
-        #
-        #
-        # #sound_client.play(SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000))
-        #
-        # sound_client.play(stims[-1])
-        # while 1:
-        #     time.sleep(1)
+
+def main_sound_server():
+    import sys
+    from flyvr.common.build_arg_parser import parse_arguments
+
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
+
+    run_sound_server(options)
+
+
+# P = "C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/"
+# if 0:
+#     lines = ["sin	10000	1	5000	10500	0	4	250"]
+# else:
+#     import os.path
+#     with open(os.path.join(P, 'IPI36_8pulses_randomTiming.txt'), 'rt') as f:
+#         lines = f.readlines()[1:]
+#
+# stims = legacy_factory(lines, P)
+# print(stims)
+#
+#
+# #sound_client.play(SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000))
+#
+# sound_client.play(stims[-1])
+# while 1:
+#     time.sleep(1)

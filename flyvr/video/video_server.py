@@ -1,5 +1,4 @@
 import time
-import sys
 import os.path
 import multiprocessing
 
@@ -531,19 +530,10 @@ class VideoStreamProxy:
             time.sleep(0.1)
 
 
-def main_video_server():
-    import sys
-
+def run_video_server(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
-    from flyvr.common.build_arg_parser import parse_arguments
     from flyvr.common.ipc import PlaylistReciever
-
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
 
     pr = PlaylistReciever()
 
@@ -575,3 +565,16 @@ def main_video_server():
                     print("Ignoring Message")
                 except Exception as exc:
                     print("-------", exc)
+
+
+def main_video_server():
+    import sys
+    from flyvr.common.build_arg_parser import parse_arguments
+
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
+
+    run_video_server(options)

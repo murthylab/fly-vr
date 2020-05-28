@@ -542,18 +542,9 @@ def io_task_loop(message_pipe, state):
         state.runtime_error(e, -2)
 
 
-def main_io():
-    import sys
-
+def run_io(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
-    from flyvr.common.build_arg_parser import parse_arguments
-
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
 
     class _MockPipe:
         def poll(self, *args):
@@ -563,6 +554,20 @@ def main_io():
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.daq.h5'))
         state = SharedState(options=options, logger=logger)
         io_task_loop(_MockPipe(), state)
+
+
+def main_io():
+    import sys
+
+    from flyvr.common.build_arg_parser import parse_arguments
+
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
+
+    run_io(options)
 
 
 def test_hardware_singlepoint(rate=10000.0):
