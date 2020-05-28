@@ -71,12 +71,6 @@ def main_launcher():
         tracDrv = None
         if (options.fictrac_config is not None):
 
-            # !!!!!!!!!!!!!!!!!!!!
-            # this is where we call the (visual) stimulus
-            # it is a Threshold callback because in this case it is supposed to trigger on some
-            # fictrac velocity threshold
-            fictrac_callback = ThresholdCallback(shared_state=state)
-
             if options.fictrac_config.endswith('.h5'):
                 tracDrv = FicTracDriverReplay(options.fictrac_config)
             else:

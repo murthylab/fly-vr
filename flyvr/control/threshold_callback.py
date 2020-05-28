@@ -1,3 +1,5 @@
+import numpy as np
+
 from collections import deque
 
 from flyvr.audio.signal_producer import ConstantSignal
