@@ -5,7 +5,7 @@ import multiprocessing
 import numpy as np
 import sounddevice as sd
 
-from flyvr.audio.stimuli import AudioStim
+from flyvr.audio.stimuli import AudioStim, MixedSignal
 from flyvr.audio.io_task import chunker
 from flyvr.common.concurrent_task import ConcurrentTask
 
@@ -126,7 +126,8 @@ class SoundServer:
         """
 
         # Make sure the user passed and AudioStim instance
-        if isinstance(stim, AudioStim):
+        if isinstance(stim, (AudioStim, MixedSignal)):
+            print('Playing: %r' % stim)
             self.data_generator = stim.data_generator()
         elif stim is None:
             self.data_generator = None
@@ -218,8 +219,10 @@ class SoundServer:
 
                 # Wait for a message to come
                 msg = msg_receiver.recv()
-                if isinstance(msg, AudioStim) or msg is None:
+                if isinstance(msg, (AudioStim, MixedSignal)) or msg is None:
                     self._play(msg)
+                else:
+                    raise NotImplementedError(repr(msg))
 
     def _stream_end(self):
         """
@@ -251,7 +254,6 @@ class SoundServer:
                 raise sd.CallbackStop()
 
             try:
-
                 # If we have no data generator set, then play silence. If not, call its next method
                 if self._data_generator is None:
                     producer_id = -1  # Lets code silence as -1

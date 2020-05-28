@@ -24,6 +24,7 @@ class SampleChunk(object):
 
     def __init__(self, data, producer_id):
         self.data = data
+        print(self.data.shape)
         self.producer_id = producer_id
 
 

@@ -5,6 +5,8 @@ import numpy as np
 
 from flyvr.audio.signal_producer import chunker
 from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
+from flyvr.audio.stimuli import legacy_factory
+
 
 @pytest.fixture
 def stim1():
@@ -12,17 +14,20 @@ def stim1():
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                    attenuator=None)
 
+
 @pytest.fixture
 def stim2():
     return SinStim(frequency=330, amplitude=2.0, phase=0.0, sample_rate=40000,
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                    attenuator=None)
 
+
 @pytest.fixture
 def stim3():
     return SinStim(frequency=430, amplitude=2.0, phase=0.0, sample_rate=40000,
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                    attenuator=None)
+
 
 def test_generator(stim1, stim2, stim3):
     stims = [stim1, stim2, stim3]
@@ -61,6 +66,7 @@ def test_generator(stim1, stim2, stim3):
     for i in range(1,3):
         assert (next(playGen).data == stims[order[i]].data).all()
 
+
 def test_callbacks(stim1, stim2, stim3):
     stims = [stim1, stim2, stim3]
 
@@ -98,16 +104,28 @@ def test_callbacks(stim1, stim2, stim3):
     callback1.assert_called_once()
     callback2.assert_called_once()
 
+
 def test_multi_channel_playlist():
-    stimList = AudioStimPlaylist.fromfilename('tests/test_data/opto_control_playlist.txt')
+    import os.path
 
+    PATH = 'tests/test_data/opto_control_playlist.txt'
+
+    stimList = AudioStimPlaylist.fromfilename(PATH)
     gen = chunker(stimList.data_generator(), 1000)
-
     chunk = next(gen).data
-
     assert(chunk.shape[1] == 4)
-
     assert(stimList.num_channels == 4)
+
+    with open(PATH, 'rt') as f:
+        stims = legacy_factory(f.readlines(), os.path.dirname(PATH))
+        print(stims)
+
+    stimList = AudioStimPlaylist(stims)
+    gen = chunker(stimList.data_generator(), 1000)
+    chunk = next(gen).data
+    assert(chunk.shape[1] == 4)
+    assert(stimList.num_channels == 4)
+
 
 def test_no_side_effects(stim1, stim2, stim3):
     stims = [stim1, stim2, stim3]

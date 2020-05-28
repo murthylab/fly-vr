@@ -1,3 +1,4 @@
+import re
 import abc
 import os.path
 import time
@@ -508,6 +509,105 @@ class MATFileStim(AudioStim):
             return data
 
 
+def _legacy_factory(chan_name, rate, silencePre, silencePost, intensity, freq, basepath='', attenuator=None):
+
+    # fixme: I think the legacy playlist never really supported sin or square waves because there was
+    #  never any ability to specify things like duration independent of sample-rate
+
+    if chan_name == "optooff" or chan_name.strip() == "":
+        chan = ConstantSignal(0.0)
+    elif chan_name == "optoon":
+        chan = ConstantSignal(5.0)
+    elif chan_name == "square":
+        chan = SquareWaveStim(frequency=freq, duty_cycle=0.75,
+                              amplitude=intensity, sample_rate=int(1e4),
+                              duration=int(rate * 1000.0), intensity=1.0,
+                              pre_silence=silencePre,
+                              post_silence=silencePost)
+    elif chan_name == "sin":
+        chan = SinStim(frequency=freq,
+                       amplitude=intensity,
+                       phase=0.0,
+                       sample_rate=44100,
+                       duration=int(rate * 1000.0),  # can't be specified
+                       pre_silence=silencePre,
+                       post_silence=silencePost)
+    else:
+        if freq == -1:
+            atten = None
+        else:
+            atten = attenuator
+
+        chan = MATFileStim(filename=os.path.join(basepath, chan_name),
+                           frequency=freq,
+                           sample_rate=int(rate),
+                           intensity=intensity,
+                           pre_silence=int(silencePre),
+                           post_silence=int(silencePost),
+                           attenuator=atten)
+
+    return chan
+
+
+def stimulus_factory(**conf):
+    # stimFileName	rate	trial	silencePre	silencePost	delayPost	intensity	freq
+    try:
+        return _legacy_factory(conf['stimFileName'], conf['rate'], conf['trial'], conf['silencePre'],
+                               conf['silencePost'], conf['delayPost'], conf['intensity'], conf['freq'])
+    except KeyError:
+        return NotImplementedError
+
+
+def legacy_factory(lines, basepath):
+    def _parse_list(_s):
+        _list = re.match(r"""\[([\d\s.+-]+)\]""", _s)
+        if _list:
+            return list(float(v.strip()) for v in _list.groups()[0].split())
+        else:
+            return [float(_s)]
+
+    stims = []
+    for line in lines:
+        try:
+            stimFileName, rate, trial, silencePre, silencePost, delayPost, intensity, freq = map(str.strip, line.split('\t'))
+        except ValueError:
+            raise ValueError("incorrect formatting: '%r' (ntabs: %d)" % (line, line.count('\t')))
+
+        frequencies = _parse_list(freq)
+        intensities = _parse_list(intensity)
+
+        chans = []
+        for chan_idx, chan_name in enumerate(stimFileName.split(';')):
+
+            chan = _legacy_factory(chan_name=chan_name.lower(),
+                                   rate=int(rate),
+                                   silencePre=int(silencePre),
+                                   silencePost=int(silencePost),
+                                   intensity=intensities[chan_idx],  # float
+                                   freq=frequencies[chan_idx],  # float
+                                   basepath=basepath,
+                                   attenuator=None)
+            chans.append(chan)
+
+            # Get the maximum duration of all the channel's stimuli
+            max_stim_len = max(1000, max([next(chan.data_generator()).data.shape[0] for chan in chans]))
+
+            # Make sure we resize all the ConstantSignal's to be as long as the maximum stim
+            # size, this will make data loading much more efficient since their generators will
+            # not need to yield a single sample many times for one chunk of data.
+            for i, chan in enumerate(chans):
+                if isinstance(chan, ConstantSignal):
+                    chans[i] = ConstantSignal(chan.constant, num_samples=max_stim_len)
+
+        # Combine these stimuli into one analog signal with a channel for each.
+        mixed_stim = MixedSignal(chans)
+
+        # Append to playlist
+        stims.append(mixed_stim)
+
+    return stims
+
+
 class AudioStimPlaylist(SignalProducer):
     """A simple class that provides a generator for a sequence of AudioStim objects."""
 
@@ -569,8 +669,8 @@ class AudioStimPlaylist(SignalProducer):
         for stim_string in data['stimfilename']:
             # Each stim_string field should be a semicolon separated list, each element should be a channel.
             chan_names = stim_string.split(';')
-            print('splitting string ' + stim_string + '  into  ')
-            print(chan_names)
+            #print('splitting string ' + stim_string + '  into  ')
+            #print(chan_names)
 
             def throw_error(msg):
                 return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row + 2, msg))
@@ -593,8 +693,8 @@ class AudioStimPlaylist(SignalProducer):
                 raise throw_error("Number of intensities is not equal to number of channels.")
 
             # Load each channel's stimulus
-            print('audio playlist')
-            print(chan_names)
+            #print('audio playlist')
+            #print(chan_names)
             chans = []
             chan_idx = 0
             for chan_name in chan_names:
@@ -603,7 +703,7 @@ class AudioStimPlaylist(SignalProducer):
                 elif chan_name.lower() == "optoon":
                     chan = ConstantSignal(5.0)
                 elif chan_name.lower() == "square":
-                    print('square wave!')
+                    #print('square wave!')
                     # chan = SquareWaveStim(frequency=data["freq"][row], duty_cycle=1, amplitude=5.0, sample_rate=1e4, duration=5.0, intensity=1.0, pre_silence=data["silencepre"][row],
                     #     post_silence=data["silencepost"][row])
                     # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
@@ -634,8 +734,8 @@ class AudioStimPlaylist(SignalProducer):
 
             # Get the maximum duration of all the channel's stimuli
             max_stim_len = max(1000, max([next(chan.data_generator()).data.shape[0] for chan in chans]))
-            print('max stim length')
-            print(max_stim_len)
+            #print('max stim length')
+            #print(max_stim_len)
 
             # Make sure we resize all the ConstantSignal's to be as long as the maximum stim
             # size, this will make data loading much more efficient since their generators will
@@ -657,7 +757,6 @@ class AudioStimPlaylist(SignalProducer):
             # Go to the next row
             row = row + 1
 
-        print(stims)
         return cls(stims, shuffle_playback)
 
     def data_generator(self):
