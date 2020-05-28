@@ -102,6 +102,9 @@ class FicTracDriver(object):
                     # Log the FicTrac data to our master log file.
                     state.logger.log('/fictrac/output', fictrac_state_to_vec(data_copy))
 
+                    if self.experiment is not None:
+                        self.experiment.process_state(state)
+
                 # If we detect it is time to shutdown, kill the FicTrac process
                 if not state.is_running_well():
                     self.stop()
