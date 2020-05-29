@@ -24,7 +24,7 @@ class ConcurrentTask(object):
     process_cls = Process
     manager_cls = Manager
 
-    def __init__(self, task, taskinitargs=[], comms='queue'):
+    def __init__(self, task, taskinitargs=(), comms='queue'):
         """
         Create the underlying data structures for running the task, but do not start it.
 
@@ -35,17 +35,22 @@ class ConcurrentTask(object):
         """
 
         # task (function(pip/queue, getfun, *args)), task init args, queue/pipe
-        self.comms = comms
-        if self.comms == "pipe":
+        if comms == "pipe":
             self._sender, self._receiver = Pipe()
-        elif self.comms == "queue":
+        elif comms == "queue":
             manager = Manager()
             self._sender = manager.Queue()
             self._receiver = self._sender
+        elif comms is None:
+            self._sender = self._receiver = None
         else:
             raise ValueError("comms argument must either be 'queue' or 'pipe'")
 
-        taskinitargs.insert(0, self._receiver)  # prepend queue, i.e. sink end of pipe or end of queue
+        self.comms = comms
+
+        taskinitargs = list(taskinitargs)
+        if self._receiver is not None:
+            taskinitargs.insert(0, self._receiver)  # prepend queue, i.e. sink end of pipe or end of queue
         self._process = self.process_cls(target=task, args=tuple(taskinitargs))
 
     def send(self, data):
@@ -54,6 +59,9 @@ class ConcurrentTask(object):
 
         :param data: The data object that should be passed to the process.
         """
+        if self._sender is None:
+            return
+
         if self.comms == "queue":
             self._sender.put(data)
         elif self.comms == "pipe":
@@ -110,7 +118,7 @@ class ConcurrentTask(object):
 
         time.sleep(0.5)
 
-        if not self.comms is "queue":
+        if self.comms != "queue":
             self._sender.close()
 
             if self._receiver is not None:
