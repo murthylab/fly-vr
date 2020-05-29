@@ -563,14 +563,16 @@ def stimulus_factory(**conf):
                            sample_rate=conf.get('sample_rate', 44100),
                            duration=conf['duration'],
                            pre_silence=conf.get('pre_silence', 0),
-                           post_silence=conf.get('post_silence', 0))
+                           post_silence=conf.get('post_silence', 0),
+                           attenuator=conf.get('attenuator'))
         elif name == 'matfile':
             return MATFileStim(filename=conf['filename'],
                                frequency=conf['frequency'],
                                sample_rate=conf.get('sample_rate', 44100),
                                intensity=conf['amplitude'],
                                pre_silence=conf.get('pre_silence', 0),
-                               post_silence=conf.get('post_silence', 0))
+                               post_silence=conf.get('post_silence', 0),
+                               attenuator=conf.get('attenuator'))
 
         elif name == 'optooff':
             return ConstantSignal(0.0)
@@ -583,12 +585,13 @@ def stimulus_factory(**conf):
                                   sample_rate=conf.get('sample_rate', 44100),
                                   duration=conf['duration'],
                                   pre_silence=conf.get('pre_silence', 0),
-                                  post_silence=conf.get('post_silence', 0))
+                                  post_silence=conf.get('post_silence', 0),
+                                  attenuator=conf.get('attenuator'))
 
         return NotImplementedError
 
 
-def legacy_factory(lines, basepath):
+def legacy_factory(lines, basepath, attenuator=None):
     def _parse_list(_s):
         _list = re.match(r"""\[([\d\s.+-]+)\]""", _s)
         if _list:
@@ -616,7 +619,7 @@ def legacy_factory(lines, basepath):
                                    intensity=intensities[chan_idx],  # float
                                    freq=frequencies[chan_idx],  # float
                                    basepath=basepath,
-                                   attenuator=None)
+                                   attenuator=attenuator)
             chans.append(chan)
 
             # Get the maximum duration of all the channel's stimuli
@@ -655,7 +658,7 @@ class AudioStimPlaylist(SignalProducer):
                               "shuffle_playback": shuffle_playback}
 
         # If we want to shuffle things, get a random permutation.
-        if (self.shuffle_playback):
+        if self.shuffle_playback:
             self.random_seed = int(time.time())
 
     """Lets make the class iterable since it is just a wrapper around a list of stimuli."""
@@ -664,130 +667,10 @@ class AudioStimPlaylist(SignalProducer):
         return iter(self._stims)
 
     @classmethod
-    def fromfilename(cls, filename, shuffle_playback=False, attenuator=None, next_event_callbacks=None):
-
-        def check_for_field(d, field_name):
-            if field_name not in d:
-                raise ValueError("Could not find column named {} in playlist, check format.".format(field_name))
-
-        def parse_list(x):
-            if isinstance(x, str):
-                return x.replace('[', '').replace(']', '').split()
-            else:
-                return [x]
-
-        # Get the root directory of this file
-        local_dir = os.path.dirname(filename) + '/'
-
-        # Read the playlist file
-        data = pd.read_csv(filename, sep="\t")
-
-        # Convert all column names to lower case.
-        data.columns = map(str.lower, data.columns)
-
-        # Take only the first word of column names, no spaces allowed
-        data.columns = map(lambda x: str.split(x)[0], data.columns)
-
-        # Make sure we have the nescessary fields
-        check_fields = ["stimfilename", "freq", "rate", "silencepre", "silencepost", "intensity"]
-        for field in check_fields:
-            check_for_field(data, field)
-
-        # Get the stimulus filenames and load each one into a stimulus object
-        row = 0
-        stims = []
-        for stim_string in data['stimfilename']:
-            # Each stim_string field should be a semicolon separated list, each element should be a channel.
-            chan_names = stim_string.split(';')
-            #print('splitting string ' + stim_string + '  into  ')
-            #print(chan_names)
-
-            def throw_error(msg):
-                return ValueError("Error parsing playlist('{}') on line {}: {}".format(filename, row + 2, msg))
-
-            # Now, parse the parameter fields to make sure they have the correct number of fields.
-            try:
-                frequencies = list(map(float, parse_list(data["freq"][row])))
-            except Exception as ex:
-                raise throw_error("Couldn't parse frequencies!") from ex
-
-            try:
-                intensities = list(map(float, parse_list(data["intensity"][row])))
-            except Exception as ex:
-                raise throw_error("Couldn't parse intensities!") from ex
-
-            # Make sure the sizes of the lists of parameters match the size of channels.
-            if len(frequencies) != len(chan_names):
-                raise throw_error("Number of frequencies is not equal to number of channels.")
-            if len(intensities) != len(chan_names):
-                raise throw_error("Number of intensities is not equal to number of channels.")
-
-            # Load each channel's stimulus
-            #print('audio playlist')
-            #print(chan_names)
-            chans = []
-            chan_idx = 0
-            for chan_name in chan_names:
-                if chan_name.lower() == "optooff" or chan_name.strip() == "":
-                    chan = ConstantSignal(0.0)
-                elif chan_name.lower() == "optoon":
-                    chan = ConstantSignal(5.0)
-                elif chan_name.lower() == "square":
-                    #print('square wave!')
-                    # chan = SquareWaveStim(frequency=data["freq"][row], duty_cycle=1, amplitude=5.0, sample_rate=1e4, duration=5.0, intensity=1.0, pre_silence=data["silencepre"][row],
-                    #     post_silence=data["silencepost"][row])
-                    # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=1000.0, intensity=1.0, pre_silence=5.0,
-                    #     post_silence=5.0)
-                    # chan = SquareWaveStim(frequency=10, duty_cycle=0.75, amplitude=5.0, sample_rate=1e4, duration=500.0, intensity=1.0, pre_silence=1.0,
-                    #     post_silence=1.0)
-                    # ["stimfilename", "freq", "rate", "silencepre", "silencepost", "intensity"]
-                    chan = SquareWaveStim(frequency=frequencies[chan_idx], duty_cycle=0.75,
-                                          amplitude=intensities[chan_idx], sample_rate=1e4,
-                                          duration=data['rate'][row] * 1000.0, intensity=1.0,
-                                          pre_silence=data['silencepre'][row],
-                                          post_silence=data['silencepost'][row])
-                else:
-                    if frequencies[chan_idx] == -1:
-                        atten = None
-                    else:
-                        atten = attenuator
-
-                    chan = MATFileStim(filename=local_dir + chan_name,
-                                       frequency=frequencies[chan_idx],
-                                       sample_rate=data["rate"][row], intensity=intensities[chan_idx],
-                                       pre_silence=data["silencepre"][row],
-                                       post_silence=data["silencepost"][row],
-                                       attenuator=atten, next_event_callbacks=next_event_callbacks)
-
-                chans.append(chan)
-                chan_idx = chan_idx + 1
-
-            # Get the maximum duration of all the channel's stimuli
-            max_stim_len = max(1000, max([next(chan.data_generator()).data.shape[0] for chan in chans]))
-            #print('max stim length')
-            #print(max_stim_len)
-
-            # Make sure we resize all the ConstantSignal's to be as long as the maximum stim
-            # size, this will make data loading much more efficient since their generators will
-            # not need to yield a single sample many times for one chunk of data.
-            for i in range(len(chans)):
-                if isinstance(chans[i], ConstantSignal):
-                    chans[i] = ConstantSignal(chans[i].constant, num_samples=max_stim_len)
-
-            # Combine these stimuli into one analog signal with a channel for each.
-            mixed_stim = MixedSignal(chans)
-
-            # FIXME: This really isn't clean. I wan't to mark each MixedStim by its position in the playlist. However,
-            # this shouldn't be stored on the MixedSignal because it has no idea what playlists are really.
-            mixed_stim.event_message['stim_playlist_idx'] = row
-
-            # Append to playlist
-            stims.append(mixed_stim)
-
-            # Go to the next row
-            row = row + 1
-
-        return cls(stims, shuffle_playback)
+    def fromfilename(cls, filename, shuffle_playback=False, attenuator=None):
+        with open(filename, 'rt') as f:
+            return cls(legacy_factory(f.readlines(), basepath=os.path.dirname(filename), attenuator=attenuator),
+                       shuffle_playback=shuffle_playback)
 
     def data_generator(self):
         """

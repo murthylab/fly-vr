@@ -5,12 +5,12 @@ import multiprocessing
 import numpy as np
 import sounddevice as sd
 
-from flyvr.audio.stimuli import AudioStim, MixedSignal
+from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
 from flyvr.audio.io_task import chunker
 from flyvr.common.concurrent_task import ConcurrentTask
 
 
-class SoundServer:
+class SoundServer(object):
     """
     The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
     stimulii via a sound card. It handles the configuration of the sound card with low latency ASIO drivers (required to
@@ -134,6 +134,9 @@ class SoundServer:
         elif isinstance(stim, MixedSignal):
             print('Playing Mixed Signal: %r' % stim)
             self.data_generator = stim.data_generator()
+        elif isinstance(stim, AudioStimPlaylist):
+            print('Playing AudioStimPlaylist Signal: %r' % stim)
+            self.data_generator = stim.data_generator()
         elif stim is None:
             self.data_generator = None
         else:
@@ -201,16 +204,6 @@ class SoundServer:
                                        dtype=self._dtype, callback=self._make_callback(),
                                        finished_callback=self._stream_end)
 
-        # # Setup data generator, the control has been setup to reference this classes data_generator field
-        # if self._start_data_generator is None:
-        #     self.data_generator = None
-        # elif isinstance(self._start_data_generator, AudioStim):
-        #     data_generator = self.play(data_generator)
-        # elif isinstance(self._start_data_generator, types.GeneratorType):
-        #     # Setup the data generator, make sure it outputs chunks of the appropriate block size for the device.
-        #     self.data_generator = chunker(self._start_data_generator, chunk_size=self._stream.blocksize)
-        #
-
         # Initialize a block of silence to be played when the generator is none.
         self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
 
@@ -224,7 +217,7 @@ class SoundServer:
 
                 # Wait for a message to come
                 msg = msg_receiver.recv()
-                if isinstance(msg, (AudioStim, MixedSignal)) or msg is None:
+                if isinstance(msg, (AudioStim, MixedSignal, AudioStimPlaylist)) or msg is None:
                     self._play(msg)
                 else:
                     raise NotImplementedError(repr(msg))
@@ -359,10 +352,6 @@ def run_sound_server(options):
     from flyvr.audio.stimuli import legacy_factory, stimulus_factory
     from flyvr.common.ipc import PlaylistReciever
 
-    class _MockPipe:
-        def poll(self, *args):
-            return False
-
     pr = PlaylistReciever()
 
     with DatasetLogServerThreaded() as log_server:
@@ -373,6 +362,12 @@ def run_sound_server(options):
 
         sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
                                                  suggested_output_latency=0.002)
+
+        # from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
+        # sound_client.play(AudioStimPlaylist((
+        #     SinStim(frequency=800, amplitude=1.0, phase=0.0, sample_rate=44100, duration=1000),
+        #     SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=1000)))
+        # )
 
         while True:
             elem = pr.get_next_element()
@@ -399,22 +394,3 @@ def main_sound_server():
         sys.exit(-1)
 
     run_sound_server(options)
-
-
-# P = "C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/"
-# if 0:
-#     lines = ["sin	10000	1	5000	10500	0	4	250"]
-# else:
-#     import os.path
-#     with open(os.path.join(P, 'IPI36_8pulses_randomTiming.txt'), 'rt') as f:
-#         lines = f.readlines()[1:]
-#
-# stims = legacy_factory(lines, P)
-# print(stims)
-#
-#
-# #sound_client.play(SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=10000))
-#
-# sound_client.play(stims[-1])
-# while 1:
-#     time.sleep(1)
