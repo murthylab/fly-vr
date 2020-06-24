@@ -1,11 +1,12 @@
 import time
 import sys
+import yaml
 import multiprocessing
 
 import numpy as np
 import sounddevice as sd
 
-from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
+from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist, stimulus_factory
 from flyvr.audio.io_task import chunker
 from flyvr.common.concurrent_task import ConcurrentTask
 
@@ -346,6 +347,22 @@ class SoundStreamProxy(object):
             time.sleep(0.1)
 
 
+def _build_playlist(yaml_path):
+    stims = []
+
+    with open(yaml_path, 'rt') as f:
+        dat = yaml.load(f)
+        try:
+            for item_def in dat['playlist']['audio']:
+                id_, defn = item_def.popitem()
+                defn['identifier'] = id_
+                stims.append(stimulus_factory(**defn))
+        except KeyError:
+            pass
+
+    return AudioStimPlaylist(stims=stims)
+
+
 def run_sound_server(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
@@ -353,6 +370,10 @@ def run_sound_server(options):
     from flyvr.common.ipc import PlaylistReciever
 
     pr = PlaylistReciever()
+
+    playlist_stim = None
+    if options.stim_playlist:
+        playlist_stim = _build_playlist(options.stim_playlist)
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
@@ -363,11 +384,8 @@ def run_sound_server(options):
         sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
                                                  suggested_output_latency=0.002)
 
-        # from flyvr.audio.stimuli import SinStim, AudioStimPlaylist
-        # sound_client.play(AudioStimPlaylist((
-        #     SinStim(frequency=800, amplitude=1.0, phase=0.0, sample_rate=44100, duration=1000),
-        #     SinStim(frequency=200, amplitude=1.0, phase=0.0, sample_rate=44100, duration=1000)))
-        # )
+        if playlist_stim is not None:
+            sound_client.play(playlist_stim)
 
         while True:
             elem = pr.get_next_element()
