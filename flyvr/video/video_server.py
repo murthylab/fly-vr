@@ -9,10 +9,12 @@ import h5py
 import numpy as np
 
 from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.projector.dlplc_tcp import LightCrafterTCP
 
 from PIL import Image
 from psychopy import visual, core, event
 from psychopy.visual.windowwarp import Warper
+from psychopy.visual.windowframepack import ProjectorFramePacker
 
 
 class _Dottable(dict):
@@ -411,9 +413,24 @@ def stimulus_factory(name, **params):
 
 class VideoServer(object):
 
-    def __init__(self, stim=None, shared_state=None, calibration_file=None):
+    def __init__(self, stim=None, shared_state=None, calibration_file=None, use_lightcrafter=True):
         self._initial_stim = stim
-        self.stim = self.mywin = self.synchRect = None
+        self.stim = self.mywin = self.synchRect = self.framepacker = None
+
+        self.use_lightcrafter = False
+        if use_lightcrafter:
+            dlplc = LightCrafterTCP()
+            if dlplc.connect():
+                # noinspection PyBroadException
+                try:
+                    dlplc.cmd_current_display_mode(0x02)
+                    dlplc.cmd_current_video_mode(frame_rate=60, bit_depth=7, led_color=4)
+                    self.use_lightcrafter = True
+                except Exception:
+                    print("Error Configuring DLP")
+
+        if self.use_lightcrafter:
+            print("Showing Visual Stimulus on Lightcrafter")
 
         self.samples_played = self.sync_signal = 0
         self.calibration_file = calibration_file
@@ -458,7 +475,12 @@ class VideoServer(object):
         :return: None
         """
 
-        self.mywin = visual.Window([608, 684], monitor='DLP', screen=1, useFBO=True, color=0)
+        self.mywin = visual.Window([608, 684],
+                                   monitor='DLP',
+                                   screen=1 if self.use_lightcrafter else 0,
+                                   useFBO=True, color=0)
+        if self.use_lightcrafter:
+            self.framepacker = ProjectorFramePacker(self.mywin)
 
         self.synchRect = visual.Rect(win=self.mywin, size=(0.25, 0.25), pos=[0.75, -0.75],
                                      lineColor=None, fillColor='grey')
