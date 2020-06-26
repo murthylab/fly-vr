@@ -1,6 +1,0 @@
-stimfilename	freq	rate	silencepre	silencepost	intensity
-square	10	5	5	5	1
-square	10	5	5	5	2
-square	10	5	5	5	3
-square	10	5	5	5	4
-square	10	5	5	5	5

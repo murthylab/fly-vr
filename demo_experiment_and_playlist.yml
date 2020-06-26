@@ -15,8 +15,27 @@ time:
     do:
       - playlist: 'audio_stim2'
 playlist:
-  audio_legacy:
+  audio:
     - audio_stim1: {name: 'sin', frequency: 650, amplitude: 1.0, duration: 10000}
     - audio_stim2: {name: 'sin', frequency: 250, amplitude: 1.0, duration: 20000}
   video:
     - video_stim1: {name: 'looming'}
+configuration:
+  attenuation_file: null
+  analog_in_channels: null
+  digital_in_channels: null
+  analog_out_channels: null
+  screen_calibration: null
+  use_RSE: true
+  remote_2P_enable: false
+  remote_stop_2P_channel: null
+  remote_next_2P_channel: null
+  fictrac_config: null
+  fictrac_console_out: null
+  pgr_cam_enable: false
+  ball_control_enable: false
+  ball_control_channel: 'port0/line3:4'
+  ball_control_periods: null
+  ball_control_durations: null
+  ball_control_loop: true
+  visual_stimulus: null

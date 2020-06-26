@@ -358,22 +358,6 @@ class SoundStreamProxy(object):
             time.sleep(0.1)
 
 
-def _build_playlist(yaml_path):
-    stims = []
-
-    with open(yaml_path, 'rt') as f:
-        dat = yaml.load(f)
-        try:
-            for item_def in dat['playlist']['audio']:
-                id_, defn = item_def.popitem()
-                defn['identifier'] = id_
-                stims.append(stimulus_factory(**defn))
-        except KeyError:
-            pass
-
-    return AudioStimPlaylist(stims=stims)
-
-
 def run_sound_server(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
@@ -383,8 +367,10 @@ def run_sound_server(options):
     pr = PlaylistReciever()
 
     playlist_stim = None
-    if options.stim_playlist:
-        playlist_stim = _build_playlist(options.stim_playlist)
+    stim_playlist = options.playlist.get('audio')
+
+    if stim_playlist:
+        playlist_stim = AudioStimPlaylist.fromitems(items=stim_playlist)
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))

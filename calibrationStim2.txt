@@ -1,2 +1,0 @@
-stimfilename	freq	rate	silencepre	silencepost	intensity
-square	10	10	5	5	2.75

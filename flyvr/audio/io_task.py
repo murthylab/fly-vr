@@ -329,9 +329,10 @@ def io_task_loop(message_pipe, state):
         taskDI = None
 
         options = state.options
+        stim_playlist = options.playlist.get('daq')
 
         # Check to make sure we are doing analog output
-        if options.stim_playlist is None or options.analog_out_channels is None:
+        if stim_playlist is None or options.analog_out_channels is None:
             is_analog_out = False
         else:
             is_analog_out = True
@@ -351,16 +352,19 @@ def io_task_loop(message_pipe, state):
             else:
                 print("\nWarning: No attenuation file specified.")
 
-            # Read the playlist file and create and audio stimulus playlist object. We will pass a control function to these
-            # underlying stimuli that is triggered anytime they generate data. The control sends a log signal to the
-            # master logging process.
-            audio_stim = AudioStimPlaylist.fromfilename(options.stim_playlist, options.shuffle, attenuator)
+            # Read the playlist file and create and audio stimulus playlist object. We will pass a control
+            # function to these underlying stimuli that is triggered anytime they generate data. The control sends a
+            # log signal to the master logging process.
+            audio_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
+                                                     shuffle_playback=options.shuffle, attenuator=attenuator)
 
-            # Make a sanity check, ensure that the number of channels for this audio stimulus matches the number of output
-            # channels specified in configuration file.
+            # Make a sanity check, ensure that the number of channels for this audio stimulus matches the
+            # number of output channels specified in configuration file.
             if audio_stim.num_channels != len(options.analog_out_channels):
                 raise ValueError(
                     "Number of analog output channels specified in config does not equal number specified in playlist!")
+
+        print("DAQ function: analog_out (audio): %s digital_in: %s" % (is_analog_out, is_digital_in))
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():

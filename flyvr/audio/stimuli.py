@@ -725,6 +725,15 @@ class AudioStimPlaylist(SignalProducer):
             return cls(legacy_factory(f.readlines(), basepath=os.path.dirname(filename), attenuator=attenuator),
                        shuffle_playback=shuffle_playback)
 
+    @classmethod
+    def fromitems(cls, items, shuffle_playback=False, paused=False, attenuator=None):
+        stims = []
+        for item_def in items:
+            id_, defn = item_def.popitem()
+            defn['identifier'] = id_
+            stims.append(stimulus_factory(**defn))
+        return cls(stims, shuffle_playback=shuffle_playback, paused=paused)
+
     def play_item(self, identifier):
         # it's actually debatable if it's best do it this way
         for stim in self._stims:

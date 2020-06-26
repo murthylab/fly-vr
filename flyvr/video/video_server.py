@@ -8,6 +8,7 @@ import yaml
 import h5py
 import numpy as np
 
+from flyvr.common import Dottable
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
 
@@ -15,13 +16,6 @@ from PIL import Image
 from psychopy import visual, core, event
 from psychopy.visual.windowwarp import Warper
 from psychopy.visual.windowframepack import ProjectorFramePacker
-
-
-class _Dottable(dict):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__dict__ = self
 
 
 class VideoStimPlaylist(object):
@@ -63,7 +57,7 @@ class VideoStim(object):
     def __init__(self, **params):
         self._id = params.pop('identifier', uuid.uuid4().hex)
 
-        self.p = _Dottable(params)
+        self.p = Dottable(params)
         self.show = params.pop('show', True)
 
     @property
@@ -600,21 +594,6 @@ class VideoStreamProxy:
             time.sleep(0.1)
 
 
-def _build_playlist(yaml_path):
-    stims = []
-
-    with open(yaml_path, 'rt') as f:
-        dat = yaml.load(f)
-        try:
-            for item_def in dat['playlist']['video']:
-                id_, defn = item_def.popitem()
-                stims.append(stimulus_factory(defn.pop('name'), identifier=id_, **defn))
-        except KeyError:
-            pass
-
-    return VideoStimPlaylist(*stims)
-
-
 def run_video_server(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
@@ -622,20 +601,27 @@ def run_video_server(options):
 
     pr = PlaylistReciever()
 
+    startup_stim = None
     playlist_stim = None
-    if options.stim_playlist:
-        playlist_stim = _build_playlist(options.stim_playlist)
+    stim_playlist = options.playlist.get('video')
+
+    if stim_playlist:
+
+        stims = []
+        for item_def in stim_playlist:
+            id_, defn = item_def.popitem()
+            stims.append(stimulus_factory(defn.pop('name'), identifier=id_, **defn))
+
+        playlist_stim = VideoStimPlaylist(*stims)
+
+    elif options.visual_stimulus:
+        startup_stim = stimulus_factory(options.visual_stimulus)
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.video_server.h5'))
         state = SharedState(options=options, logger=logger)
 
-        if options.visual_stimulus:
-            stim = stimulus_factory(options.visual_stimulus)
-        else:
-            stim = None
-
-        video_server = VideoServer(stim=stim,
+        video_server = VideoServer(stim=startup_stim,
                                    calibration_file=options.screen_calibration,
                                    shared_state=state)
         video_client = video_server.start_stream()
