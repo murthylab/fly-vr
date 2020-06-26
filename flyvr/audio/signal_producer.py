@@ -39,11 +39,10 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
     # event messages.
     instances_created = 0
 
-    def __init__(self, next_event_callbacks=None, dtype=np.float64):
+    def __init__(self, dtype=np.float64):
         """
         Create a signal producer instance.
 
-        :param next_event_callbacks:
         :param dtype: The underlying data type for the numpy array that this class produces. float64 by default.
         """
 
@@ -55,55 +54,6 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
 
         # Store dtype for this producer
         self.dtype = dtype
-
-        # If the user passed in a single callback function, we need to put it in a list.
-        if next_event_callbacks is not None and not isinstance(next_event_callbacks, list):
-            self._next_event_callbacks = [next_event_callbacks]
-        else:
-            self._next_event_callbacks = next_event_callbacks
-
-        # Create a basic event message with the name of the class
-        self.event_message = {"name": type(self).__name__}
-
-    @property
-    def next_event_callbacks(self):
-        """
-        Get the control or list of control functions to execute when this producer generates data.
-
-        :return: The list of control functions.
-        """
-        return self._next_event_callbacks
-
-    @next_event_callbacks.setter
-    def next_event_callbacks(self, next_event_callbacks):
-        """
-        Set the control or list of control functions to execute when this producer generates data.
-
-        :param next_event_callbacks: The control or list of callbacks
-        """
-
-        # If the user provided an attenuator, attenuate the signal
-        if next_event_callbacks is not None and not isinstance(next_event_callbacks, list):
-            self._next_event_callbacks = [next_event_callbacks]
-
-    def trigger_next_callback(self, message_data, num_samples, channels=0):
-        """
-        Trigger any callbacks that have been assigned to this SignalProducer. This methods should be called before
-        any yield of a generator created by the signal producer. This allows them to signal next events to other parts
-        of the application.
-
-        :param message_data: A dict that contains meta-data associated with this event. Should be relatively small since
-        it will be pickled and sent to logging process.
-        """
-
-        # Attach the event specific data to this event data. This is the producer and the start sample number
-        message = SignalNextEventData(producer_id=self.producer_id, num_samples=num_samples, channels=channels,
-                                      metadata=message_data)
-        message.producer_id = self.producer_id
-
-        if self.next_event_callbacks is not None:
-            for func in self.next_event_callbacks:
-                func(message)
 
     @abc.abstractmethod
     def data_generator(self):
@@ -195,12 +145,11 @@ class MixedSignal(SignalProducer):
     arrays into a one array.
     """
 
-    def __init__(self, signals, next_event_callbacks=None):
+    def __init__(self, signals):
         """
         Create the MixedSignal object that will combine these signals into one signal.
 
         :param signals: The list of signals to combine, one for each channel.
-        :param next_event_callbacks: A list of callables to trigger when a next is called on this signal producer.
         """
 
         self.signals = signals
@@ -215,11 +164,7 @@ class MixedSignal(SignalProducer):
             raise ValueError("Cannot created mixed signal from signals with different dtypes.")
 
         # Attach event next callbacks to this object, since it is a signal producer
-        super(MixedSignal, self).__init__(next_event_callbacks=next_event_callbacks, dtype=dtype)
-
-        # Setup a dictionary for the parameters of the stimulus. We will send this as part
-        # of an event message to the next_event_callbacks
-        self.event_message['channels'] = [sig.event_message for sig in self.signals]
+        super(MixedSignal, self).__init__(dtype=dtype)
 
         # Grab a chunk from each generator to see how big their chunks are, we will need to make sure they are all the
         # same size later when we output a single chunk with multiple channels.
@@ -272,7 +217,7 @@ class MixedSignal(SignalProducer):
                 channel_idx = channel_idx + self.chunk_widths[i]
 
             # We are about to yield, send an event to our callbacks
-            self.trigger_next_callback(message_data=self.event_message, num_samples=self._data.shape[0])
+            # self.trigger_next_callback(message_data=self.event_message, num_samples=self._data.shape[0])
 
             yield SampleChunk(data=self._data, producer_id=self.producer_id)
 
@@ -282,22 +227,17 @@ class ConstantSignal(SignalProducer):
     A very simple signal that generates a constant value.
     """
 
-    def __init__(self, constant, num_samples=1, next_event_callbacks=None):
+    def __init__(self, constant, num_samples=1):
         # Attach event next callbacks to this object, since it is a signal producer
-        super(ConstantSignal, self).__init__(next_event_callbacks=next_event_callbacks)
+        super(ConstantSignal, self).__init__()
 
         self.constant = constant
 
         self.chunk = SampleChunk(data=np.ones(num_samples, dtype=self.dtype) * self.constant,
                                  producer_id=self.producer_id)
 
-        self.event_message['constant'] = constant
-
     def data_generator(self):
         while True:
-            # We are about to yield, send an event to our callbacks
-            self.trigger_next_callback(message_data=self.event_message, num_samples=self.chunk.data.shape[0])
-
             yield self.chunk
 
 

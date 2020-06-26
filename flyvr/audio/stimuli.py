@@ -163,7 +163,7 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
         """
         while True:
             self.num_samples_generated = self.num_samples_generated + self.data.shape[0]
-            self.trigger_next_callback(message_data=self.event_message, num_samples=self.data.shape[0])
+            # self.trigger_next_callback(message_data=self.event_message, num_samples=self.data.shape[0])
 
             yield SampleChunk(data=self.data, producer_id=self.producer_id)
 
@@ -321,7 +321,8 @@ class SinStim(AudioStim):
         # Initiatialize the base class members
         super(SinStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
                                       pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
-                                      frequency=frequency, next_event_callbacks=next_event_callbacks, identifier=identifier)
+                                      frequency=frequency, next_event_callbacks=next_event_callbacks,
+                                      identifier=identifier)
 
         self.__amplitude = amplitude
         self.__phase = phase
@@ -693,10 +694,10 @@ def legacy_factory(lines, basepath, attenuator=None):
 class AudioStimPlaylist(SignalProducer):
     """A simple class that provides a generator for a sequence of AudioStim objects."""
 
-    def __init__(self, stims, shuffle_playback=False, next_event_callbacks=None):
+    def __init__(self, stims, shuffle_playback=False, paused=False):
 
         # Attach event next callbacks to this object, since it is a signal producer
-        super(AudioStimPlaylist, self).__init__(next_event_callbacks)
+        super(AudioStimPlaylist, self).__init__()
 
         self._stims = stims
         self.shuffle_playback = shuffle_playback
@@ -753,11 +754,6 @@ class AudioStimPlaylist(SignalProducer):
             play_idx = playback_order[stim_idx]
 
             sample_chunk_obj = next(data_gens[play_idx])
-
-            data = sample_chunk_obj.data
-
-            # We are about to yield, send an event to our callbacks
-            self.trigger_next_callback(message_data=self.event_message, num_samples=data.shape[0])
 
             yield sample_chunk_obj
 
