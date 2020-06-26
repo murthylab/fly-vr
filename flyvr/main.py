@@ -26,7 +26,10 @@ def main_launcher():
 
     state = SharedState(options=options, logger=logger)
 
-    experiment = Experiment.example()
+    experiment = None
+    if options.experiment:
+        experiment = Experiment.from_items(state_item_defns=options.experiment.get('state'),
+                                           timed_item_defns=options.experiment.get('timed'))
 
     if options.fictrac_config is not None:
 

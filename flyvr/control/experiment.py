@@ -6,6 +6,8 @@ import collections
 import yaml
 import numpy as np
 
+from flyvr.common.ipc import PlaylistSender
+
 
 class _MovingAverageStateVariable(object):
 
@@ -61,17 +63,29 @@ class Experiment(object):
         self._timed = timed
         self._t0 = time.time()
 
-        # todo: set up all the RQ connections here
+        self._ipc = PlaylistSender()
 
-    def start(self):
+    def start(self, uuid=None):
         self._t0 = time.time()
+        self._ipc.process(command='start', value=uuid)
+        return uuid
+
+    def start_and_wait_for_all_processes(self, state):
+        # todo: loop over shared mem ready vals waiting for them to be set to the uuid
+        # todo: in other process (audio, daq, video) wait for ipc start command over IPC and set shmem in response
+        uuid = self.start()
 
     @classmethod
     def from_yaml(cls, stream_like):
         dat = yaml.load(stream_like, Loader=yaml.SafeLoader)
+        return cls.from_items(dat.get('state', {}), dat.get('time', {}))
 
+    @classmethod
+    def from_items(cls, state_item_defns, timed_item_defns):
+        timed = []
         events = []
-        for param, defn in dat['state'].items():
+
+        for param, defn in state_item_defns.items():
             comparison, action_defn = defn.popitem()
             operator_ = getattr(operator, comparison)
 
@@ -108,7 +122,7 @@ class Experiment(object):
 
                 events.append(evt)
 
-        return cls(events, [])
+        return cls(events, timed)
 
     @classmethod
     def example(cls):

@@ -176,6 +176,14 @@ def parse_arguments(args=None):
     except KeyError:
         _playlist = {}
 
+    _experiment = {}
+    for _exp_what in ('state', 'time'):
+        try:
+            _experiment[_exp_what] = _all_conf[_exp_what]
+        except KeyError:
+            pass
+
     options.playlist = _playlist
+    options.experiment = _experiment
 
     return options
