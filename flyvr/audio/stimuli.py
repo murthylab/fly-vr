@@ -7,7 +7,6 @@ import uuid
 import h5py
 import numpy as np
 import scipy
-import pandas as pd
 from scipy import io
 from scipy import signal
 
@@ -388,6 +387,7 @@ class SinStim(AudioStim):
         :return: The sin signal data, ready to be passed to the DAQ as voltage signals.
         :rtype: numpy.ndarray
         """
+        # noinspection PyPep8Naming
         T = np.linspace(0.0, float(self.duration) / 1000.0, int((float(self.sample_rate) / 1000.0) * self.duration))
 
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
@@ -477,6 +477,7 @@ class SquareWaveStim(AudioStim):
         :return: The sin signal data, ready to be passed to the DAQ as voltage signals.
         :rtype: numpy.ndarray
         """
+        # noinspection PyPep8Naming
         T = np.linspace(0.0, float(self.duration) / 1000.0, int((float(self.sample_rate) / 1000.0) * self.duration))
 
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
@@ -548,7 +549,7 @@ class MATFileStim(AudioStim):
             data = data['stim']
 
             return data
-        except NotImplementedError as e:
+        except NotImplementedError:
             # This exception indicates that this is an HDF5 file and not an old type MAT file
             h5_file = h5py.File(self.__filename + '.mat', 'r')
             data = np.squeeze(h5_file['stim'])
@@ -652,7 +653,9 @@ def legacy_factory(lines, basepath, attenuator=None):
     stims = []
     for line in lines:
         try:
-            stimFileName, rate, trial, silencePre, silencePost, delayPost, intensity, freq = map(str.strip, line.split('\t'))
+            # noinspection PyPep8Naming
+            stimFileName, rate, trial, silencePre, silencePost, delayPost, intensity, freq = \
+                map(str.strip, line.split('\t'))
         except ValueError:
             raise ValueError("incorrect formatting: '%r' (ntabs: %d)" % (line, line.count('\t')))
 
@@ -700,12 +703,9 @@ class AudioStimPlaylist(SignalProducer):
         super(AudioStimPlaylist, self).__init__()
 
         self._stims = stims
-        self.shuffle_playback = shuffle_playback
 
-        # We need to create a dictionary that describes the state of stimulus playlist
-        self.event_message = {"name": "AudioStimulusPlaylist",
-                              "stimuli": [stim.event_message for stim in stims],
-                              "shuffle_playback": shuffle_playback}
+        self.shuffle_playback = shuffle_playback
+        self.paused = paused
 
         # If we want to shuffle things, get a random permutation.
         if self.shuffle_playback:
@@ -724,6 +724,16 @@ class AudioStimPlaylist(SignalProducer):
         with open(filename, 'rt') as f:
             return cls(legacy_factory(f.readlines(), basepath=os.path.dirname(filename), attenuator=attenuator),
                        shuffle_playback=shuffle_playback)
+
+    def play_item(self, identifier):
+        # it's actually debatable if it's best do it this way
+        for stim in self._stims:
+            if stim.identifier == identifier:
+                return stim.data_generator()
+        raise ValueError('%s not found' % identifier)
+
+    def play_pause(self, pause):
+        self.paused = pause
 
     def data_generator(self):
         """
@@ -746,6 +756,7 @@ class AudioStimPlaylist(SignalProducer):
             rng.seed(self.random_seed)
             playback_order = rng.permutation(len(self._stims))
         else:
+            rng = None
             playback_order = np.arange(len(self._stims))
 
         # Now, go through the list one at a time, call next on each one of their generators
@@ -755,13 +766,16 @@ class AudioStimPlaylist(SignalProducer):
 
             sample_chunk_obj = next(data_gens[play_idx])
 
-            yield sample_chunk_obj
+            if self.paused:
+                yield None
+            else:
+                yield sample_chunk_obj
 
             stim_idx = stim_idx + 1
 
             # If we are at the end, then either go back to beginning or reshuffle
-            if (stim_idx == len(playback_order)):
+            if stim_idx == len(playback_order):
                 stim_idx = 0
 
-                if (shuffle_playback):
+                if shuffle_playback:
                     playback_order = rng.permutation(len(playback_order))

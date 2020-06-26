@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import abc
 import copy
@@ -24,7 +25,6 @@ class SampleChunk(object):
 
     def __init__(self, data, producer_id):
         self.data = data
-        print(self.data.shape)
         self.producer_id = producer_id
 
 
@@ -105,10 +105,16 @@ def chunker(gen, chunk_size=100):
     curr_chunk_sample = 0
     data = None
     num_samples = 0
-    while True:
+
+    for i in itertools.count():
 
         if curr_data_sample == num_samples:
             sample_chunk_obj = next(gen)
+
+            if sample_chunk_obj is None:
+                yield None
+                continue
+
             data = sample_chunk_obj.data
             curr_data_sample = 0
             num_samples = data.shape[0]
@@ -125,8 +131,7 @@ def chunker(gen, chunk_size=100):
         if data.ndim == 1:
             next_chunk[curr_chunk_sample:(curr_chunk_sample + sz)] = data[curr_data_sample:(curr_data_sample + sz)]
         else:
-            next_chunk[curr_chunk_sample:(curr_chunk_sample + sz), :] = data[curr_data_sample:(curr_data_sample + sz),
-                                                                        :]
+            next_chunk[curr_chunk_sample:(curr_chunk_sample + sz), :] = data[curr_data_sample:(curr_data_sample + sz), :]
 
         curr_chunk_sample = curr_chunk_sample + sz
         curr_data_sample = curr_data_sample + sz

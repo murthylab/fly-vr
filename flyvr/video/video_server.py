@@ -49,6 +49,9 @@ class VideoStimPlaylist(object):
         for sid, s in self._stims.items():
             s.show = sid == identifier
 
+    def play_pause(self, pause):
+        pass
+
     def play(self, stim):
         self._stims[stim.identifier] = stim
 
@@ -653,6 +656,8 @@ def run_video_server(options):
                         video_client.play(stim)
                     elif 'video_item' in elem:
                         video_client.play(elem['video_item']['identifier'])
+                    elif 'video_action' in elem:
+                        pass
                     else:
                         print("Ignoring Message")
                 except Exception as exc:

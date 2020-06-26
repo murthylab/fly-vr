@@ -31,8 +31,9 @@ class SoundServer(object):
 
         # No data generator has been set yet
         self._data_generator = None
+        self._stim_playlist = None  # type: AudioStimPlaylist
 
-        # Once, we no the block size and number of channels, we will pre-allocate a block of silence data
+        # Once, we know the block size and number of channels, we will pre-allocate a block of silence data
         self._silence = None
 
         # Setup a stream end event, this is how the control will signal to the main thread when it exits.
@@ -138,8 +139,14 @@ class SoundServer(object):
         elif isinstance(stim, AudioStimPlaylist):
             print('Playing AudioStimPlaylist Signal: %r' % stim)
             self.data_generator = stim.data_generator()
+            self._stim_playlist = stim
         elif stim is None:
             self.data_generator = None
+        elif isinstance(stim, str) and (self._stim_playlist is not None):
+            if stim in {'play', 'pause'}:
+                self._stim_playlist.play_pause(pause=stim == 'pause')
+            else:
+                self.data_generator = self._stim_playlist.play_item(stim)
         else:
             raise ValueError("The play method of SoundServer only takes instances of AudioStim objects or those that" +
                              "inherit from this base class. ")
@@ -218,7 +225,7 @@ class SoundServer(object):
 
                 # Wait for a message to come
                 msg = msg_receiver.recv()
-                if isinstance(msg, (AudioStim, MixedSignal, AudioStimPlaylist)) or msg is None:
+                if isinstance(msg, (AudioStim, MixedSignal, AudioStimPlaylist, str)) or msg is None:
                     self._play(msg)
                 else:
                     raise NotImplementedError(repr(msg))
@@ -259,8 +266,12 @@ class SoundServer(object):
                     data = self._silence
                 else:
                     data_chunk = next(self._data_generator)
-                    producer_id = data_chunk.producer_id
-                    data = data_chunk.data.data
+                    if data_chunk is None:
+                        producer_id = -1
+                        data = self._silence
+                    else:
+                        producer_id = data_chunk.producer_id
+                        data = data_chunk.data.data
 
                 # Make extra sure the length of the data we are getting is the correct number of samples
                 assert (len(data) == frames)
@@ -394,6 +405,10 @@ def run_sound_server(options):
                     stim, = legacy_factory([elem['audio_legacy']], None)
                 elif 'audio' in elem:
                     stim = stimulus_factory(**elem['audio'])
+                elif 'audio_item' in elem:
+                    stim = elem['audio_item']['identifier']
+                elif 'audio_action' in elem:
+                    stim = elem['audio_action']
                 else:
                     print("Ignoring Message")
 
