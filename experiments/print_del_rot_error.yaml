@@ -1,0 +1,8 @@
+state:
+  del_rot_error:
+    is_not:
+      value: null
+      average: 25
+      absolute: true
+      do:
+        - print: {}

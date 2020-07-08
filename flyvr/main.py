@@ -28,8 +28,8 @@ def main_launcher():
 
     experiment = None
     if options.experiment:
-        experiment = Experiment.from_items(state_item_defns=options.experiment.get('state'),
-                                           timed_item_defns=options.experiment.get('timed'))
+        assert isinstance(options.experiment, Experiment)
+        experiment = options.experiment
 
     if options.fictrac_config is not None:
 

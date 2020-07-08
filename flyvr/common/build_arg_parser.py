@@ -1,3 +1,4 @@
+import os.path
 import time
 
 import yaml
@@ -42,15 +43,19 @@ class YamlConfigParser(configargparse.YAMLConfigFileParser):
 
 
 def parse_arguments(args=None):
+    from flyvr.control.experiment import Experiment
+
     savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
     # Setup program command line argument parser
     parser = configargparse.ArgumentParser(config_file_parser_class=YamlConfigParser,
                                            args_for_setting_config_path=['-c', '--config'])
     parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
-    parser.add_argument("-a", "--attenuation_file", dest="attenuation_file",
+    parser.add_argument("--attenuation_file", dest="attenuation_file",
                         help="A file specifying the attenuation function")
-    parser.add_argument('-i', "--analog_in_channels",
+    parser.add_argument("--experiment_file", dest="experiment_file",
+                        help="A file defining the experiment (can be a python file or a .yaml)")
+    parser.add_argument("--analog_in_channels",
                         type=str,
                         action=CommaListParser,
                         help="A comma separated list of numbers specifying the input channels record."
@@ -62,7 +67,7 @@ def parse_arguments(args=None):
                         help="A comma separated list of channels specifying the digital input channels record."
                              "Default is None.",
                         default=None)
-    parser.add_argument('-o', "--analog_out_channels",
+    parser.add_argument("--analog_out_channels",
                         type=str,
                         action=CommaListParser,
                         help="A comma separated list of numbers specifying the output channels."
@@ -143,14 +148,35 @@ def parse_arguments(args=None):
     except KeyError:
         _playlist = {}
 
+    _experiment_obj = None
     _experiment = {}
-    for _exp_what in ('state', 'time'):
-        try:
-            _experiment[_exp_what] = _all_conf[_exp_what]
-        except KeyError:
-            pass
+
+    def _build_experiment_inline(_conf):
+        __experiment = {}
+        for _exp_what in ('state', 'time'):
+            try:
+                __experiment[_exp_what] = _conf[_exp_what]
+            except KeyError:
+                pass
+
+        if __experiment:
+            return Experiment.from_items(state_item_defns=__experiment.get('state'),
+                                         timed_item_defns=__experiment.get('timed'))
+
+    if options.experiment_file:
+
+        _, ext = os.path.splitext(options.experiment_file)
+        if ext == '.py':
+            _experiment_obj = Experiment.new_from_python_file(options.experiment_file)
+        elif ext == '.yaml':
+            with open(options.experiment_file) as f:
+                dat = yaml.safe_load(f)
+            _experiment_obj = _build_experiment_inline(dat)
+
+    else:
+        _experiment_obj = _build_experiment_inline(_all_conf)
 
     options.playlist = _playlist
-    options.experiment = _experiment
+    options.experiment = _experiment_obj
 
     return options

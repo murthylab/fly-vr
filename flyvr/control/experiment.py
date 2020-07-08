@@ -58,7 +58,7 @@ class PrintEvent(_Event):
 
 class Experiment(object):
 
-    def __init__(self, events, timed):
+    def __init__(self, events=(), timed=()):
         self._events = events
         self._timed = timed
         self._t0 = time.time()
@@ -125,18 +125,6 @@ class Experiment(object):
         return cls(events, timed)
 
     @classmethod
-    def example(cls):
-        return cls.from_yaml("""
-state:
-  del_rot_cam_vec[1]:
-    ge:
-      value: 0.009
-      average: 25
-      absolute: true
-      do:
-        - playlist: 'foo'""")
-
-    @classmethod
     def new_from_python_file(cls, path):
         _locals = {}
         with open(path) as f:
@@ -174,26 +162,17 @@ def do_loop(exp, delay):
 
 
 def main_experiment():
-    e = Experiment.from_yaml("""
-    state:
-      del_rot_error:
-        is_not:
-          value: null
-          average: 25
-          absolute: true
-          do:
-            - print: {}""")
+    import sys
+    from flyvr.common.build_arg_parser import parse_arguments
 
-    do_loop(e, 1/200.)
+    try:
+        options = parse_arguments()
+    except ValueError as ex:
+        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
+        sys.exit(-1)
 
+    if not options.experiment:
+        sys.stderr.write("No experiment specified")
+        sys.exit(-1)
 
-
-#
-#
-# _STATE = collections.namedtuple('State', ('speed', 'del_rot_cam_vec'))
-#
-#
-#
-# e.process_state(_STATE(-1.5, (0,0,0)))
-# # e.process_state(_STATE(-1.5, (0,-1,0)))
-# # e.process_state(_STATE(-1.5, (0,2,0)))
+    do_loop(options.experiment, 1/200.)
