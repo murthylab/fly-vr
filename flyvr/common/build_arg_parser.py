@@ -132,8 +132,11 @@ def parse_arguments(args=None):
             parser.print_help()
             parser.error("parameter %s required" % r)
 
-    with open(options.config_file) as f:
-        _all_conf = yaml.safe_load(f)
+    if options.config_file:
+        with open(options.config_file) as f:
+            _all_conf = yaml.safe_load(f)
+    else:
+        _all_conf = {}
 
     try:
         _playlist = _all_conf['playlist']

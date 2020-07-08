@@ -76,7 +76,7 @@ optional arguments:
 
 TLDR;
 
-* `flyvr -c empty.config.py`
+* `flyvr`
 
 ## Usage of Individual Utilities
 
