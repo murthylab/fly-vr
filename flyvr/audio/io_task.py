@@ -23,7 +23,6 @@ from ctypes import byref, c_ulong
 from flyvr.audio.attenuation import Attenuator
 from flyvr.audio.signal_producer import chunker, MixedSignal
 from flyvr.audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
-from flyvr.control.motor_control import BallControlSignal
 from flyvr.control.two_photon_control import TwoPhotonController
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
@@ -387,10 +386,9 @@ def io_task_loop(message_pipe, state):
 
             taskDO = None
             two_photon_controller = None
-            ball_control = None
 
             # Setup digital control if needed.
-            if (options.remote_2P_enable and is_analog_out) or options.ball_control_enable:
+            if options.remote_2P_enable and is_analog_out:
                 channels = []
                 signals = []
 
@@ -402,15 +400,6 @@ def io_task_loop(message_pipe, state):
                                                                 audio_stim_playlist=audio_stim)
                     channels = channels + two_photon_controller.channel_names
                     signals.append(two_photon_controller)
-
-                # Setup the ball control if needed
-                if options.ball_control_enable:
-                    ball_control = BallControlSignal(periods=options.ball_control_periods,
-                                                     durations=options.ball_control_durations,
-                                                     loop=options.ball_control_loop,
-                                                     sample_rate=DAQ_SAMPLE_RATE)
-                    channels.append(options.ball_control_channel)
-                    signals.append(ball_control)
 
                 taskDO = IOTask(cha_name=channels, cha_type="output", digital=True,
                                 num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,

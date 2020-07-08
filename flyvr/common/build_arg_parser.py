@@ -41,20 +41,6 @@ class YamlConfigParser(configargparse.YAMLConfigFileParser):
         return super().parse(yaml.safe_dump(config))
 
 
-def validatate_args(options):
-    if options.ball_control_enable:
-        # Make sure the user has passed in the appropriate parameters
-        if not options.ball_control_periods:
-            raise ValueError("Ball control is enabled but no ball_control_periods parameter has been specified.")
-
-        if not options.ball_control_durations:
-            raise ValueError("Ball control is enabled but no ball_control_durations parameter has been specified.")
-
-        if len(options.ball_control_periods) != len(options.ball_control_durations):
-            raise ValueError(
-                "ball_control_periods and ball_control_durations must have same length, one duration for each period.")
-
-
 def parse_arguments(args=None):
     savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
@@ -131,26 +117,6 @@ def parse_arguments(args=None):
                         help="Delay the start of playback and acquisition from FicTrac tracking by this many seconds. "
                              "The default is 0 seconds.",
                         default=0.0)
-    parser.add_argument("--ball_control_enable", action="store_true",
-                        default=False,
-                        help='Enable control signals for stepper motor controlling ball motion. '
-                             'Used for testing of closed loop setup.')
-    parser.add_argument("--ball_control_channel", type=str,
-                        default='port0/line3:4',
-                        help='String with name of two bit digital channels to send ball signal.')
-    parser.add_argument("--ball_control_periods",
-                        type=str,
-                        action=CommaListNumParser,
-                        help="A comma separated list of periods (in milliseconds) describing how to "
-                             "construct the ball control signal.")
-    parser.add_argument("--ball_control_durations",
-                        type=str,
-                        action=CommaListNumParser,
-                        help="A comma separated list of durations (in seconds) for each period in the "
-                             "ball_control_periods parameter.")
-    parser.add_argument("--ball_control_loop", action="store_true",
-                        default=True,
-                        help='Whether the ball control signal should loop idefinitely or not.')
 
     # required = "stim_playlist".split()
     required = "".split()
@@ -165,8 +131,6 @@ def parse_arguments(args=None):
         if options.__dict__[r] is None:
             parser.print_help()
             parser.error("parameter %s required" % r)
-
-    validatate_args(options)
 
     with open(options.config_file) as f:
         _all_conf = yaml.safe_load(f)

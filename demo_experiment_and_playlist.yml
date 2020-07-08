@@ -33,9 +33,4 @@ configuration:
   fictrac_config: null
   fictrac_console_out: null
   pgr_cam_enable: false
-  ball_control_enable: false
-  ball_control_channel: 'port0/line3:4'
-  ball_control_periods: null
-  ball_control_durations: null
-  ball_control_loop: true
   visual_stimulus: null

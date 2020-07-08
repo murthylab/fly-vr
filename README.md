@@ -4,56 +4,47 @@ Software for running a experimental virtual reality setup for flies. This projec
 
 # Usage
 ```
-usage: flyvr [-h] -c CONFIG [-v] [-p STIM_PLAYLIST] [-a ATTENUATION_FILE]
+usage: flyvr [-h] [-c CONFIG_FILE] [-v] [-a ATTENUATION_FILE]
              [-i ANALOG_IN_CHANNELS]
              [--digital_in_channels DIGITAL_IN_CHANNELS]
-             [-o ANALOG_OUT_CHANNELS] [--addSyncOutput]
-             [--visual_stimulus VISUAL_STIMULUS]
-             [--screen_calibration SCREEN_CALIBRATION] [--use_RSE USE_RSE]
+             [-o ANALOG_OUT_CHANNELS]
+             [--screen_calibration SCREEN_CALIBRATION]
+             [--visual_stimulus VISUAL_STIMULUS] [--use_RSE USE_RSE]
              [--remote_2P_enable]
              [--remote_start_2P_channel REMOTE_START_2P_CHANNEL]
              [--remote_stop_2P_channel REMOTE_STOP_2P_CHANNEL]
              [--remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL]
              [-l RECORD_FILE] [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT]
-             [--fictrac_plot_state] [--pgr_cam_enable] [--shuffle]
-             [--start_delay START_DELAY] [--callback CALLBACK]
-             [--ball_control_enable]
-             [--ball_control_channel BALL_CONTROL_CHANNEL]
-             [--ball_control_periods BALL_CONTROL_PERIODS]
-             [--ball_control_durations BALL_CONTROL_DURATIONS]
-             [--ball_control_loop]
+             [--fictrac_plot_state] [--pgr_cam_enable]
+             [--start_delay START_DELAY]
 
-Args that start with '--' (eg. -p) can also be set in a config file (specified
-via -c). Config file syntax allows: key=value, flag=true, stuff=[a,b,c] (for
-details, see syntax at https://goo.gl/R74nmi). If an arg is specified in more
-than one place, then commandline values override config file values which
-override defaults.
+Args that start with '--' (eg. -a) can also be set in a config file (specified
+via -c). The config file uses YAML syntax and must represent a YAML 'mapping'
+(for details, see http://learn.getgrav.org/advanced/yaml). If an arg is
+specified in more than one place, then commandline values override config file
+values which override defaults.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CONFIG, --config CONFIG
-                        Path to a configuration file.
+  -c CONFIG_FILE, --config CONFIG_FILE
+                        config file path
   -v                    Verbose output
-  -p STIM_PLAYLIST, --stim_playlist STIM_PLAYLIST
-                        A playlist file of auditory stimuli
   -a ATTENUATION_FILE, --attenuation_file ATTENUATION_FILE
                         A file specifying the attenuation function
   -i ANALOG_IN_CHANNELS, --analog_in_channels ANALOG_IN_CHANNELS
                         A comma separated list of numbers specifying the input
-                        channels record. Default channel is 0.
+                        channels record.Default channel is 0.
   --digital_in_channels DIGITAL_IN_CHANNELS
                         A comma separated list of channels specifying the
-                        digital input channels record. Default is None.
+                        digital input channels record.Default is None.
   -o ANALOG_OUT_CHANNELS, --analog_out_channels ANALOG_OUT_CHANNELS
                         A comma separated list of numbers specifying the
-                        output channels. Default none for no output
-  --addSyncOutput       Send a 5V power signal to the last AO channel for
-                        visual synchronization.
-  --visual_stimulus VISUAL_STIMULUS
-                        A pre-defined visual stimulus
+                        output channels.Default none for no output
   --screen_calibration SCREEN_CALIBRATION
                         Where to find the (pre-computed) screen calibration
                         file
+  --visual_stimulus VISUAL_STIMULUS
+                        A pre-defined visual stimulus
   --use_RSE USE_RSE     Use RSE (as opposed to differential) denoising on AI
                         DAQ inputs
   --remote_2P_enable    Enable remote start, stop, and next file signaling the
@@ -77,28 +68,10 @@ optional arguments:
                         File to save FicTrac console output to.
   --fictrac_plot_state  Enable plotting of FicTrac state history.
   --pgr_cam_enable      Enable Point Grey Camera support in FicTrac.
-  --shuffle             Shuffle the playback of the playlist randomly.
   --start_delay START_DELAY
                         Delay the start of playback and acquisition from
                         FicTrac tracking by this many seconds. The default is
                         0 seconds.
-  --callback CALLBACK   Filename of Python code that contains implementaion of
-                        FlyVRCallback class. Used to plugincustom control
-                        logic for closed loop experiments.
-  --ball_control_enable
-                        Enable control signals for stepper motor controlling
-                        ball motion. Used for testing of closed loop setup.
-  --ball_control_channel BALL_CONTROL_CHANNEL
-                        String with name of two bit digital channels to send
-                        ball signal.
-  --ball_control_periods BALL_CONTROL_PERIODS
-                        A comma separated list of periods (in milliseconds)
-                        describing how to construct the ball control signal.
-  --ball_control_durations BALL_CONTROL_DURATIONS
-                        A comma separated list of durations (in seconds) for
-                        each period in the ball_control_periods parameter.
-  --ball_control_loop   Whether the ball control signal should loop
-                        idefinitely or not.
 ```
 
 TLDR;
