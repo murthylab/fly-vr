@@ -100,9 +100,6 @@ def main_ipc_send():
     for i in range(10):
         send.process()
 
-    # flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"
-    # flyvr-ipc-send.exe "{\"video\": {\"name\": \"looming\"}}"
-
     send.process(**dat)
     send.close(block=True)
     print("SENT: %r" % dat)

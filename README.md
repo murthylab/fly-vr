@@ -4,10 +4,11 @@ Software for running a experimental virtual reality setup for flies. This projec
 
 # Usage
 ```
-usage: flyvr [-h] [-c CONFIG_FILE] [-v] [-a ATTENUATION_FILE]
-             [-i ANALOG_IN_CHANNELS]
+usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
+             [--experiment_file EXPERIMENT_FILE]
+             [--analog_in_channels ANALOG_IN_CHANNELS]
              [--digital_in_channels DIGITAL_IN_CHANNELS]
-             [-o ANALOG_OUT_CHANNELS]
+             [--analog_out_channels ANALOG_OUT_CHANNELS]
              [--screen_calibration SCREEN_CALIBRATION]
              [--visual_stimulus VISUAL_STIMULUS] [--use_RSE USE_RSE]
              [--remote_2P_enable]
@@ -18,26 +19,29 @@ usage: flyvr [-h] [-c CONFIG_FILE] [-v] [-a ATTENUATION_FILE]
              [--fictrac_plot_state] [--pgr_cam_enable]
              [--start_delay START_DELAY]
 
-Args that start with '--' (eg. -a) can also be set in a config file (specified
-via -c). The config file uses YAML syntax and must represent a YAML 'mapping'
-(for details, see http://learn.getgrav.org/advanced/yaml). If an arg is
-specified in more than one place, then commandline values override config file
-values which override defaults.
+Args that start with '--' (eg. --attenuation_file) can also be set in a config
+file (specified via -c). The config file uses YAML syntax and must represent a
+YAML 'mapping' (for details, see http://learn.getgrav.org/advanced/yaml). If
+an arg is specified in more than one place, then commandline values override
+config file values which override defaults.
 
 optional arguments:
   -h, --help            show this help message and exit
   -c CONFIG_FILE, --config CONFIG_FILE
                         config file path
   -v                    Verbose output
-  -a ATTENUATION_FILE, --attenuation_file ATTENUATION_FILE
+  --attenuation_file ATTENUATION_FILE
                         A file specifying the attenuation function
-  -i ANALOG_IN_CHANNELS, --analog_in_channels ANALOG_IN_CHANNELS
+  --experiment_file EXPERIMENT_FILE
+                        A file defining the experiment (can be a python file
+                        or a .yaml)
+  --analog_in_channels ANALOG_IN_CHANNELS
                         A comma separated list of numbers specifying the input
                         channels record.Default channel is 0.
   --digital_in_channels DIGITAL_IN_CHANNELS
                         A comma separated list of channels specifying the
                         digital input channels record.Default is None.
-  -o ANALOG_OUT_CHANNELS, --analog_out_channels ANALOG_OUT_CHANNELS
+  --analog_out_channels ANALOG_OUT_CHANNELS
                         A comma separated list of numbers specifying the
                         output channels.Default none for no output
   --screen_calibration SCREEN_CALIBRATION
@@ -111,21 +115,78 @@ When installing, ensure you choose to install the 'Offline Control Panel'.
 
 ## fictrac
 
-If you are using a Point Grey/FLIR camera, make sure the [FlyCapture SDK](https://www.flir.com/products/flycapture-sdk/) is installed. Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - for instance, C:\Program Files\Point Grey Research\FlyCapture2\bin64) and place it in your FicTrac directory. If it is named FlyCapture2_C_v100.dll rename it. I have included this version in the fictrac_calibration folder of the repo for now.
+If you are using a Point Grey/FLIR camera, make sure the [FlyCapture SDK](https://www.flir.com/products/flycapture-sdk/) is installed.
+Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - for instance,
+`C:\Program Files\Point Grey Research\FlyCapture2\bin64`) and place it in your FicTrac directory. If it is named
+`FlyCapture2_C_v100.dll` rename it. I have included this version in the fictrac_calibration folder of the repo for now.
 
-For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases).
+For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download
+the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases).
 
 For configuring FicTrac, a few files are needed:
-1. A TIFF file used as a mask to remove non-ball areas, bright spots, etc (show examples). There is currently a matlab function that will help create this mask available in Im2P_CreateNewMask.m. But first need to capture a single frame to use as reference point!
 
-Note that you probably want to reduce the resolution of the frame to minimize how much data needs to be passed around.
+1. A TIFF file used as a mask to remove non-ball areas, bright spots, etc (show examples).
+   There is currently a MATLAB function that will help create this mask available in `Im2P_CreateNewMask.m`. But
+   first need to capture a single frame to use as reference point!
+       
+   Note that you probably want to reduce the resolution of the frame to minimize how much data needs to be passed around.
 
 2. A configuration file. Currently in FicTracPGR_ConfigMaster.txt
 
-3. A calibration file (??). Currently in calibration-transform.dat. If you do not use this transform file, a new one will be created by a user-guided process the first time you run FicTrac. If you want to update it, you can delete the file and try again.
+3. A calibration file (??). Currently in `calibration-transform.dat`. If you do not use this transform file,
+   a new one will be created by a user-guided process the first time you run FicTrac. If you want to update it,
+   you can delete the file and try again.
 
-4. To run FicTrac, run FicTrac FicTracPGR_ConfigMaster.txt or FicTrac-PGR FicTracPGR_ConfigMaster.txt (if you are using a Point Grey camera).
+4. To run FicTrac, run `FicTrac FicTracPGR_ConfigMaster.txt` or `FicTrac-PGR FicTracPGR_ConfigMaster.txt`
+   (if you are using a Point Grey camera).
 
 
 Question: how do I exit FicTrac??
+
 How to calculate vfov: https://www.reddit.com/r/fictrac/comments/e71ida/how_to_get_the_right_vfov/
+
+# flyvr-architecture
+
+The flyvr is a multi-process application for multi-sensory virtual reality. The different processes are separated largely
+by the sensory modality they target, for example there is a single process dedicated to video stimulus, one for
+audio stimulus, etc. The *primary* separate processes are (more explanations follow)
+
+* flyvr  
+  main application launcher, launches all other processes internally. usually all that is needed to be run
+* flyvr-audio  
+  process which reads the audio playlist and plays audio signals via the soundcard
+* flyvr-video
+  process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
+* flyvr-daq
+  process which drives the NI DAQ for the purposes of
+  * outputing the opto stimulus
+  * recording the 
+
+Similarly, the following secondary utilities are available also as separate processes to aid debugging, development, testing
+or observing experiments in progress  
+
+* flyvr-fictrac-replay  
+  can replay a previously saved fictrac `.h5` file in order to test, for example, experiment logic
+* flyvr-experiment  
+  allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. often used
+  in conjunction with `flyvr-fictrac-replay`
+* flyvr-print-state  
+  prints the current flyvr state to the console
+* flyvr-fictrac-plot
+  shows an animated plot of the fictrac state (ball speed, direction, etc)
+* flyvr-ipc-send  
+  in internal utility for sending IPC messages to control other primary processes,
+  e.g. (the complex escaping is necessary here in windows shell)
+  * `flyvr-ipc-send.exe "{\"video_item\": {\"identifier\": \"v_loom_stim\"}}"`
+  * `flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"`
+
+## inter-process communication
+
+There are two modes of inter-process communication in flyvr. The fictrac tracking state is shared
+from fictrac to all other processes via shared memory. It follows that the lowest d_latency/d_t data to synchronize
+between all processes is the shared memory fictrac frame number. This is written into every process output
+`.h5` file and should be the means by which data is combined.
+
+The second mode of IPC is using ZMQ. There is a central concept of a playlist with items (that have identifiers). Each
+backend (audio, video, etc) can read a playlist containing backend-specific stimulus items. IPC commands are then
+used to command the backend to 'play' this playlist.
