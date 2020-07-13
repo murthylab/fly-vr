@@ -5,7 +5,6 @@ from PyDAQmx.DAQmxCallBack import *
 from PyDAQmx.DAQmxConstants import *
 from PyDAQmx.DAQmxFunctions import *
 
-
 from flyvr.audio.signal_producer import SignalProducer, SampleChunk
 
 
@@ -27,7 +26,6 @@ class TwoPhotonController(SignalProducer):
         :param start_channel_name: The name of the digital channel to send the start signal on
         :param next_file_channel_name: The name of the digtial channel to sent the next file signal on.
         :param stop_channel_name: The name of the digital channel to send the stop signal on
-        :param producer: The signal producer that is driving this two photon controller.
         """
 
         # Attach event next callbacks to this object, since it is a signal producer
@@ -41,30 +39,30 @@ class TwoPhotonController(SignalProducer):
         # Setup data for the default signals
         self.start_signal = np.zeros((self.SIGNAL_LENGTH, 3), dtype=np.uint8)
         self.start_signal[0:self.SIGNAL_LENGTH, 0] = 1
-        self.next_signal = np.zeros((self.SIGNAL_LENGTH*2, 3), dtype=np.uint8)
+        self.next_signal = np.zeros((self.SIGNAL_LENGTH * 2, 3), dtype=np.uint8)
         self.next_signal[0:self.SIGNAL_LENGTH, 0] = 1
-        self.next_signal[self.SIGNAL_LENGTH:self.SIGNAL_LENGTH*2, 2] = 1
+        self.next_signal[self.SIGNAL_LENGTH:self.SIGNAL_LENGTH * 2, 2] = 1
 
+        self._playlist = self._signals = self._shuffle_playback = self._playback_order = None
         self.set_playlist(audio_stim_playlist)
 
     def set_playlist(self, audio_stim_playlist):
-
-        self.playlist = audio_stim_playlist
+        self._playlist = audio_stim_playlist
 
         # Ok, we need to create a generator that is sychronized with the provided audio stimulus playlist. First step,
         # we want to produce exactly the same size underlying sample data. Look at each stimulus a create a zero matrix
         # for it.
-        self.signals = [np.zeros((stim.num_samples, 3), dtype=np.uint8) for stim in audio_stim_playlist]
+        self._signals = [np.zeros((stim.num_samples, 3), dtype=np.uint8) for stim in audio_stim_playlist]
 
         # Now, we want to put a next file signal at the start of every stimulus signal
-        for signal in self.signals:
+        for signal in self._signals:
+            # noinspection PyPep8Naming
             N = min([self.next_signal.shape[0], signal.shape[0]])
             signal[0:N, :] = self.next_signal[0:N, :]
 
-
         # Copy the state of the audio stimulus play back.
-        self.shuffle_playback = audio_stim_playlist.shuffle_playback
-        self.playback_order = np.arange(len(self.signals))
+        self._shuffle_playback = audio_stim_playlist.shuffle_playback
+        self._playback_order = np.arange(len(self._signals))
 
     def data_generator(self):
 
@@ -75,24 +73,24 @@ class TwoPhotonController(SignalProducer):
 
         # If we are shuffling, copy the seed first, then create a new RNG with the same seed, then generate the same
         # random permutation.
-        if self.shuffle_playback:
-            random_seed = self.playlist.random_seed
+        if self._shuffle_playback:
+            random_seed = self._playlist.random_seed
             rng = np.random.RandomState()
             rng.seed(random_seed)
-            playback_order = rng.permutation(len(self.signals))
+            playback_order = rng.permutation(len(self._signals))
         else:
-            playback_order = np.arange(len(self.signals))
+            rng = None
+            playback_order = np.arange(len(self._signals))
 
         # Now, go through the list one at a time, call next on each one of their generators
         while True:
 
             play_idx = playback_order[stim_idx]
 
-            data = self.signals[play_idx]
+            data = self._signals[play_idx]
 
             if never_sent_start:
                 never_sent_start = False
-                N = min([self.SIGNAL_LENGTH, data.shape[0]])
                 start_signal = np.copy(data)
                 start_signal[0:self.SIGNAL_LENGTH, 0] = 1
                 start_signal[:, 2] = 0
@@ -100,16 +98,16 @@ class TwoPhotonController(SignalProducer):
             else:
                 yield SampleChunk(producer_id=self.producer_id, data=data)
 
-            stim_idx = stim_idx + 1;
+            stim_idx = stim_idx + 1
 
             # If we are at the end, then either go back to beginning or reshuffle
-            if (stim_idx == len(self.signals)):
+            if stim_idx == len(self._signals):
                 stim_idx = 0
 
-                if (self.shuffle_playback):
-                    playback_order = rng.permutation(len(self.signals))
+                if self._shuffle_playback:
+                    playback_order = rng.permutation(len(self._signals))
 
-
+    # noinspection PyUnresolvedReferences,PyPep8Naming
     def send_2P_stop_signal(self, dev_name="Dev1"):
         stop_signal = np.zeros((TwoPhotonController.SIGNAL_LENGTH + 20, 3), dtype=np.uint8)
         stop_signal[0:TwoPhotonController.SIGNAL_LENGTH, 1] = 1
@@ -123,6 +121,7 @@ class TwoPhotonController(SignalProducer):
         task.WriteDigitalLines(stop_signal.shape[0], False, DAQmx_Val_WaitInfinitely,
                                DAQmx_Val_GroupByScanNumber, stop_signal, None, None)
         task.StopTask()
+
 
 def main():
     pass
