@@ -42,12 +42,10 @@ class YamlConfigParser(configargparse.YAMLConfigFileParser):
         return super().parse(yaml.safe_dump(config))
 
 
-def parse_arguments(args=None):
-    from flyvr.control.experiment import Experiment
+def build_argparser(savefilename=None):
+    if savefilename is None:
+        savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
-    savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
-
-    # Setup program command line argument parser
     parser = configargparse.ArgumentParser(config_file_parser_class=YamlConfigParser,
                                            args_for_setting_config_path=['-c', '--config'])
     parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
@@ -123,13 +121,13 @@ def parse_arguments(args=None):
                              "The default is 0 seconds.",
                         default=0.0)
 
-    # required = "stim_playlist".split()
-    required = "".split()
+    return parser
 
-    if args:
-        options = parser.parse_args(args)
-    else:
-        options = parser.parse_args()
+
+def parse_options(options, parser):
+    from flyvr.control.experiment import Experiment
+
+    required = "".split()
 
     # Check for required arguments
     for r in required:
@@ -180,3 +178,14 @@ def parse_arguments(args=None):
     options.experiment = _experiment_obj
 
     return options
+
+
+def parse_arguments(args=None):
+    parser = build_argparser()
+
+    if args:
+        options = parser.parse_args(args)
+    else:
+        options = parser.parse_args()
+
+    return parse_options(options, parser)

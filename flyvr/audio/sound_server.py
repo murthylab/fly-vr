@@ -403,13 +403,14 @@ def run_sound_server(options):
 
 
 def main_sound_server():
-    import sys
-    from flyvr.common.build_arg_parser import parse_arguments
+    from flyvr.common.build_arg_parser import build_argparser, parse_options
 
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
+    parser = build_argparser()
+    parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
+    options = parse_options(parser.parse_args(), parser)
+
+    if options.print_devices:
+        SoundServer.list_supported_asio_output_devices()
+        parser.exit(0)
 
     run_sound_server(options)
