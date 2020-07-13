@@ -60,6 +60,8 @@ class PrintEvent(_Event):
 
 class Experiment(object):
 
+    BACKEND_VIDEO, BACKEND_AUDIO, BACKEND_DAQ = "video", "audio", "daq"
+
     def __init__(self, events=(), timed=()):
         self._events = events
         self._timed = timed
@@ -76,6 +78,18 @@ class Experiment(object):
         # todo: loop over shared mem ready vals waiting for them to be set to the uuid
         # todo: in other process (audio, daq, video) wait for ipc start command over IPC and set shmem in response
         uuid = self.start()
+
+    def play_playlist_item(self, backend, identifier):
+        assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
+        self._ipc.process(**{'%s_item' % backend: {'identifier': identifier}})
+
+    def play_backend_item(self, backend, **conf):
+        assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
+        self._ipc.process(**{backend: conf})
+
+    def backend_action(self, backend, action):
+        assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
+        self._ipc.process(**{'%s_action' % backend: action})
 
     @classmethod
     def from_yaml(cls, stream_like):
