@@ -720,10 +720,10 @@ class AudioStimPlaylist(SignalProducer):
         return [{s.identifier: s.describe()} for s in self._stims]
 
     @classmethod
-    def fromfilename(cls, filename, shuffle_playback=False, attenuator=None):
+    def fromfilename(cls, filename, shuffle_playback=False, attenuator=None, paused=False):
         with open(filename, 'rt') as f:
             return cls(legacy_factory(f.readlines(), basepath=os.path.dirname(filename), attenuator=attenuator),
-                       shuffle_playback=shuffle_playback)
+                       shuffle_playback=shuffle_playback, paused=paused)
 
     @classmethod
     def fromitems(cls, items, shuffle_playback=False, paused=False, attenuator=None):

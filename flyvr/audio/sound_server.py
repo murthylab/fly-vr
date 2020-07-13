@@ -148,8 +148,8 @@ class SoundServer(object):
             else:
                 self.data_generator = self._stim_playlist.play_item(stim)
         else:
-            raise ValueError("The play method of SoundServer only takes instances of AudioStim objects or those that" +
-                             "inherit from this base class. ")
+            raise ValueError("you must play an AudioStim (or derived),"
+                             "the name of a playlist item, or an action 'play', 'pause'")
 
     def start_stream(self,
                      device=DEVICE_DEFAULT, num_channels=DEVICE_OUTPUT_NUM_CHANNELS,
@@ -370,7 +370,9 @@ def run_sound_server(options):
     stim_playlist = options.playlist.get('audio')
 
     if stim_playlist:
-        playlist_stim = AudioStimPlaylist.fromitems(items=stim_playlist)
+        playlist_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
+                                                    # optional because we are also called from flyvr main launcher
+                                                    paused=getattr(options, 'paused', False))
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
@@ -407,6 +409,7 @@ def main_sound_server():
 
     parser = build_argparser()
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
+    parser.add_argument('--paused', action='store_true', help='start paused')
     options = parse_options(parser.parse_args(), parser)
 
     if options.print_devices:
