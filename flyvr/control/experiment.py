@@ -1,7 +1,9 @@
 import re
 import time
+import os.path
 import operator
 import collections
+import importlib.util
 
 import yaml
 import numpy as np
@@ -126,15 +128,25 @@ class Experiment(object):
 
     @classmethod
     def new_from_python_file(cls, path):
-        _locals = {}
-        with open(path) as f:
-            exec(f.read(), {}, _locals)
+        def _module_from_file():
+            module = None
+            try:
+                module_dir, module_file = os.path.split(path)
+                module_name, module_ext = os.path.splitext(module_file)
+                spec = importlib.util.spec_from_file_location(module_name, path)
+                module = spec.loader.load_module()
+            except Exception as exc:
+                raise RuntimeError('could not import experiment: %s' % exc)
+            finally:
+                return module
+
+        mod = _module_from_file()
         try:
-            _experiment = _locals['experiment']
-            if not isinstance(_experiment, Experiment):
-                raise ValueError
-            return _experiment
-        except (KeyError, ValueError):
+            exp = getattr(mod, 'experiment')
+            if not isinstance(exp, Experiment):
+                raise ValueError('experiment python file must define single variable of type Experiment')
+            return exp
+        except AttributeError:
             raise RuntimeError('experiment python file must define single variable of type Experiment')
 
     def process_state(self, state):
