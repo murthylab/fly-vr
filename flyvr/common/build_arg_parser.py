@@ -180,7 +180,7 @@ def parse_options(options, parser):
     return options
 
 
-def parse_arguments(args=None):
+def parse_arguments(args=None, return_parser=False):
     parser = build_argparser()
 
     if args:
@@ -188,4 +188,9 @@ def parse_arguments(args=None):
     else:
         options = parser.parse_args()
 
-    return parse_options(options, parser)
+    options = parse_options(options, parser)
+
+    if return_parser:
+        return options, parser
+    else:
+        return options

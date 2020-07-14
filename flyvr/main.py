@@ -14,7 +14,43 @@ from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
 from flyvr.fictrac.replay import FicTracDriverReplay
 
 
+def _get_fictrac_driver(options):
+    drv = None
+
+    if options.fictrac_config is not None:
+        experiment = None
+        if options.experiment:
+            assert isinstance(options.experiment, Experiment)
+            experiment = options.experiment
+
+        if options.fictrac_config.endswith('.h5'):
+            drv = FicTracDriverReplay(options.fictrac_config)
+        else:
+            drv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
+                                experiment=experiment,
+                                pgr_enable=options.pgr_cam_enable)
+
+    return drv
+
+
+def main_fictrac():
+    options, parser = parse_arguments(return_parser=True)
+
+    log_server = DatasetLogServer()
+    logger = log_server.start_logging_server(options.record_file)
+
+    state = SharedState(options=options, logger=logger)
+
+    trac_drv = _get_fictrac_driver(options)
+    if trac_drv is None:
+        raise parser.error('Fictrac configuration not specified')
+
+    trac_drv.run(None, state)
+
+
+
 def main_launcher():
+
     try:
         options = parse_arguments()
     except ValueError as ex:
@@ -26,21 +62,11 @@ def main_launcher():
 
     state = SharedState(options=options, logger=logger)
 
-    experiment = None
-    if options.experiment:
-        assert isinstance(options.experiment, Experiment)
-        experiment = options.experiment
+    trac_drv = _get_fictrac_driver(options)
 
-    if options.fictrac_config is not None:
-
-        if options.fictrac_config.endswith('.h5'):
-            tracDrv = FicTracDriverReplay(options.fictrac_config)
-        else:
-            tracDrv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                    experiment=experiment,
-                                    pgr_enable=options.pgr_cam_enable)
-
-        fictrac_task = ConcurrentTask(task=tracDrv.run, comms="pipe", taskinitargs=[None, state])
+    if trac_drv is not None:
+        fictrac_task = ConcurrentTask(task=trac_drv.run, comms="pipe",
+                                      taskinitargs=[None, state])
         fictrac_task.start()
 
         # Wait till FicTrac is processing frames
