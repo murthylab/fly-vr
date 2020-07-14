@@ -619,7 +619,7 @@ def stimulus_factory(**conf):
             return MATFileStim(filename=conf['filename'],
                                frequency=conf['frequency'],
                                sample_rate=conf.get('sample_rate', 44100),
-                               intensity=conf['amplitude'],
+                               intensity=conf['intensity'],
                                pre_silence=conf.get('pre_silence', 0),
                                post_silence=conf.get('post_silence', 0),
                                attenuator=conf.get('attenuator'),
