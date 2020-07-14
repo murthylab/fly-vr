@@ -67,57 +67,19 @@ def test_generator(stim1, stim2, stim3):
         assert (next(playGen).data == stims[order[i]].data).all()
 
 
-def test_callbacks(stim1, stim2, stim3):
-    stims = [stim1, stim2, stim3]
-
-    my_callback_mock = mock.Mock()
-
-    stimList = AudioStimPlaylist(stims, shuffle_playback=False, next_event_callbacks=my_callback_mock)
-
-    data_gen = stimList.data_generator()
-
-    next(data_gen)
-
-    my_callback_mock.assert_called()
-
-    # Now lets put a different callback on each stimuli
-    callback1 = mock.Mock()
-    callback2 = mock.Mock()
-
-    s1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
-            duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-            attenuator=None, next_event_callbacks=callback1)
-    s2 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
-                 duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-                 attenuator=None, next_event_callbacks=callback2)
-
-    stimList = AudioStimPlaylist([s1, s2], shuffle_playback=False)
-
-    data_gen = stimList.data_generator()
-
-    next(data_gen)
-
-    callback1.assert_called_once()
-
-    next(data_gen)
-
-    callback1.assert_called_once()
-    callback2.assert_called_once()
-
-
 def test_multi_channel_playlist():
     import os.path
 
     PATH = 'tests/test_data/opto_control_playlist.txt'
 
-    stimList = AudioStimPlaylist.fromfilename(PATH)
+    stimList = AudioStimPlaylist.from_legacy_filename(PATH)
     gen = chunker(stimList.data_generator(), 1000)
     chunk = next(gen).data
     assert(chunk.shape[1] == 4)
     assert(stimList.num_channels == 4)
 
     with open(PATH, 'rt') as f:
-        stims = legacy_factory(f.readlines(), os.path.dirname(PATH))
+        stims = legacy_factory(f.readlines()[1:], os.path.dirname(PATH))
         print(stims)
 
     stimList = AudioStimPlaylist(stims)

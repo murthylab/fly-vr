@@ -166,7 +166,8 @@ class MixedSignal(SignalProducer):
 
         # Make sure all signals have the same dtype.
         if not all(typ == dtype for typ in dtypes):
-            raise ValueError("Cannot created mixed signal from signals with different dtypes.")
+            raise ValueError("Cannot created mixed signal from signals with different dtypes: %s" % (
+                ', '.join('%s:%s' % (s.producer_id, s.dtype) for s in signals)))
 
         # Attach event next callbacks to this object, since it is a signal producer
         super(MixedSignal, self).__init__(dtype=dtype)

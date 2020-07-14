@@ -510,6 +510,7 @@ class MATFileStim(AudioStim):
         self.event_message["stim_filename"] = filename
 
         self.data = self._generate_data()
+        self.dtype = self.data.dtype
 
     def describe(self):
         desc = super(MATFileStim, self).describe()
@@ -689,7 +690,10 @@ def legacy_factory(lines, basepath, attenuator=None):
                     chans[i] = ConstantSignal(chan.constant, num_samples=max_stim_len)
 
         # Combine these stimuli into one analog signal with a channel for each.
-        mixed_stim = MixedSignal(chans)
+        if len(chans) > 1:
+            mixed_stim = MixedSignal(chans)
+        else:
+            mixed_stim = chans[0]
 
         # Append to playlist
         stims.append(mixed_stim)
