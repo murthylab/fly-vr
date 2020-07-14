@@ -1,12 +1,11 @@
 import time
 import sys
-import yaml
 import multiprocessing
 
 import numpy as np
 import sounddevice as sd
 
-from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist, stimulus_factory
+from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
 from flyvr.audio.io_task import chunker
 from flyvr.common.concurrent_task import ConcurrentTask
 
@@ -405,12 +404,28 @@ def run_sound_server(options):
 
 
 def main_sound_server():
+    import yaml
+    import os.path
     from flyvr.common.build_arg_parser import build_argparser, parse_options
 
     parser = build_argparser()
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
+    parser.add_argument('--convert-playlist', help='convert a stimulus playlist to new format')
     parser.add_argument('--paused', action='store_true', help='start paused')
     options = parse_options(parser.parse_args(), parser)
+
+    if options.convert_playlist:
+        src = options.convert_playlist
+        if os.path.isfile(src):
+            pl = AudioStimPlaylist.from_legacy_filename(src)
+            dest = options.convert_playlist + '.yaml'
+            with open(dest, 'wt') as f:
+                yaml.dump({'playlist': {'audio': pl.describe()}}, f)
+
+            parser.exit(0, message='Wrote %s' % dest)
+
+        else:
+            parser.error('Could not find %s' % src)
 
     if options.print_devices:
         SoundServer.list_supported_asio_output_devices()

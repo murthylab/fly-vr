@@ -651,13 +651,16 @@ def legacy_factory(lines, basepath, attenuator=None):
             return [float(_s)]
 
     stims = []
-    for line in lines:
+    for idx, _line in enumerate(lines):
+        line = _line.rstrip()
         try:
             # noinspection PyPep8Naming
             stimFileName, rate, trial, silencePre, silencePost, delayPost, intensity, freq = \
                 map(str.strip, line.split('\t'))
         except ValueError:
-            raise ValueError("incorrect formatting: '%r' (ntabs: %d)" % (line, line.count('\t')))
+            raise ValueError("incorrect formatting: '%r', split: %r, (ntabs: %d)" % (line,
+                                                                                     line.split('\t'),
+                                                                                     line.count('\t')))
 
         frequencies = _parse_list(freq)
         intensities = _parse_list(intensity)
@@ -720,9 +723,9 @@ class AudioStimPlaylist(SignalProducer):
         return [{s.identifier: s.describe()} for s in self._stims]
 
     @classmethod
-    def fromfilename(cls, filename, shuffle_playback=False, attenuator=None, paused=False):
+    def from_legacy_filename(cls, filename, shuffle_playback=False, attenuator=None, paused=False):
         with open(filename, 'rt') as f:
-            return cls(legacy_factory(f.readlines(), basepath=os.path.dirname(filename), attenuator=attenuator),
+            return cls(legacy_factory(f.readlines()[1:], basepath=os.path.dirname(filename), attenuator=attenuator),
                        shuffle_playback=shuffle_playback, paused=paused)
 
     @classmethod
