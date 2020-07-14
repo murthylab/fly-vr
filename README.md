@@ -106,10 +106,15 @@ When installing, ensure you choose to install the 'Offline Control Panel'.
 ## flyvr
 
 * Install Python 3.7.X
-* Create a virtual environment
-  `python -m venv`
+* Create a virtual environment (in checkout dir, named env)
+  `C:\Path\To\python.exe -m venv env`  
+  * if you installed python only to your user, the path is
+    `"C:\Users\XXX\AppData\Local\Programs\Python\Python37\python.exe"`
 * Activate the virtual environment and install dependencies
   `python -m pip install -r requirements.txt`
+* Install flyvr
+  `python -m pip install .`
+  * use `install -e` to install in development mode
 * Run the tests  
   `python -m pytest`
 
@@ -161,6 +166,8 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
   process which drives the NI DAQ for the purposes of
   * outputing the opto stimulus
   * recording the 
+* flyvr-fictrac  
+  process which launches the fictrac binary
 
 Similarly, the following secondary utilities are available also as separate processes to aid debugging, development, testing
 or observing experiments in progress  
