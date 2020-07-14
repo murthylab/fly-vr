@@ -1,0 +1,2 @@
+stimFileName	rate (Hz)	trials	silencePre (ms)	silencePost (ms)	delayPost (ms)	intensity (au)	freq (Hz)	MODE
+Opto5minON_SC;	44100	1	0	0	0	[5 0]	[250 -1]	
