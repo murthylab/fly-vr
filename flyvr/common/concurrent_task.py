@@ -3,7 +3,7 @@ import sys
 
 from multiprocessing import Process, Pipe, Manager
 # noinspection PyUnresolvedReferences
-from multiprocessing.dummy import Process as _DummyProcess
+from multiprocessing.dummy import Process as _DummyProcess, Queue as _DummyQueue, Pipe as _DummyPipe
 
 
 class _DummyProcessDaemonThread(_DummyProcess):
@@ -15,14 +15,22 @@ class ConcurrentTask(object):
     """
     The ConcurrentTask class encapsulates functionality for creating, starting, stopping, and communicating with
     a process thread. This class is basically a wrapper of multiprocessing.Process that allows for two different
-    ommunication methods, pipes and queues, to use the same interface. Queue communication is useful when we want to
+    communication methods, pipes and queues, to use the same interface. Queue communication is useful when we want to
     ensure the underlying process will finnish processing all data sent to it before terminating. If you don't care
     about this, pipe should be fine.
     """
 
-    pipe_cls = Pipe
     process_cls = Process
     manager_cls = Manager
+
+    @classmethod
+    def get_comms(cls, comms, manager_cls):
+        if comms == 'pipe':
+            return Pipe()
+        elif comms == 'queue':
+            return manager_cls().Queue()
+        else:
+            raise NotImplementedError
 
     def __init__(self, task, taskinitargs=(), comms='queue'):
         """
@@ -36,11 +44,9 @@ class ConcurrentTask(object):
 
         # task (function(pip/queue, getfun, *args)), task init args, queue/pipe
         if comms == "pipe":
-            self._sender, self._receiver = Pipe()
+            self._sender, self._receiver = self.get_comms('pipe', manager_cls=self.manager_cls)
         elif comms == "queue":
-            manager = Manager()
-            self._sender = manager.Queue()
-            self._receiver = self._sender
+            self._receiver = self._sender = self.get_comms('queue', manager_cls=self.manager_cls)
         elif comms is None:
             self._sender = self._receiver = None
         else:
@@ -134,3 +140,13 @@ class ConcurrentTask(object):
 class ConcurrentTaskThreaded(ConcurrentTask):
 
     process_cls = _DummyProcessDaemonThread
+    manager_cls = None
+
+    @classmethod
+    def get_comms(cls, comms, manager_cls):
+        if comms == 'pipe':
+            return _DummyPipe()
+        elif comms == 'queue':
+            return _DummyQueue()
+        else:
+            raise NotImplementedError
