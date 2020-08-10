@@ -1,6 +1,13 @@
 # flyvr
 
-Software for running a experimental virtual reality setup for flies. This project is a work in progress.
+fly-vr is a framework for the design and control of multisensory virtual reality systems for neuroscientists.
+It is written in Python, with modular design that allows the control of open and closed loop experiments with 
+one or more sensory modality. In its current implementation, fly-vr uses FicTrac (LINK) to track the path of a
+fly walking on an air suspended ball, a projector and a sound card for delivering visual and auditor stimuli,
+and other analog outputs (through NI-DAQ or a phidgets device) for the control of other stimuli such as odors,
+light for optogenetic stimulation, or triggers for synchronization (e.g., with scanimage, for controlling
+two-photon imaging).
+
 
 # Usage
 ```
