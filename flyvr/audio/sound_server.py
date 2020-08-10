@@ -1,16 +1,38 @@
-import time
+import os
 import sys
-import multiprocessing
+import queue
+import logging
+import threading
 
 import numpy as np
 import sounddevice as sd
 
 from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
 from flyvr.audio.io_task import chunker
-from flyvr.common.concurrent_task import ConcurrentTask
 
 
-class SoundServer(object):
+# noinspection PyProtectedMember
+def _sd_terminate():
+    if sd._initialized:
+        sd._terminate()
+        return True
+    else:
+        return False
+
+
+# noinspection PyProtectedMember
+def _sd_initialize():
+    if not sd._initialized:
+        sd._initialize()
+
+
+# https://github.com/spatialaudio/python-sounddevice/issues/3
+def _sd_reset():
+    _sd_terminate()
+    _sd_initialize()
+
+
+class SoundServer(threading.Thread):
     """
     The SoundServer class is a light weight interface  built on top of sounddevice for setting up and playing auditory
     stimulii via a sound card. It handles the configuration of the sound card with low latency ASIO drivers (required to
@@ -27,6 +49,7 @@ class SoundServer(object):
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = flyvr_shared_state
+        self._log = logging.getLogger('flyvr.sound_server')
 
         # No data generator has been set yet
         self._data_generator = None
@@ -35,16 +58,24 @@ class SoundServer(object):
         # Once, we know the block size and number of channels, we will pre-allocate a block of silence data
         self._silence = None
 
-        # Setup a stream end event, this is how the control will signal to the main thread when it exits.
-        self.stream_end_event = multiprocessing.Event()
+        self._stream = self._device = self._num_channels = \
+            self._dtype = self._sample_rate = self._frames_per_buffer = self._suggested_output_latency = None
 
-        # The process we will spawn the sound server thread in.
-        self.task = ConcurrentTask(task=self._sound_server_main, comms='pipe')
+        self._running = False
+        self._q = queue.Queue()
 
-        self._device = self._num_channels = self._dtype = self._sample_rate = self._frames_per_buffer = self._suggested_output_latency = None
+        # Lets keep track of some timing statistics during playback
+        self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
+        self.callback_timing_log_index = 0
+
+        self.samples_played = 0
+
+        super(SoundServer, self).__init__(daemon=True, name='SoundServer')
 
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
+
+    H5_NUM_FIELDS = 3
 
     DEVICE_DEFAULT = 'ASIO4ALL v2'
     DEVICE_OUTPUT_DTYPE = 'float32'
@@ -130,21 +161,24 @@ class SoundServer(object):
         if isinstance(stim, AudioStim):
             if stim.sample_rate != self._sample_rate:
                 raise ValueError('AudioStim not at server samplerate: %s' % self._sample_rate)
-            print('Playing: %r' % stim)
+            self._log.info('playing: %r' % stim)
             self.data_generator = stim.data_generator()
         elif isinstance(stim, MixedSignal):
-            print('Playing Mixed Signal: %r' % stim)
+            self._log.info('playing Mixed Signal: %r' % stim)
             self.data_generator = stim.data_generator()
         elif isinstance(stim, AudioStimPlaylist):
-            print('Playing AudioStimPlaylist Signal: %r' % stim)
+            self._log.info('playing AudioStimPlaylist Signal: %r' % stim)
             self.data_generator = stim.data_generator()
             self._stim_playlist = stim
         elif stim is None:
+            self._log.info('playing silence')
             self.data_generator = None
         elif isinstance(stim, str) and (self._stim_playlist is not None):
             if stim in {'play', 'pause'}:
+                self._log.info('changing status to %s' % stim)
                 self._stim_playlist.play_pause(pause=stim == 'pause')
             else:
+                self._log.info('playing playlist item identifier: %s' % stim)
                 self.data_generator = self._stim_playlist.play_item(stim)
         else:
             raise ValueError("you must play an AudioStim (or derived),"
@@ -176,66 +210,66 @@ class SoundServer(object):
         self._frames_per_buffer = frames_per_buffer
         self._suggested_output_latency = suggested_output_latency
 
-        # Start the task
-        self.task.start()
+        self._running = True
+        self.start()
 
-        return SoundStreamProxy(self)
+    def play(self, item):
+        self._q.put(item)
 
-    def _sound_server_main(self, msg_receiver):
-        """
-        The main process function for the sound server. Handles actually setting up the sounddevice object\stream.
-        Waits to receive objects to play on the stream, sent from other processes using a Queue or Pipe.
+    # noinspection PyUnusedLocal
+    def quit(self, *args, **kwargs):
+        self._running = False
+        self._q.put(None)
 
-        :return: None
-        """
-
-        # Initialize number of samples played to 0
-        self.samples_played = 0
-
-        # Lets keep track of some timing statistics during playback
-
-        self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
-        self.callback_timing_log_index = 0
+    def run(self):
+        # python sounddevice loads the platform specific libraries at import time, which is a different thread
+        # to that which gets the output device and does the output. This results, on windows at least when using
+        # the ASIO device, on error messages like
+        #
+        # "Error opening OutputStream: Unanticipated host error [PaErrorCode -9999]:
+        #   'Failed to load ASIO driver' [ASIO error 0]
+        #
+        # https://stackoverflow.com/q/39858212
+        # to solve this we reset and re-initialize the souddevice and underlying library (in this thread).
+        # at the moment only do this on the one important and tested platform (Windows), but I would not
+        # be surprised if it was required all the time
+        if os.name == 'nt':
+            self._log.debug('resetting sounddevice library')
+            _sd_reset()
 
         # Setup a dataset to store timing information logged from the callback
-        self.timing_log_num_fields = 3
         self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
-                                              shape=[2048, self.timing_log_num_fields],
-                                              maxshape=[None, self.timing_log_num_fields], dtype=np.float64,
-                                              chunks=(2048, self.timing_log_num_fields))
+                                              shape=[2048, self.H5_NUM_FIELDS],
+                                              maxshape=[None, self.H5_NUM_FIELDS], dtype=np.float64,
+                                              chunks=(2048, self.H5_NUM_FIELDS))
 
         # open stream using control
         self._stream = sd.OutputStream(device=self._device,
                                        samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
                                        latency=self._suggested_output_latency, channels=self._num_channels,
                                        dtype=self._dtype, callback=self._make_callback(),
-                                       finished_callback=self._stream_end)
+                                       finished_callback=self.quit)
+
+        self._log.info('opened sounddevice %r' % self._stream)
 
         # Initialize a block of silence to be played when the generator is none.
         self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
-
         # Setup up for playback of silence.
         self.data_generator = None
 
-        # Loop until the stream end event is set.
         with self._stream:
-            while not self.stream_end_event.is_set() and \
-                    self.flyvr_shared_state.is_running_well():
+            while self._running and self.flyvr_shared_state.is_running_well():
+                try:
+                    msg = self._q.get(timeout=0.5)
+                    if msg is not None:
+                        if isinstance(msg, (AudioStim, MixedSignal, AudioStimPlaylist, str)) or msg is None:
+                            self._play(msg)
+                        else:
+                            raise NotImplementedError(repr(msg))
+                except queue.Empty:
+                    pass
 
-                # Wait for a message to come
-                msg = msg_receiver.recv()
-                if isinstance(msg, (AudioStim, MixedSignal, AudioStimPlaylist, str)) or msg is None:
-                    self._play(msg)
-                else:
-                    raise NotImplementedError(repr(msg))
-
-    def _stream_end(self):
-        """
-        Invoked at the end of stream playback by sounddevice. We can do any cleanup we need here.
-        """
-
-        # Trigger the event that marks a stream end, the main loop thread is waiting on this.
-        self.stream_end_event.set()
+        self._log.info('exiting')
 
     def _make_callback(self):
         """
@@ -306,57 +340,6 @@ class SoundServer(object):
         return callback
 
 
-class SoundStreamProxy(object):
-    """
-    The SoundStreamProxy class acts as an interface to a SoundServer object that is running on another process. It
-    handles sending commands to the object on the other process.
-    """
-
-    def __init__(self, sound_server):
-        """
-        Initialize the SoundStreamProxy with an already setup SoundServer object. This assummes that the server is
-        running and ready to receive commands.
-
-        :param sound_server: The SoundServer object to issue commands to.
-        """
-        self.sound_server = sound_server
-        self.task = self.sound_server.task
-
-    def play(self, stim):
-        """
-        Send audio stimulus to the sound server for immediate playback.
-
-        :param stim: The AudioStim object to play.
-        :return: None
-        """
-        self.task.send(stim)
-
-    def silence(self):
-        """
-        Set current playback to silence immediately.
-
-        :return: None
-        """
-        self.play(None)
-
-    def close(self):
-        """
-        Signal to the server to shutdown the stream.
-
-        :return: None
-        """
-        self.sound_server.stream_end_event.set()
-
-        # We send the server a junk signal. This will cause the message loop to wake up, skip the message because its
-        # junk, and check whether to exit, which it will see is set and will close the stream. Little bit of a hack but
-        # it gets the job done I guess.
-        self.play("KILL")
-
-        # Wait till the server goes away.
-        while self.task.is_alive():
-            time.sleep(0.1)
-
-
 def run_sound_server(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
@@ -378,12 +361,11 @@ def run_sound_server(options):
         state = SharedState(options=options, logger=logger)
 
         sound_server = SoundServer(flyvr_shared_state=state)
-
-        sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
-                                                 suggested_output_latency=0.002)
+        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
+                                  suggested_output_latency=0.002)
 
         if playlist_stim is not None:
-            sound_client.play(playlist_stim)
+            sound_server.play(playlist_stim)
 
         while True:
             elem = pr.get_next_element()
@@ -400,7 +382,7 @@ def run_sound_server(options):
                     print("Ignoring Message")
 
                 if stim is not None:
-                    sound_client.play(stim)
+                    sound_server.play(stim)
 
 
 def main_sound_server():
