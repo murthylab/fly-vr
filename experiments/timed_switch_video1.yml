@@ -1,0 +1,7 @@
+time:
+  4000:
+    do:
+      - playlist_item: {backend: 'video', identifier: 'v_loom_stim'}
+  8000:
+    do:
+      - playlist_item: {backend: 'video', identifier: 'v_move_sq'}
