@@ -328,6 +328,8 @@ def io_task_loop(message_pipe, state):
         taskDI = None
 
         options = state.options
+
+        start_immediately = getattr(options, 'start_immediately', False)
         stim_playlist = options.playlist.get('daq')
 
         # Check to make sure we are doing analog output
@@ -445,7 +447,7 @@ def io_task_loop(message_pipe, state):
 
             # Message loop that waits for start signal
             print("Waiting for START_DAQ")
-            while state.START_DAQ == 0 and state.is_running_well():
+            while (state.START_DAQ == 0) and state.is_running_well() and (not start_immediately):
                 time.sleep(0.2)
 
             # We received the start signal, lets set it back to 0
@@ -550,15 +552,11 @@ def run_io(options):
 
 
 def main_io():
-    import sys
+    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
 
-    from flyvr.common.build_arg_parser import parse_arguments
-
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
+    parser = build_argparser()
+    parser.add_argument('--start-immediately', action='store_true', help='start recording immediately (do not wait for start signal)')
+    options = parse_options(parser.parse_args(), parser)
 
     run_io(options)
 
