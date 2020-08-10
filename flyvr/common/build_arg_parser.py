@@ -170,7 +170,7 @@ def parse_options(options, parser):
         _, ext = os.path.splitext(options.experiment_file)
         if ext == '.py':
             _experiment_obj = Experiment.new_from_python_file(options.experiment_file)
-        elif ext == '.yaml':
+        elif ext in ('.yaml', '.yml'):
             with open(options.experiment_file) as f:
                 dat = yaml.safe_load(f)
             _experiment_obj = _build_experiment_inline(dat)
