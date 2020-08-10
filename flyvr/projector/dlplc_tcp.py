@@ -42,6 +42,9 @@ class LightCrafterTCP:
     buffer_size = 1024
     retries = 3
 
+    def __repr__(self):
+        return "<LightCrafterTCP(ip=%s, port=%s)>" % (self.tcp_ip, self.tcp_port)
+
     def connect(self, ip="", port=0):
         """
         Try to connect to the dlplc.
@@ -66,8 +69,8 @@ class LightCrafterTCP:
             except socket.error as msg:
                 self.socket.close()
                 self.socket = None
+
         if self.socket is None:
-            print("Error: could not open socket to %s:%d".format(self.tcp_ip, self.tcp_port))
             return False
 
         return True
