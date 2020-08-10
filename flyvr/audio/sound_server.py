@@ -282,7 +282,7 @@ class SoundServer(threading.Thread):
         def callback(outdata, frames, time_info, status):
 
             if status.output_underflow:
-                print('Output underflow: increase blocksize?', file=sys.stderr)
+                self._log.error('output underflow: increase blocksize?')
                 raise sd.CallbackAbort
 
             # Make sure all is good
@@ -310,8 +310,8 @@ class SoundServer(threading.Thread):
                 assert (len(data) == frames)
 
             except StopIteration:
-                print('Audio generator produced StopIteration, something went wrong! Aborting playback',
-                      file=sys.stderr)
+                self._log.fatal('audio generator produced StopIteration, something went wrong! Aborting playback',
+                                exc_info=True)
                 raise sd.CallbackAbort
 
             # Lets keep track of some running information
@@ -358,6 +358,8 @@ def run_sound_server(options):
                                                     paused=getattr(options, 'paused', False))
 
         log.info('initializing audio playlist: %r' % playlist_stim)
+        for s in playlist_stim:
+            log.debug('playlist item: %s (%r)' % (s.identifier, s))
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
@@ -382,7 +384,7 @@ def run_sound_server(options):
                 elif 'audio_action' in elem:
                     stim = elem['audio_action']
                 else:
-                    print("Ignoring Message")
+                    log.debug("ignoring message: %r" % elem)
 
                 if stim is not None:
                     sound_server.play(stim)
