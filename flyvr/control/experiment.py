@@ -1,5 +1,6 @@
 import re
 import time
+import logging
 import os.path
 import operator
 import collections
@@ -31,31 +32,53 @@ class _MovingAverageStateVariable(object):
 
 class _Event(object):
 
-    def __init__(self, state_getter_callable, comparison_operator, absolute_comparison, value):
+    def __init__(self, state_getter_callable, comparison_operator, absolute_comparison, value, dt):
         self._c = state_getter_callable
         self._op = comparison_operator
         self._value = value
         self._abs = abs if absolute_comparison else lambda x: x
+        self._dt = dt
+        self._switched = False
 
     def __repr__(self):
-        return "<%s(%s %s %s)>" % (self.__class__.__name__, self._c, self._op, self._value)
+        return "<%s(%s %s %s, dt=%s)>" % (self.__class__.__name__, self._c, self._op, self._value, self._dt)
 
-    def perform(self, state):
+    def perform(self, state, experiment):
         pass
 
     def calculate(self, state):
         return self._abs(self._c(state))
 
-    def check(self, state):
+    def check(self, state, experiment):
         # call this directly to save a little time
         if self._op(self._abs(self._c(state)), self._value):
-            self.perform(state)
+            self.perform(state, experiment)
+
+    def check_dt(self, dt, state, experiment):
+        if (dt > self._dt) and (not self._switched):
+            self.perform(state, experiment)
+            self._switched = True
 
 
 class PrintEvent(_Event):
 
-    def perform(self, state):
+    def perform(self, state, experiment):
         print(self.calculate(state))
+
+
+class PlaylistItemEvent(_Event):
+
+    def __init__(self, *args, **kwargs):
+        self._playlist_backend = kwargs.pop('backend')
+        assert self._playlist_backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_DAQ, Experiment.BACKEND_AUDIO)
+        self._playlist_identifier = kwargs.pop('identifier')
+        super().__init__(*args, **kwargs)
+
+    def __repr__(self):
+        return "<%s(backend=%s, identifier=%s, dt=%s)>" % (self.__class__.__name__, self._playlist_backend, self._playlist_identifier, self._dt)
+
+    def perform(self, state, experiment):
+        experiment.play_playlist_item(self._playlist_backend, self._playlist_identifier)
 
 
 class Experiment(object):
@@ -68,6 +91,14 @@ class Experiment(object):
         self._t0 = time.time()
 
         self._ipc = PlaylistSender()
+
+        self.log = logging.getLogger('flyvr.experiment.%s' % self.__class__.__name__)
+
+    def _log_describe(self):
+        for evt in self._events:
+            self.log.debug('state-based event: %r' % evt)
+        for evt in self._timed:
+            self.log.debug('time-based event: %r' % evt)
 
     def start(self, uuid=None):
         self._t0 = time.time()
@@ -101,6 +132,15 @@ class Experiment(object):
         timed = []
         events = []
 
+        def _evt_factory(_evt_type, _evt_conf, **_kw):
+            if _evt_type == 'print':
+                return PrintEvent(**_kw)
+            elif _evt_type == 'playlist_item':
+                _kw.update(_evt_conf)
+                return PlaylistItemEvent(**_kw)
+            else:
+                return _Event(**_kw)
+
         for param, defn in state_item_defns.items():
             comparison, action_defn = defn.popitem()
             operator_ = getattr(operator, comparison)
@@ -126,17 +166,28 @@ class Experiment(object):
             for evt in event_definitions:
                 type_, evt_conf = evt.popitem()
 
-                kw = dict(state_getter_callable=state_getter,
-                          comparison_operator=operator_,
-                          absolute_comparison=absolute,
-                          value=value)
-
-                if type_ == 'print':
-                    evt = PrintEvent(**kw)
-                else:
-                    evt = _Event(**kw)
-
+                evt = _evt_factory(type_, evt_conf,
+                                   state_getter_callable=state_getter,
+                                   comparison_operator=operator_,
+                                   absolute_comparison=absolute,
+                                   value=value,
+                                   dt=None)
                 events.append(evt)
+
+        for _t, defn in timed_item_defns.items():
+            t = float(_t) / 1000.
+            event_definitions = defn.pop('do')
+
+            for evt in event_definitions:
+                type_, evt_conf = evt.popitem()
+
+                evt = _evt_factory(type_, evt_conf,
+                                   state_getter_callable=None,
+                                   comparison_operator=None,
+                                   absolute_comparison=None,
+                                   value=None,
+                                   dt=t)
+                timed.append(evt)
 
         return cls(events, timed)
 
@@ -165,11 +216,11 @@ class Experiment(object):
 
     def process_state(self, state):
         for e in self._events:
-            e.check(state)
+            e.check(state, self)
 
         dt = time.time() - self._t0
         for t in self._timed:
-            t.check(dt)
+            t.check_dt(dt, state, self)
 
 
 def do_loop(exp, delay):
@@ -201,4 +252,6 @@ def main_experiment():
         sys.stderr.write("No experiment specified")
         sys.exit(-1)
 
+    # noinspection PyProtectedMember
+    options.experiment._log_describe()
     do_loop(options.experiment, 1/200.)

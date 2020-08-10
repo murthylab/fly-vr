@@ -162,8 +162,8 @@ def parse_options(options, parser):
                 pass
 
         if __experiment:
-            return Experiment.from_items(state_item_defns=__experiment.get('state'),
-                                         timed_item_defns=__experiment.get('timed'))
+            return Experiment.from_items(state_item_defns=__experiment.get('state') or {},
+                                         timed_item_defns=__experiment.get('time') or {})
 
     if options.experiment_file:
 
@@ -186,6 +186,7 @@ def parse_options(options, parser):
 
 def setup_logging(options):
     logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO)
+
 
 def parse_arguments(args=None, return_parser=False):
     parser = build_argparser()

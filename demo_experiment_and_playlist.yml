@@ -5,15 +5,15 @@ state:
       average: 25
       absolute: true
       do:
-        - playlist: 'audio_stim1'
-        - playlist: 'video_stim1'
+        - playlist_item: {backend: 'audio', identifier: 'audio_stim1'}
+        - playlist_item: {backend: 'video', identifier: 'video_stim1'}
 time:
   10000:
     do:
       - video: {name: 'grating'}
   40000:
     do:
-      - playlist: 'audio_stim2'
+      - playlist_item: {backend: 'audio', identifier: 'audio_stim2'}
 playlist:
   audio:
     - audio_stim1: {name: 'sin', frequency: 650, amplitude: 1.0, duration: 10000}
