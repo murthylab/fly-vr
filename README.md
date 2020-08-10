@@ -5,19 +5,17 @@ Software for running a experimental virtual reality setup for flies. This projec
 # Usage
 ```
 usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
-             [--experiment_file EXPERIMENT_FILE]
-             [--analog_in_channels ANALOG_IN_CHANNELS]
+             [-e EXPERIMENT_FILE] [--analog_in_channels ANALOG_IN_CHANNELS]
              [--digital_in_channels DIGITAL_IN_CHANNELS]
              [--analog_out_channels ANALOG_OUT_CHANNELS]
              [--screen_calibration SCREEN_CALIBRATION]
-             [--visual_stimulus VISUAL_STIMULUS] [--use_RSE USE_RSE]
+             [--visual_stimulus VISUAL_STIMULUS] [--use_RSE]
              [--remote_2P_enable]
              [--remote_start_2P_channel REMOTE_START_2P_CHANNEL]
              [--remote_stop_2P_channel REMOTE_STOP_2P_CHANNEL]
              [--remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL]
              [-l RECORD_FILE] [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT]
-             [--fictrac_plot_state] [--pgr_cam_enable]
-             [--start_delay START_DELAY]
+             [--pgr_cam_disable] [--start_delay START_DELAY]
 
 Args that start with '--' (eg. --attenuation_file) can also be set in a config
 file (specified via -c). The config file uses YAML syntax and must represent a
@@ -32,7 +30,7 @@ optional arguments:
   -v                    Verbose output
   --attenuation_file ATTENUATION_FILE
                         A file specifying the attenuation function
-  --experiment_file EXPERIMENT_FILE
+  -e EXPERIMENT_FILE, --experiment_file EXPERIMENT_FILE
                         A file defining the experiment (can be a python file
                         or a .yaml)
   --analog_in_channels ANALOG_IN_CHANNELS
@@ -49,7 +47,7 @@ optional arguments:
                         file
   --visual_stimulus VISUAL_STIMULUS
                         A pre-defined visual stimulus
-  --use_RSE USE_RSE     Use RSE (as opposed to differential) denoising on AI
+  --use_RSE             Use RSE (as opposed to differential) denoising on AI
                         DAQ inputs
   --remote_2P_enable    Enable remote start, stop, and next file signaling the
                         2-Photon imaging.
@@ -70,8 +68,7 @@ optional arguments:
                         File that specifies FicTrac configuration information.
   -m FICTRAC_CONSOLE_OUT, --fictrac_console_out FICTRAC_CONSOLE_OUT
                         File to save FicTrac console output to.
-  --fictrac_plot_state  Enable plotting of FicTrac state history.
-  --pgr_cam_enable      Enable Point Grey Camera support in FicTrac.
+  --pgr_cam_disable     Dnable Point Grey Camera support in FicTrac.
   --start_delay START_DELAY
                         Delay the start of playback and acquisition from
                         FicTrac tracking by this many seconds. The default is
