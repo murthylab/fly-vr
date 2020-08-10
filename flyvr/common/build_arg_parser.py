@@ -30,6 +30,15 @@ class CommaListNumParser(configargparse.Action):
                 raise Exception('parameter: %s (%s)' % (self.dest, e))
 
 
+class FixNoneParser(configargparse.Action):
+    def __call__(self, parser, args, values, option_string=None):
+        if values is not None:
+            if values == 'None':
+                setattr(args, self.dest, None)
+            else:
+                setattr(args, self.dest, values)
+
+
 class YamlConfigParser(configargparse.YAMLConfigFileParser):
 
     def parse(self, stream):
@@ -52,7 +61,7 @@ def build_argparser(savefilename=None):
     parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
     parser.add_argument("--attenuation_file", dest="attenuation_file",
                         help="A file specifying the attenuation function")
-    parser.add_argument("--experiment_file", dest="experiment_file",
+    parser.add_argument("-e", "--experiment_file", dest="experiment_file", action=FixNoneParser,
                         help="A file defining the experiment (can be a python file or a .yaml)")
     parser.add_argument("--analog_in_channels",
                         type=str,
@@ -71,15 +80,11 @@ def build_argparser(savefilename=None):
                         action=CommaListParser,
                         help="A comma separated list of numbers specifying the output channels."
                              "Default none for no output")
-    parser.add_argument("--screen_calibration",
-                        type=str,
-                        help="Where to find the (pre-computed) screen calibration file",
-                        default='')
-    parser.add_argument("--visual_stimulus",
-                        type=str,
-                        help="A pre-defined visual stimulus",
-                        default=None)
-    parser.add_argument("--use_RSE",
+    parser.add_argument("--screen_calibration", action=FixNoneParser,
+                        help="Where to find the (pre-computed) screen calibration file")
+    parser.add_argument("--visual_stimulus", action=FixNoneParser,
+                        help="A pre-defined visual stimulus")
+    parser.add_argument("--use_RSE", action='store_true',
                         help="Use RSE (as opposed to differential) denoising on AI DAQ inputs",
                         default=True)
     parser.add_argument("--remote_2P_enable", action="store_true",
@@ -105,11 +110,9 @@ def build_argparser(savefilename=None):
                         help="File that stores output recorded on requested input channels. "
                              "Default is file is Ymd_HM_daq.h5 where Ymd_HM is current timestamp.",
                         default=savefilename)
-    parser.add_argument('-f', "--fictrac_config",
-                        type=str,
+    parser.add_argument('-f', "--fictrac_config", action=FixNoneParser,
                         help="File that specifies FicTrac configuration information.")
-    parser.add_argument('-m', "--fictrac_console_out",
-                        type=str,
+    parser.add_argument('-m', "--fictrac_console_out", action=FixNoneParser,
                         help="File to save FicTrac console output to.")
     parser.add_argument("--fictrac_plot_state", action="store_true",
                         help="Enable plotting of FicTrac state history.",
