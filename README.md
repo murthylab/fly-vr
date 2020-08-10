@@ -192,13 +192,3 @@ or observing experiments in progress
   * `flyvr-ipc-send.exe "{\"video_item\": {\"identifier\": \"v_loom_stim\"}}"`
   * `flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"`
 
-## inter-process communication
-
-There are two modes of inter-process communication in flyvr. The fictrac tracking state is shared
-from fictrac to all other processes via shared memory. It follows that the lowest d_latency/d_t data to synchronize
-between all processes is the shared memory fictrac frame number. This is written into every process output
-`.h5` file and should be the means by which data is combined.
-
-The second mode of IPC is using ZMQ. There is a central concept of a playlist with items (that have identifiers). Each
-backend (audio, video, etc) can read a playlist containing backend-specific stimulus items. IPC commands are then
-used to command the backend to 'play' this playlist.

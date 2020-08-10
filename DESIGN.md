@@ -1,5 +1,4 @@
-The Design of FlyVR and VR Experiments
-======================================
+# The Design of FlyVR and VR Experiments
 
 FlyVR is a software for multi-sensory VR experiments on flies. The architecture of the software follows
 the architecture of open- and closed-loop experiments themselves. There are a few different concepts
@@ -189,3 +188,16 @@ experiment = _MyExperiment()
 
 Exploiting the ability to define the experiment logic in python, flyvr is now
 launched `flyvr.exe -c playlist.yaml -e experiment.py`
+
+## FlyVR Software Architecture
+
+#### inter-process communication
+
+There are two modes of inter-process communication in flyvr. The fictrac tracking state is shared
+from fictrac to all other processes via shared memory. It follows that the lowest d_latency/d_t data to synchronize
+between all processes is the shared memory fictrac frame number. This is written into every process output
+`.h5` file and should be the means by which data is combined.
+
+The second mode of IPC is using ZMQ. There is a central concept of a playlist with items (that have identifiers). Each
+backend (audio, video, etc) can read a playlist containing backend-specific stimulus items. IPC commands are then
+used to command the backend to 'play' this playlist.
