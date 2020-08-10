@@ -1,5 +1,6 @@
-import os.path
 import time
+import logging
+import os.path
 
 import yaml
 import configargparse
@@ -189,6 +190,8 @@ def parse_arguments(args=None, return_parser=False):
         options = parser.parse_args()
 
     options = parse_options(options, parser)
+
+    logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO)
 
     if return_parser:
         return options, parser
