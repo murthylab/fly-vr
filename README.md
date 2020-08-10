@@ -192,3 +192,12 @@ or observing experiments in progress
   * `flyvr-ipc-send.exe "{\"video_item\": {\"identifier\": \"v_loom_stim\"}}"`
   * `flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"`
 
+# credits
+
+xxx
+
+# license
+
+fly-vr is released under XXX license, and is intended for research/academic use only.
+(For commercial use, please contact: Laurie Tzodikov (Assistant Director, Office of Technology Licensing),
+Princeton University, 609-258-7256. ?)
