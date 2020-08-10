@@ -144,6 +144,7 @@ class SoundServer(threading.Thread):
         # it is chunked up into the appropriate blocksize.
         if self._stream is not None:
             if data_generator is None:
+                self._log.info('playing silence')
                 self._data_generator = None
             else:
                 self._data_generator = chunker(data_generator, chunk_size=self._stream.blocksize)
@@ -171,7 +172,6 @@ class SoundServer(threading.Thread):
             self.data_generator = stim.data_generator()
             self._stim_playlist = stim
         elif stim is None:
-            self._log.info('playing silence')
             self.data_generator = None
         elif isinstance(stim, str) and (self._stim_playlist is not None):
             if stim in {'play', 'pause'}:
@@ -237,7 +237,7 @@ class SoundServer(threading.Thread):
             self._log.debug('resetting sounddevice library')
             _sd_reset()
 
-        # Setup a dataset to store timing information logged from the callback
+        # setup a dataset to store timing information logged from the callback
         self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
                                               shape=[2048, self.H5_NUM_FIELDS],
                                               maxshape=[None, self.H5_NUM_FIELDS], dtype=np.float64,
@@ -250,9 +250,9 @@ class SoundServer(threading.Thread):
                                        dtype=self._dtype, callback=self._make_callback(),
                                        finished_callback=self.quit)
 
-        self._log.info('opened sounddevice %r' % self._stream)
+        self._log.info('opened %s @ %fHz' % (self._device, self._sample_rate))
 
-        # Initialize a block of silence to be played when the generator is none.
+        # initialize a block of silence to be played when the generator is none.
         self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
         # Setup up for playback of silence.
         self.data_generator = None
@@ -347,6 +347,7 @@ def run_sound_server(options):
     from flyvr.common.ipc import PlaylistReciever
 
     pr = PlaylistReciever()
+    log = logging.getLogger('flyvr.main_sound_server')
 
     playlist_stim = None
     stim_playlist = options.playlist.get('audio')
@@ -355,6 +356,8 @@ def run_sound_server(options):
         playlist_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
                                                     # optional because we are also called from flyvr main launcher
                                                     paused=getattr(options, 'paused', False))
+
+        log.info('initializing audio playlist: %r' % playlist_stim)
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
@@ -388,7 +391,7 @@ def run_sound_server(options):
 def main_sound_server():
     import yaml
     import os.path
-    from flyvr.common.build_arg_parser import build_argparser, parse_options
+    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
 
     parser = build_argparser()
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
@@ -413,4 +416,5 @@ def main_sound_server():
         SoundServer.list_supported_asio_output_devices()
         parser.exit(0)
 
+    setup_logging(options)
     run_sound_server(options)

@@ -181,6 +181,9 @@ def parse_options(options, parser):
     return options
 
 
+def setup_logging(options):
+    logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO)
+
 def parse_arguments(args=None, return_parser=False):
     parser = build_argparser()
 
@@ -191,7 +194,7 @@ def parse_arguments(args=None, return_parser=False):
 
     options = parse_options(options, parser)
 
-    logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO)
+    setup_logging(options)
 
     if return_parser:
         return options, parser
