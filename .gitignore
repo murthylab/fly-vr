@@ -1,3 +1,5 @@
+env
+*.h5
 .coverage
 htmlcov
 venv
