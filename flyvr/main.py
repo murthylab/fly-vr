@@ -1,5 +1,6 @@
 import sys
 import time
+import logging
 
 from flyvr.common.build_arg_parser import parse_arguments
 
@@ -14,7 +15,7 @@ from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
 from flyvr.fictrac.replay import FicTracDriverReplay
 
 
-def _get_fictrac_driver(options):
+def _get_fictrac_driver(options, log):
     drv = None
 
     if options.fictrac_config is not None:
@@ -23,17 +24,35 @@ def _get_fictrac_driver(options):
             assert isinstance(options.experiment, Experiment)
             experiment = options.experiment
 
+            log.info('initialized experiment %r' % experiment)
+
         if options.fictrac_config.endswith('.h5'):
             drv = FicTracDriverReplay(options.fictrac_config)
+
+            log.info('starting fictrac replay of %s' % options.fictrac_config)
         else:
+            if not options.fictrac_console_out:
+                log.fatal('fictrac console out must be provided for fictrac performance')
+                return None
+
             drv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
                                 experiment=experiment,
-                                pgr_enable=options.pgr_cam_enable)
+                                pgr_enable=not options.pgr_cam_disable)
+
+            log.info('starting fictrac%s driver with config %s' % (
+                '' if options.pgr_cam_disable else ' PGR',
+                options.fictrac_config)
+            )
+
+    else:
+        log.fatal('fictrac config not provided')
 
     return drv
 
 
 def main_fictrac():
+    log = logging.getLogger('flyvr.main_fictrac')
+
     options, parser = parse_arguments(return_parser=True)
 
     log_server = DatasetLogServer()
@@ -41,15 +60,16 @@ def main_fictrac():
 
     state = SharedState(options=options, logger=logger)
 
-    trac_drv = _get_fictrac_driver(options)
+    trac_drv = _get_fictrac_driver(options, log)
     if trac_drv is None:
-        raise parser.error('Fictrac configuration not specified')
+        raise parser.error('fictrac configuration error')
 
     trac_drv.run(None, state)
 
 
 
 def main_launcher():
+    log = logging.getLogger('flyvr.main')
 
     try:
         options = parse_arguments()
@@ -62,7 +82,7 @@ def main_launcher():
 
     state = SharedState(options=options, logger=logger)
 
-    trac_drv = _get_fictrac_driver(options)
+    trac_drv = _get_fictrac_driver(options, log)
 
     if trac_drv is not None:
         fictrac_task = ConcurrentTask(task=trac_drv.run, comms="pipe",
