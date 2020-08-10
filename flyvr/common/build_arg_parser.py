@@ -82,8 +82,6 @@ def build_argparser(savefilename=None):
                              "Default none for no output")
     parser.add_argument("--screen_calibration", action=FixNoneParser,
                         help="Where to find the (pre-computed) screen calibration file")
-    parser.add_argument("--visual_stimulus", action=FixNoneParser,
-                        help="A pre-defined visual stimulus")
     parser.add_argument("--use_RSE", action='store_true',
                         help="Use RSE (as opposed to differential) denoising on AI DAQ inputs",
                         default=True)

@@ -34,4 +34,3 @@ configuration:
   fictrac_config: null
   fictrac_console_out: null
   pgr_cam_disable: false
-  visual_stimulus: null

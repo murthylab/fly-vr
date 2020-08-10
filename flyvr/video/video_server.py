@@ -622,9 +622,9 @@ def run_video_server(options):
         playlist_stim = VideoStimPlaylist(*stims)
         log.info('initializing video playlist')
 
-    elif options.visual_stimulus:
-        startup_stim = stimulus_factory(options.visual_stimulus)
-        log.info('selecting single visual stimulus')
+    elif getattr(options, 'play_stimulus'):
+        startup_stim = stimulus_factory(options.play_stimulus)
+        log.info('selecting single visual stimulus: %s' % options.play_stimulus)
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.video_server.h5'))
@@ -638,6 +638,9 @@ def run_video_server(options):
 
         if playlist_stim is not None:
             video_client.play(playlist_stim)
+
+        if getattr(options, 'play_item'):
+            video_client.play(options.play_item)
 
         log.info('pausing 10s for psychopy')
         time.sleep(10)  # takes a bit for the video_server thread to create the psychopy window
@@ -665,7 +668,12 @@ def main_video_server():
     from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
 
     parser = build_argparser()
-    parser.add_argument('--disable-projector', action='store_true', help='do not setup projector')
+    parser.add_argument('--disable-projector', action='store_true', help='Do not setup projector')
+    parser.add_argument('--play-item', help='Play this item from the playlist',
+                        metavar='IDENTIFIER')
+    parser.add_argument('--play-stimulus', help='Play this stimulus only (no playlist is loaded). '
+                                                'useful for testing',
+                        choices=[c.NAME for c in STIMS])
     options = parse_options(parser.parse_args(), parser)
 
     setup_logging(options)
