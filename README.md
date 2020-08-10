@@ -101,6 +101,8 @@ This requires a NI DAQ (PCI-X series). To begin, install NI-DAQmx 19.6.X (from h
 The NI-DAQmx installer offers a number of options. You must install at least the following components
 * NI-DAQmx driver
 * NI Measurement and Automation Explorer 'NI MAX'
+  * sometimes called 'NI Runtime with Configuration Support' (MAX) if using the  
+    lightweight web installer
 * NI-DAQmx Support for C
 
 This also requires ASIO drivers for your audio device / soundcard. If you are not sure if you have dedicated ASIO
