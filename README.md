@@ -159,24 +159,25 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
 * flyvr  
   main application launcher, launches all other processes internally. usually all that is needed to be run
 * flyvr-audio  
-  process which reads the audio playlist and plays audio signals via the soundcard
+  process which reads the audio playlist and plays audio signals via the soundcard. can also
+  list available sound cards (`flyvr-audio --list-devices`)
 * flyvr-video
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
 * flyvr-daq
   process which drives the NI DAQ for the purposes of
   * outputing the opto stimulus
-  * recording the 
+  * recording the analog inputs
 * flyvr-fictrac  
   process which launches the fictrac binary
+  * `flyvr-fictrac -f FicTracPGR_ConfigMaster.txt -m log.txt`
 
 Similarly, the following secondary utilities are available also as separate processes to aid debugging, development, testing
 or observing experiments in progress  
 
 * flyvr-fictrac-replay  
-  can replay a previously saved fictrac `.h5` file in order to test, for example, experiment logic
+  can replay a previously saved fictrac `.h5` file in order to test, for example, experiment logic or 
 * flyvr-experiment  
-  allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. often used
-  in conjunction with `flyvr-fictrac-replay`
+  allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. often used in conjunction with `flyvr-fictrac-replay`
 * flyvr-print-state  
   prints the current flyvr state to the console
 * flyvr-fictrac-plot
