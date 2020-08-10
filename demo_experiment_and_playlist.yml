@@ -33,5 +33,5 @@ configuration:
   remote_next_2P_channel: null
   fictrac_config: null
   fictrac_console_out: null
-  pgr_cam_enable: false
+  pgr_cam_disable: false
   visual_stimulus: null
