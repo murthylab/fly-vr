@@ -1,6 +1,7 @@
 import time
 import uuid
 import os.path
+import logging
 import collections
 import multiprocessing
 
@@ -411,12 +412,15 @@ def stimulus_factory(name, **params):
 class VideoServer(object):
 
     def __init__(self, stim=None, shared_state=None, calibration_file=None, use_lightcrafter=True):
+        self._log = logging.getLogger('flyvr.video_server')
+
         self._initial_stim = stim
         self.stim = self.mywin = self.synchRect = self.framepacker = None
 
         self.use_lightcrafter = False
         if use_lightcrafter:
             dlplc = LightCrafterTCP()
+            self._log.debug("attempting to setup lightcrafter: %r" % dlplc)
             if dlplc.connect():
                 # noinspection PyBroadException
                 try:
@@ -424,10 +428,11 @@ class VideoServer(object):
                     dlplc.cmd_current_video_mode(frame_rate=60, bit_depth=7, led_color=4)
                     self.use_lightcrafter = True
                 except Exception:
-                    print("Error Configuring DLP")
+                    self._log.error("error configuring DLP", exc_info=True)
+            else:
+                self._log.warning("could not configure: %r" % dlplc)
 
-        if self.use_lightcrafter:
-            print("Showing Visual Stimulus on Lightcrafter")
+        self._log.info("%sshowing visual stimulus on lightcrafter" % ('' if self.use_lightcrafter else 'not '))
 
         self.samples_played = self.sync_signal = 0
         self.calibration_file = calibration_file
@@ -452,7 +457,7 @@ class VideoServer(object):
     CALLBACK_TIMING_LOG_SIZE = 10000
 
     def _play(self, stim):
-        print("Playing: %r" % stim)
+        self._log.info("playing: %r" % stim)
         if isinstance(stim, (VideoStim, VideoStimPlaylist)):
             assert self.mywin
             stim.initialize(self.mywin)
@@ -478,6 +483,7 @@ class VideoServer(object):
                                    useFBO=True, color=0)
         if self.use_lightcrafter:
             self.framepacker = ProjectorFramePacker(self.mywin)
+            self._log.debug('attached framepacker for lightcrafter')
 
         self.synchRect = visual.Rect(win=self.mywin, size=(0.25, 0.25), pos=[0.75, -0.75],
                                      lineColor=None, fillColor='grey')
@@ -600,6 +606,7 @@ def run_video_server(options):
     from flyvr.common.ipc import PlaylistReciever
 
     pr = PlaylistReciever()
+    log = logging.getLogger('flyvr.main_video_server')
 
     startup_stim = None
     playlist_stim = None
@@ -613,9 +620,11 @@ def run_video_server(options):
             stims.append(stimulus_factory(defn.pop('name'), identifier=id_, **defn))
 
         playlist_stim = VideoStimPlaylist(*stims)
+        log.info('initializing video playlist')
 
     elif options.visual_stimulus:
         startup_stim = stimulus_factory(options.visual_stimulus)
+        log.info('selecting single visual stimulus')
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.video_server.h5'))
@@ -623,18 +632,20 @@ def run_video_server(options):
 
         video_server = VideoServer(stim=startup_stim,
                                    calibration_file=options.screen_calibration,
-                                   shared_state=state)
+                                   shared_state=state,
+                                   use_lightcrafter=not getattr(options, 'disable_projector', False))
         video_client = video_server.start_stream()
 
         if playlist_stim is not None:
             video_client.play(playlist_stim)
 
-        print('Waiting For Video')
+        log.info('pausing 10s for psychopy')
         time.sleep(10)  # takes a bit for the video_server thread to create the psychopy window
 
         while True:
             elem = pr.get_next_element()
             if elem:
+                # noinspection PyBroadException
                 try:
                     if 'video' in elem:
                         defn = elem['video']
@@ -645,19 +656,17 @@ def run_video_server(options):
                     elif 'video_action' in elem:
                         pass
                     else:
-                        print("Ignoring Message")
-                except Exception as exc:
-                    print("-------", exc)
+                        log.debug("ignoring message: %r" % elem)
+                except Exception:
+                    log.error('could not parse playlist item', exc_info=True)
 
 
 def main_video_server():
-    import sys
-    from flyvr.common.build_arg_parser import parse_arguments
+    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
 
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
+    parser = build_argparser()
+    parser.add_argument('--disable-projector', action='store_true', help='do not setup projector')
+    options = parse_options(parser.parse_args(), parser)
 
+    setup_logging(options)
     run_video_server(options)
