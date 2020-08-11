@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 
 from flyvr.common import Dottable, Randomizer
+from flyvr.common.build_arg_parser import setup_logging
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
 
@@ -482,6 +483,7 @@ class VideoServer(object):
 
         :return: None
         """
+        setup_logging(Dottable(verbose=True))
 
         self.mywin = visual.Window([608, 684],
                                    monitor='DLP',
@@ -680,7 +682,7 @@ def run_video_server(options):
 
 
 def main_video_server():
-    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
+    from flyvr.common.build_arg_parser import build_argparser, parse_options
 
     parser = build_argparser()
     parser.add_argument('--disable-projector', action='store_true', help='Do not setup projector')

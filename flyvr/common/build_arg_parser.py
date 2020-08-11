@@ -180,7 +180,10 @@ def parse_options(options, parser):
 
 
 def setup_logging(options):
-    logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO)
+    logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO,
+                        format='%(name)-35s: %(levelname)-8s %(message)s')
+    logging.getLogger('PIL.Image').setLevel(logging.INFO)
+    logging.getLogger('PIL.PngImagePlugin').setLevel(logging.INFO)
 
 
 def parse_arguments(args=None, return_parser=False):
