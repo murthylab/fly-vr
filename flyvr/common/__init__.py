@@ -4,6 +4,8 @@ import mmap
 import ctypes
 import traceback
 
+import numpy as np
+
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer
 
 
@@ -149,6 +151,64 @@ class SharedState(object):
         traceback.print_exc()
         self.RUN = 0
         self.RUNTIME_ERROR = -1
+
+
+class Randomizer(object):
+
+    MODE_SHUFFLE = 'shuffle'
+    MODE_RANDOM_WALK = 'random_walk'
+    MODE_RANDOM_WALK_NON_REPEAT = 'random_walk_non_repeat'
+    MODE_NONE = 'none'
+
+    def __init__(self, *items, mode=MODE_NONE, repeat=1, random_seed=None):
+        self._r = np.random.RandomState(seed=random_seed)
+        self._mode = mode
+        self._items = items
+
+        if mode == Randomizer.MODE_NONE:
+            self._items = items
+        elif mode == Randomizer.MODE_SHUFFLE:
+            _items = list(items)
+            self._r.shuffle(_items)
+            self._items = tuple(_items)
+        elif mode in (Randomizer.MODE_RANDOM_WALK, Randomizer.MODE_RANDOM_WALK_NON_REPEAT):
+            # handled in the iter below
+            pass
+        else:
+            raise ValueError('unknown mode: %s' % mode)
+
+        if not isinstance(repeat, int) and (repeat >= 1):
+            raise ValueError('repeat must be an integer >= 1')
+
+        self._repeat = repeat
+
+    def _random_walk(self):
+        for _ in self._items:
+            yield self._r.choice(self._items)
+
+    def _repeating_iter(self):
+        if self._mode == Randomizer.MODE_RANDOM_WALK:
+            for _ in range(self._repeat * len(self._items)):
+                yield self._r.choice(self._items)
+        elif self._mode == Randomizer.MODE_RANDOM_WALK_NON_REPEAT:
+            n = 0
+            last = None
+            while n < (self._repeat * len(self._items)):
+                v = last
+                while v == last:
+                    v = self._r.choice(self._items)
+
+                yield v
+
+                last = v
+                n += 1
+        else:
+            for _ in range(self._repeat):
+                for i in self._items:
+                    yield i
+
+    def iter_items(self):
+        return self._repeating_iter()
 
 
 def main_print_state():
