@@ -30,9 +30,10 @@ class VideoStimPlaylist(object):
         if random is None:
             random = Randomizer(*self._stims.keys())
         self._random = random
+        self._playlist_iter = self._random.iter_items()
 
-        self._log = logging.getLogger('flyvr.video.VideoStimPlatlist')
-        self._log.debug('playlist randomizer: %r' % self._random)
+        self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
+        self._log.debug('playlist %r' % self._random)
 
     def initialize(self, win):
         [s.initialize(win) for s in self._stims.values()]
@@ -40,6 +41,9 @@ class VideoStimPlaylist(object):
     def update_and_draw(self, *args, **kwargs):
         for s in self._stims.values():
             s.update_and_draw(*args, **kwargs)
+
+    def advance(self):
+        pass
 
     def describe(self):
         return [{id_: s.describe()} for id_, s in self._stims.items()]
@@ -64,21 +68,43 @@ class VideoStim(object):
 
     def __init__(self, **params):
         self._id = params.pop('identifier', uuid.uuid4().hex)
+        self._duration = params.pop('duration', np.inf)
+        self._show = params.pop('show', True)
+        self._log = logging.getLogger('flyvr.video.%s' % self.__class__.__name__)
 
         self.p = Dottable(params)
-        self.show = params.pop('show', True)
+        self.frame_count = 0
+
+    @property
+    def show(self):
+        return self._show
+
+    @show.setter
+    def show(self, v):
+        self._show = v
+        self._log.debug("%s '%s'" % ('show' if v else 'hide', self._id))
+        self.frame_count = 0
 
     @property
     def identifier(self):
         return str(self._id)[:32]
 
+    @property
+    def duration(self):
+        """ return the duration of this stimulus in frames """
+        return self._duration
+
     def initialize(self, win):
         raise NotImplementedError
+
+    def advance(self):
+        pass
 
     def update_and_draw(self, *args, **kwargs):
         if self.show:
             self.update(*args, **kwargs)
             self.draw()
+            self.frame_count += 1
 
     def update(self, win, logger, frame_num):
         raise NotImplementedError
@@ -547,6 +573,8 @@ class VideoServer(object):
 
                 self.samples_played += 1
                 self.sync_signal += 1
+
+                self.stim.advance()
 
     def _stream_end(self):
         """
