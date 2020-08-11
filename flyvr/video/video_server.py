@@ -5,11 +5,10 @@ import logging
 import collections
 import multiprocessing
 
-import yaml
 import h5py
 import numpy as np
 
-from flyvr.common import Dottable
+from flyvr.common import Dottable, Randomizer
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
 
@@ -21,11 +20,18 @@ from psychopy.visual.windowframepack import ProjectorFramePacker
 
 class VideoStimPlaylist(object):
 
-    def __init__(self, *stims):
+    def __init__(self, *stims, random=None):
         self._stims = collections.OrderedDict()
         for s in stims:
             s.show = False
             self._stims[s.identifier] = s
+
+        if random is None:
+            random = Randomizer(*self._stims.keys())
+        self._random = random
+
+        self._log = logging.getLogger('flyvr.video.VideoStimPlatlist')
+        self._log.debug('playlist randomizer: %r' % self._random)
 
     def initialize(self, win):
         [s.initialize(win) for s in self._stims.values()]
@@ -601,7 +607,7 @@ class VideoStreamProxy:
 
 
 def run_video_server(options):
-    from flyvr.common import SharedState
+    from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
     from flyvr.common.ipc import PlaylistReciever
 
@@ -613,13 +619,22 @@ def run_video_server(options):
     stim_playlist = options.playlist.get('video')
 
     if stim_playlist:
+        option_item_defn = None
 
         stims = []
         for item_def in stim_playlist:
             id_, defn = item_def.popitem()
+
+            if id_ == Randomizer.IN_PLAYLIST_IDENTIFIER:
+                option_item_defn = {id_: defn}
+                continue
+
             stims.append(stimulus_factory(defn.pop('name'), identifier=id_, **defn))
 
-        playlist_stim = VideoStimPlaylist(*stims)
+        random = Randomizer.new_from_playlist_option_item(option_item_defn,
+                                                          *[s.identifier for s in stims])
+        playlist_stim = VideoStimPlaylist(*stims, random=random)
+
         log.info('initializing video playlist')
 
     elif getattr(options, 'play_stimulus'):

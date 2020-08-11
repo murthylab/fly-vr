@@ -2,6 +2,7 @@ import re
 import sys
 import mmap
 import ctypes
+import logging
 import traceback
 
 import numpy as np
@@ -160,6 +161,8 @@ class Randomizer(object):
     MODE_RANDOM_WALK_NON_REPEAT = 'random_walk_non_repeat'
     MODE_NONE = 'none'
 
+    IN_PLAYLIST_IDENTIFIER = '_options'
+
     def __init__(self, *items, mode=MODE_NONE, repeat=1, random_seed=None):
         self._r = np.random.RandomState(seed=random_seed)
         self._mode = mode
@@ -181,6 +184,25 @@ class Randomizer(object):
             raise ValueError('repeat must be an integer >= 1')
 
         self._repeat = repeat
+        self._log = logging.getLogger('flyvr.common.Randomizer')
+
+    @classmethod
+    def new_from_playlist_option_item(cls, option_item_defn, *items):
+        if option_item_defn:
+            id_, defn = option_item_defn.popitem()
+            if id_ == Randomizer.IN_PLAYLIST_IDENTIFIER:
+                return cls(*items,
+                           mode=defn.get('random_mode', Randomizer.MODE_NONE),
+                           repeat=int(defn.get('repeat', 1)),
+                           random_seed=defn.get('random_seed', None))
+
+        return cls(*items)
+
+    def __repr__(self):
+        import textwrap
+        return "<Randomizer(%s,mode=%s,repeat=%s>" % (
+            textwrap.shorten(', '.join(str(i) for i in self._items),
+                             width=25), self._mode, self._repeat)
 
     def _random_walk(self):
         for _ in self._items:

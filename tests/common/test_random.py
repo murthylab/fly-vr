@@ -47,3 +47,11 @@ def test_random_walk_non_repeat(repeat):
         assert dat == [2, 1, 2, 1, 3, 1, 2, 1, 2, 3, 2, 1, 2, 3, 1]
     else:
         raise NotImplementedError
+
+
+def test_repr():
+    s = repr(Randomizer(1, 2, 3, mode=Randomizer.MODE_RANDOM_WALK_NON_REPEAT, random_seed=99))
+    assert s == '<Randomizer(1, 2, 3,mode=random_walk_non_repeat,repeat=1>'
+    s = repr(Randomizer('looooooong', 'thing', 'asfadsf', 'werwe', 'dasdfasf', 'asfasdfasdf',
+                        mode=Randomizer.MODE_RANDOM_WALK_NON_REPEAT, random_seed=99))
+    assert s == '<Randomizer(looooooong, thing, [...],mode=random_walk_non_repeat,repeat=1>'
