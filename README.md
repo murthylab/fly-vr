@@ -193,6 +193,7 @@ or observing experiments in progress
   e.g. (the complex escaping is necessary here in windows shell)
   * `flyvr-ipc-send.exe "{\"video_item\": {\"identifier\": \"v_loom_stim\"}}"`
   * `flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"`
+  * `flyvr-ipc-send.exe "{\"video_action\": \"play\"}"`
 
 # credits
 

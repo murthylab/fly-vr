@@ -1,17 +1,18 @@
 import time
 import uuid
+import queue
 import os.path
 import logging
+import threading
 import collections
-import multiprocessing
 
 import h5py
 import numpy as np
 
 from flyvr.common import Dottable, Randomizer
 from flyvr.common.build_arg_parser import setup_logging
-from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
+from flyvr.common.ipc import PlaylistReciever
 
 from PIL import Image
 from psychopy import visual, core, event
@@ -21,11 +22,14 @@ from psychopy.visual.windowframepack import ProjectorFramePacker
 
 class VideoStimPlaylist(object):
 
-    def __init__(self, *stims, random=None):
+    def __init__(self, *stims, random=None, paused=False, play_item=None):
         self._stims = collections.OrderedDict()
         for s in stims:
             s.show = False
             self._stims[s.identifier] = s
+
+        self._paused = paused
+        self._started_paused_and_never_played = paused
 
         if random is None:
             random = Randomizer(*self._stims.keys())
@@ -35,15 +39,38 @@ class VideoStimPlaylist(object):
         self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
         self._log.debug('playlist %r' % self._random)
 
+        if play_item:
+            self.play_item(play_item)
+        elif not self._paused:
+            self.play_item(next(self._playlist_iter))
+
     def initialize(self, win):
         [s.initialize(win) for s in self._stims.values()]
 
     def update_and_draw(self, *args, **kwargs):
+        if self._paused:
+            return
+
         for s in self._stims.values():
             s.update_and_draw(*args, **kwargs)
 
     def advance(self):
-        pass
+        if self._paused:
+            return
+
+        next_id = None
+        for s in self._stims.values():
+            if s.show:
+                if s.frame_count > s.duration:
+                    try:
+                        next_id = next(self._playlist_iter)
+                    except StopIteration:
+                        self.play_pause(pause=True)
+                    finally:
+                        break
+
+        if next_id is not None:
+            self.play_item(next_id)
 
     def describe(self):
         return [{id_: s.describe()} for id_, s in self._stims.items()]
@@ -55,11 +82,20 @@ class VideoStimPlaylist(object):
         for sid, s in self._stims.items():
             s.show = sid == identifier
 
+        self._log.info('playing item: %s (and un-pausing)' % identifier)
+        self._paused = False
+
     def play_pause(self, pause):
-        pass
+        self._paused = True if pause else False
+        self._log.info('pausing' if pause else 'un-pause / playing')
+
+        if self._started_paused_and_never_played:
+            self.play_item(next(self._playlist_iter))
+            self._started_paused_and_never_played = False
 
     def play(self, stim):
         self._stims[stim.identifier] = stim
+        self.play_item(stim.identifier)
 
 
 class VideoStim(object):
@@ -448,7 +484,8 @@ class VideoServer(object):
         self._log = logging.getLogger('flyvr.video_server')
 
         self._initial_stim = stim
-        self.stim = self.mywin = self.synchRect = self.framepacker = None
+
+        self.stim = self.mywin = self.synchRect = self.framepacker = self.warper = None
 
         self.use_lightcrafter = False
         if use_lightcrafter:
@@ -474,11 +511,8 @@ class VideoServer(object):
         self.flyvr_shared_state = shared_state
         self.logger = shared_state.logger
 
-        # Setup a stream end event, this is how the control will signal to the main thread when it exits.
-        self.stream_end_event = multiprocessing.Event()
-
-        # The process we will spawn the video server thread in.
-        self.task = ConcurrentTask(task=self._video_server_main, comms='pipe')
+        self._running = False
+        self._q = queue.Queue()
 
         self.logger.create("/video/daq_synchronization_info", shape=[1024, 2], maxshape=[None, 2],
                            dtype=np.int64,
@@ -489,6 +523,10 @@ class VideoServer(object):
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
 
+    @property
+    def queue(self):
+        return self._q
+
     def _play(self, stim):
         self._log.info("playing: %r" % stim)
         if isinstance(stim, (VideoStim, VideoStimPlaylist)):
@@ -496,20 +534,27 @@ class VideoServer(object):
             stim.initialize(self.mywin)
             self.stim = stim
         elif isinstance(stim, str):
-            self.stim.play_item(stim)
+            if stim in {'play', 'pause'}:
+                if isinstance(self.stim, VideoStimPlaylist):
+                    self.stim.play_pause(pause=stim == 'pause')
+            else:
+                self.stim.play_item(stim)
 
-    def start_stream(self):
-        self.task.start()
-        return VideoStreamProxy(self)
+    def play(self, item):
+        self._q.put(item)
 
-    def _video_server_main(self, msg_receiver):
+    # noinspection PyUnusedLocal
+    def quit(self, *args, **kwargs):
+        self._running = False
+
+    def run(self):
         """
         The main process function for the video server. Handles actually setting up the videodevice object\stream.
         Waits to receive objects to play on the stream, sent from other processes using a Queue or Pipe.
 
         :return: None
         """
-        setup_logging(Dottable(verbose=True))
+        self._running = True
 
         self.mywin = visual.Window([608, 684],
                                    monitor='DLP',
@@ -548,23 +593,23 @@ class VideoServer(object):
         if self._initial_stim is not None:
             self._play(self._initial_stim)
 
-        while (not (self.stream_end_event.is_set() and self.flyvr_shared_state is not None and \
-                    (self.flyvr_shared_state.is_running_well()))) and \
-                (not (self.stream_end_event.is_set())):
+        while self._running and self.flyvr_shared_state.is_running_well():
 
-            if msg_receiver.poll():
-                msg = msg_receiver.recv()
+            try:
+                msg = self._q.get_nowait()
                 if isinstance(msg, (VideoStim, VideoStimPlaylist, str)):
                     self._play(msg)
-                else:
-                    raise NotImplementedError
+                elif msg is not None:
+                    self._log.error('unsupported message: %r' % msg)
+            except queue.Empty:
+                pass
 
             if self.stim is not None:
                 self.stim.update_and_draw(self.mywin, self.logger, frame_num=self.samples_played)
 
                 if self.sync_signal > 60 * 10:
                     self.synchRect.fillColor = 'black'
-                    self.synch_signal = 0
+                    self.sync_signal = 0
                 elif self.sync_signal > 60 * 5:
                     self.synchRect.fillColor = 'white'
 
@@ -576,73 +621,41 @@ class VideoServer(object):
 
                 self.stim.advance()
 
-    def _stream_end(self):
-        """
-        Invoked at the end of stream playback by sounddevice. We can do any cleanup we need here.
-        """
-
-        # Trigger the event that marks a stream end, the main loop thread is waiting on this.
-        self.stream_end_event.set()
+        self._log.info('exiting')
 
 
-class VideoStreamProxy:
-    """
-    The VideoStreamProxy class acts as an interface to a SoundServer object that is running on another process. It
-    handles sending commands to the object on the other process.
-    """
+def _ipc_main(q):
+    pr = PlaylistReciever()
+    log = logging.getLogger('flyvr.video.ipc_main')
 
-    def __init__(self, video_server):
-        """
-        Initialize the SoundStreamProxy with an already setup SoundServer object. This assummes that the server is
-        running and ready to receive commands.
+    log.debug('starting')
 
-        :param sound_server: The SoundServer object to issue commands to.
-        """
-        self.video_server = video_server
-        self.task = self.video_server.task
+    while True:
+        elem = pr.get_next_element()
+        if elem:
+            # noinspection PyBroadException
+            try:
+                if 'video' in elem:
+                    defn = elem['video']
+                    stim = stimulus_factory(defn['name'], **defn.get('configuration', {}))
+                    q.put(stim)
+                elif 'video_item' in elem:
+                    q.put(elem['video_item']['identifier'])
+                elif 'video_action' in elem:
+                    q.put(elem['video_action'])
+                else:
+                    log.debug("ignoring message: %r" % elem)
+            except Exception:
+                log.error('could not parse playlist item', exc_info=True)
 
-    def play(self, stim):
-        """
-        Send audio stimulus to the sound server for immediate playback.
-
-        :param stim: The AudioStim object to play.
-        :return: None
-        """
-        self.task.send(stim)
-
-    def silence(self):
-        """
-        Set current playback to silence immediately.
-
-        :return: None
-        """
-        self.play(None)
-
-    def close(self):
-        """
-        Signal to the server to shutdown the stream.
-
-        :return: None
-        """
-        self.video_server.stream_end_event.set()
-
-        # We send the server a junk signal. This will cause the message loop to wake up, skip the message because its
-        # junk, and check whether to exit, which it will see is set and will close the stream. Little bit of a hack but
-        # it gets the job done I guess.
-        self.play("KILL")
-
-        # Wait till the server goes away.
-        while self.task.is_alive():
-            time.sleep(0.1)
+    log.debug('exiting')
 
 
 def run_video_server(options):
     from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
-    from flyvr.common.ipc import PlaylistReciever
 
-    pr = PlaylistReciever()
-    log = logging.getLogger('flyvr.main_video_server')
+    log = logging.getLogger('flyvr.video.main')
 
     startup_stim = None
     playlist_stim = None
@@ -663,7 +676,9 @@ def run_video_server(options):
 
         random = Randomizer.new_from_playlist_option_item(option_item_defn,
                                                           *[s.identifier for s in stims])
-        playlist_stim = VideoStimPlaylist(*stims, random=random)
+        playlist_stim = VideoStimPlaylist(*stims, random=random,
+                                          paused=getattr(options, 'paused', False),
+                                          play_item=getattr(options, 'play_item', None))
 
         log.info('initializing video playlist')
 
@@ -679,34 +694,17 @@ def run_video_server(options):
                                    calibration_file=options.screen_calibration,
                                    shared_state=state,
                                    use_lightcrafter=not getattr(options, 'disable_projector', False))
-        video_client = video_server.start_stream()
 
         if playlist_stim is not None:
-            video_client.play(playlist_stim)
+            video_server.play(playlist_stim)
 
-        if getattr(options, 'play_item'):
-            video_client.play(options.play_item)
+        ipc = threading.Thread(daemon=True, name='VideoIpcThread',
+                               target=_ipc_main, args=(video_server.queue,))
+        ipc.start()
 
-        log.info('pausing 10s for psychopy')
-        time.sleep(10)  # takes a bit for the video_server thread to create the psychopy window
+        video_server.run()  # blocks
 
-        while True:
-            elem = pr.get_next_element()
-            if elem:
-                # noinspection PyBroadException
-                try:
-                    if 'video' in elem:
-                        defn = elem['video']
-                        stim = stimulus_factory(defn['name'], **defn.get('configuration', {}))
-                        video_client.play(stim)
-                    elif 'video_item' in elem:
-                        video_client.play(elem['video_item']['identifier'])
-                    elif 'video_action' in elem:
-                        pass
-                    else:
-                        log.debug("ignoring message: %r" % elem)
-                except Exception:
-                    log.error('could not parse playlist item', exc_info=True)
+        log.debug('exiting')
 
 
 def main_video_server():
@@ -719,6 +717,7 @@ def main_video_server():
     parser.add_argument('--play-stimulus', help='Play this stimulus only (no playlist is loaded). '
                                                 'useful for testing',
                         choices=[c.NAME for c in STIMS])
+    parser.add_argument('--paused', action='store_true', help='start paused')
     options = parse_options(parser.parse_args(), parser)
 
     setup_logging(options)
