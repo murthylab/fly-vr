@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import threading
+import logging
 import time
 
 import PyDAQmx as daq
@@ -26,6 +27,7 @@ from flyvr.audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 # from flyvr.control.two_photon_control import TwoPhotonController
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
+from flyvr.common.build_arg_parser import setup_logging
 
 DAQ_SAMPLE_RATE = 10000
 DAQ_NUM_OUTPUT_SAMPLES = 1000
@@ -47,9 +49,12 @@ class IOTask(daq.Task):
         # check inputs
         daq.Task.__init__(self)
 
+        self._log = logging.getLogger('flyvr.daq.IOTask')
+
         _digital = 'digital' if digital else 'analog'
-        print(f'DAQ:{dev_name}: {_digital}{cha_type}/{cha_name} (limits: {limits}, SR: {rate}, nSamp/ch: {num_samples_per_chan}, '
-              f'nSamp/event: {num_samples_per_event}, RSE: {use_RSE})')
+        self._log.info(f'DAQ:{dev_name}: {_digital}{cha_type}/{cha_name} (limits: {limits}, '
+                       f'SR: {rate}, nSamp/ch: {num_samples_per_chan}, '
+                       f'nSamp/event: {num_samples_per_event}, RSE: {use_RSE})')
 
         self.dev_name = dev_name
 
@@ -541,6 +546,8 @@ def run_io(options):
     from flyvr.common import SharedState
     from flyvr.common.logger import DatasetLogServerThreaded
 
+    setup_logging(options)
+
     class _MockPipe:
         def poll(self, *args):
             return False
@@ -552,10 +559,11 @@ def run_io(options):
 
 
 def main_io():
-    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
+    from flyvr.common.build_arg_parser import build_argparser, parse_options
 
     parser = build_argparser()
-    parser.add_argument('--start-immediately', action='store_true', help='start recording immediately (do not wait for start signal)')
+    parser.add_argument('--start-immediately', action='store_true',
+                        help='start recording immediately (do not wait for start signal)')
     options = parse_options(parser.parse_args(), parser)
 
     run_io(options)

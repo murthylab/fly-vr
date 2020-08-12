@@ -655,6 +655,8 @@ def run_video_server(options):
     from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
 
+    setup_logging(options)
+
     log = logging.getLogger('flyvr.video.main')
 
     startup_stim = None
@@ -720,5 +722,4 @@ def main_video_server():
     parser.add_argument('--paused', action='store_true', help='start paused')
     options = parse_options(parser.parse_args(), parser)
 
-    setup_logging(options)
     run_video_server(options)

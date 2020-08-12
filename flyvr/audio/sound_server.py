@@ -9,6 +9,7 @@ import sounddevice as sd
 
 from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
 from flyvr.audio.io_task import chunker
+from flyvr.common.build_arg_parser import setup_logging
 
 
 # noinspection PyProtectedMember
@@ -346,6 +347,8 @@ def run_sound_server(options):
     from flyvr.audio.stimuli import legacy_factory, stimulus_factory
     from flyvr.common.ipc import PlaylistReciever
 
+    setup_logging(options)
+
     pr = PlaylistReciever()
     log = logging.getLogger('flyvr.main_sound_server')
 
@@ -393,7 +396,7 @@ def run_sound_server(options):
 def main_sound_server():
     import yaml
     import os.path
-    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
+    from flyvr.common.build_arg_parser import build_argparser, parse_options
 
     parser = build_argparser()
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
@@ -418,5 +421,4 @@ def main_sound_server():
         SoundServer.list_supported_asio_output_devices()
         parser.exit(0)
 
-    setup_logging(options)
     run_sound_server(options)
