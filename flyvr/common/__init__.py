@@ -154,6 +154,17 @@ class SharedState(object):
         self.RUNTIME_ERROR = -1
 
 
+class Every(object):
+    def __init__(self, n):
+        self._i = 0
+        self.n = n
+
+    def __nonzero__(self):
+        r = (self._i % self.n) == 0
+        self._i += 1
+        return r
+
+
 class Randomizer(object):
 
     MODE_SHUFFLE = 'shuffle'

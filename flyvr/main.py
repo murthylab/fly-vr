@@ -7,9 +7,9 @@ from flyvr.common.build_arg_parser import parse_arguments
 from flyvr.video.video_server import run_video_server
 from flyvr.audio.sound_server import run_sound_server
 from flyvr.audio.io_task import run_io
-from flyvr.common import SharedState
+from flyvr.common import SharedState, Every
 from flyvr.control.experiment import Experiment
-from flyvr.common.concurrent_task import ConcurrentTaskThreaded as ConcurrentTask
+from flyvr.common.concurrent_task import ConcurrentTaskThreaded, ConcurrentTask
 from flyvr.common.logger import DatasetLogger, DatasetLogServer
 from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
 from flyvr.fictrac.replay import FicTracDriverReplay
@@ -67,15 +67,10 @@ def main_fictrac():
     trac_drv.run(None, state)
 
 
-
 def main_launcher():
-    log = logging.getLogger('flyvr.main')
+    options = parse_arguments()
 
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
+    log = logging.getLogger('flyvr.main')
 
     log_server = DatasetLogServer()
     logger = log_server.start_logging_server(options.record_file)
@@ -103,18 +98,23 @@ def main_launcher():
 
     if state.is_running_well():
 
-        print("Delaying start by " + str(options.start_delay) + " ...")
+        log.info("delaying start by %s" % options.start_delay)
         time.sleep(options.start_delay)
 
-        # Send a signal to the DAQ to start playback and acquisition
-        print("Signalling DAQ Start")
+        # send a signal to the DAQ to start playback and acquisition
+        log.info("signalling DAQ start")
         state.START_DAQ = 1
 
-        # Wait until we get a ready message from the DAQ task
+        # wait until we get a ready message from the DAQ task
+        every_3s = Every(15)
         while state.DAQ_READY == 0 and state.is_running_well():
             time.sleep(0.2)
+            if every_3s:
+                log.info('waiting for DAQ task to signal READY')
 
-        # Wait till the user presses enter to end session
+        log.info('detected DAQ READY signal')
+
+        # wait till the user presses enter to end session
         if state.is_running_well():
             input("Press ENTER to end session ... ")
 
