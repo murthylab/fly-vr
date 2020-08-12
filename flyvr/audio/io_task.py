@@ -24,7 +24,6 @@ from ctypes import byref, c_ulong
 from flyvr.audio.attenuation import Attenuator
 from flyvr.audio.signal_producer import chunker, MixedSignal
 from flyvr.audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
-# from flyvr.control.two_photon_control import TwoPhotonController
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
 from flyvr.common.build_arg_parser import setup_logging
@@ -392,34 +391,6 @@ def io_task_loop(message_pipe, state):
                             shared_state=state, use_RSE=options.use_RSE)
 
             taskDO = None
-            # two_photon_controller = None
-
-            # Setup digital control if needed.
-            # if options.remote_2P_enable and is_analog_out:
-            #     channels = []
-            #     signals = []
-            #
-            #     # Setup the two photon control if needed
-            #     if options.remote_2P_enable and is_analog_out:
-            #         two_photon_controller = TwoPhotonController(start_channel_name=options.remote_start_2P_channel,
-            #                                                     stop_channel_name=options.remote_stop_2P_channel,
-            #                                                     next_file_channel_name=options.remote_next_2P_channel,
-            #                                                     audio_stim_playlist=audio_stim)
-            #         channels = channels + two_photon_controller.channel_names
-            #         signals.append(two_photon_controller)
-            #
-            #     taskDO = IOTask(cha_name=channels, cha_type="output", digital=True,
-            #                     num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
-            #                     num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
-            #                     shared_state=state)
-            #
-            #     mixed_signal = MixedSignal(signals)
-            #
-            #     # Set the data generator. We will need combine the data generators into one signal for the digital task
-            #     taskDO.set_data_generator(mixed_signal.data_generator())
-            #
-            #     # Connect DO start to AI start
-            #     taskDO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
                                        taskinitargs=[input_chans, taskAI.num_samples_per_chan, 5])
@@ -524,11 +495,6 @@ def io_task_loop(message_pipe, state):
                 taskDI.StopTask()
                 taskDI.stop()
                 taskDI.ClearTask()
-
-            # # If we are doing two photon control, we need to send a special stop signal.
-            # if two_photon_controller is not None:
-            #     print("Sending 2P imaging stop signal ... ")
-            #     two_photon_controller.send_2P_stop_signal(dev_name=taskDO.dev_name)
 
         if taskAO is not None:
             taskAO.ClearTask()
