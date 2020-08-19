@@ -1,6 +1,6 @@
 # Flyvr
 
-fly-vr is a framework for the design and control of multisensory virtual reality systems for neuroscientists.
+flyvr is a framework for the design and control of multisensory virtual reality systems for neuroscientists.
 It is written in Python, with modular design that allows the control of open and closed loop experiments with 
 one or more sensory modality. In its current implementation, fly-vr uses fictrac (see below) to track the path of a
 fly walking on an air suspended ball. A projector and a sound card are used for delivering visual and auditor stimuli,
@@ -8,7 +8,7 @@ and other analog outputs (through NI-DAQ or a phidgets devices) for the control 
 light for optogenetic stimulation, or triggers for synchronization (e.g., with scanimage, for controlling
 two-photon imaging).
 
-fly-vr is currently under development. If you like to contribute of test the code, please contact David deutsch (ddeutsch@princeton.edu) or Adam Calhoun (adamjc@princeton.edu).
+flyvr is currently under development. If you like to contribute of test the code, please contact David deutsch (ddeutsch@princeton.edu) or Adam Calhoun (adamjc@princeton.edu).
 
 
 # Usage
@@ -203,6 +203,4 @@ xxx
 
 # license
 
-fly-vr is released under XXX license, and is intended for research/academic use only.
-(For commercial use, please contact: Laurie Tzodikov (Assistant Director, Office of Technology Licensing),
-Princeton University, 609-258-7256. ?)
+flyvr is released under a Clear BSD License and is intended for research/academic use only. For commercial use, please contact: Laurie Tzodikov (Assistant Director, Office of Technology Licensing), Princeton University, 609-258-7256.
