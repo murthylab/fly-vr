@@ -3,10 +3,10 @@
 FlyVR is a framework for the design and control of multisensory virtual reality systems for neuroscientists.
 It is written in Python, with modular design that allows the control of open and closed loop experiments with 
 one or more sensory modality. In its current implementation, FlyVR uses fictrac (see below) to track the path of a
-fly walking on an air suspended ball. A projector and a sound card are used for delivering visual and auditory stimuli,
-and other analog outputs (through NI-DAQ or phidgets devices) control other stimuli such as light for optogenetic stimulation, or triggers for synchronization (e.g., with ScanImage).
+fly walking on an air-suspended ball. A projector and a sound card are used for delivering visual and auditory stimuli,
+and other analog outputs (through NI-DAQ or phidgets devices) control other stimuli such as optogenetic stimulation, or triggers for synchronization (e.g., with ScanImage).
 
-FlyVR is currently under development. If you would like to contribute to testing the code, please contact David deutsch (ddeutsch@princeton.edu) or Adam Calhoun (adamjc@princeton.edu), postdocs in the Murthy Lab @ the Princeton Neuroscience Institute.
+**FlyVR is currently under development. Please see below for credits and license info.** If you would like to contribute to testing the code, please contact David deutsch (ddeutsch@princeton.edu), postdoc in the Murthy Lab @ the Princeton Neuroscience Institute.
 
 
 # Usage
