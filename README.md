@@ -6,7 +6,7 @@ one or more sensory modality. In its current implementation, FlyVR uses fictrac 
 fly walking on an air-suspended ball. A projector and a sound card are used for delivering visual and auditory stimuli,
 and other analog outputs (through NI-DAQ or phidgets devices) control other stimuli such as optogenetic stimulation, or triggers for synchronization (e.g., with ScanImage).
 
-**FlyVR is currently under development. Please see below for credits and license info.** If you would like to contribute to testing the code, please contact David deutsch (ddeutsch@princeton.edu), postdoc in the Murthy Lab @ the Princeton Neuroscience Institute.
+**FlyVR is currently under development. Please see below for credits and license info.** If you would like to contribute to testing the code, please contact David Deutsch (ddeutsch@princeton.edu), postdoc in the Murthy Lab @ the Princeton Neuroscience Institute.
 
 
 # Usage
