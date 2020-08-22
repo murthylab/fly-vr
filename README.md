@@ -197,10 +197,7 @@ or observing experiments in progress
 
 # credits
 
-David Deutsch - Murthy lab, PNI, Princeton
-Adam Calhoun - Murthy lab, PNI, Princeton
-John Stowers - LoopBio
-David Turner - PNI, Princeton
+David Deutsch - Murthy lab, PNI, Princeton; Adam Calhoun - Murthy lab, PNI, Princeton; John Stowers - LoopBio, David Turner - PNI, Princeton
 
 # license
 Copyright (c) 2020 Princeton University
