@@ -1,4 +1,3 @@
-import time
 import uuid
 import queue
 import os.path
@@ -564,6 +563,7 @@ class VideoServer(object):
         self._log = logging.getLogger('flyvr.video_server')
 
         self._initial_stim = stim
+        self._save_frames_path = None
 
         self.stim = self.mywin = self.synchRect = self.framepacker = self.warper = None
 
@@ -686,6 +686,13 @@ class VideoServer(object):
 
             if self.stim is not None:
                 self.stim.update_and_draw(self.mywin, self.logger, frame_num=self.samples_played)
+
+                if self._save_frames_path:
+                    self.mywin.getMovieFrame()
+                    self.mywin.saveMovieFrames(
+                        os.path.join(self._save_frames_path,
+                                     '{}_image{:0>5d}.jpg'.format(self.stim.identifier,
+                                                                  self.stim.frame_count)))
 
                 if self.sync_signal > 60 * 10:
                     self.synchRect.fillColor = 'black'
