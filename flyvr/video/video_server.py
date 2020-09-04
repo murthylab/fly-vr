@@ -20,6 +20,26 @@ from psychopy.visual.windowwarp import Warper
 from psychopy.visual.windowframepack import ProjectorFramePacker
 
 
+dlp_screen = [684, 608]
+fps = 60
+
+
+def deg_to_px(deg):
+    # degrees * pixels / degree = pixels
+    px_mag = (dlp_screen[0] - dlp_screen[0]/2)
+    px = deg*px_mag/180
+
+    return px
+
+
+def deg_to_px_pos(deg):
+    return deg_to_px(deg) + dlp_screen[0]/2
+
+
+def deg_to_abs(deg):
+    return deg/180
+
+
 class VideoStimPlaylist(object):
 
     def __init__(self, *stims, random=None, paused=False, play_item=None):
@@ -225,6 +245,61 @@ class GratingStim(VideoStim):
                              self.p.stim_size,
                              self.p.stim_color,
                              self.screen.phase[0]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+# noinspection PyUnresolvedReferences
+class SweepingSpotStim(VideoStim):
+    NAME = 'sweeping_spot'
+    NUM_VIDEO_FIELDS = 7
+    # 4s OFF
+    # 4s BG
+    # 20s STIM
+    # 4s BG
+    # 4s OFF
+
+    # RF finder/sweeping spot
+    # Natural spot
+    # Grating + Natural spot
+    # Looming spot
+    # 3D fly
+
+    def __init__(self, radius=5, velx=1, offset=(0.2, 0),
+                 init_pos=0, end_pos=1,
+                 bg_color=0, fg_color=-1, off_time=4, bg_time=4, fps=60,
+                 **kwargs):
+        super().__init__(radius=float(radius),
+                         velx=float(velx),
+                         offset=[float(offset[0]), float(offset[1])],
+                         init_pos=float(init_pos), end_pos=float(end_pos),
+                         bg_color=float(bg_color), fg_color=float(fg_color),
+                         off_time=float(off_time), bg_time=float(bg_time),
+                         fps=float(fps), **kwargs)
+
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.Circle(win=win,
+                                    radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos),0],
+                                    lineColor=None, fillColor=self.p.fg_color)
+
+    @property
+    def is_finished(self):
+        return self.screen and (self.screen.pos[0] > deg_to_px(self.p.end_pos))
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        self.screen.pos += [deg_to_px(self.p.velx)/fps, 0]
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.radius, self.screen.radius]))
 
     def draw(self):
         self.screen.draw()
@@ -473,7 +548,7 @@ class OptModel(VideoStim):
         self.screen.draw()
 
 
-STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim)
+STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim, SweepingSpotStim)
 
 
 def stimulus_factory(name, **params):
