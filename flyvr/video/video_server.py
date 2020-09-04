@@ -61,7 +61,7 @@ class VideoStimPlaylist(object):
         next_id = None
         for s in self._stims.values():
             if s.show:
-                if s.frame_count > s.duration:
+                if s.is_finished:
                     try:
                         next_id = next(self._playlist_iter)
                     except StopIteration:
@@ -129,6 +129,11 @@ class VideoStim(object):
     def duration(self):
         """ return the duration of this stimulus in frames """
         return self._duration
+
+    @property
+    def is_finished(self):
+        """ overridable property for stimuli to determine by other means when they are finished """
+        return self.frame_count > self.duration
 
     def initialize(self, win):
         raise NotImplementedError
