@@ -304,6 +304,88 @@ class SweepingSpotStim(VideoStim):
         self.screen.draw()
 
 
+class AdamStim(VideoStim):
+    NAME = 'adamstim'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, filename='pipStim.mat', offset=(0, 0), bg_color=0, fg_color=-1, **kwargs):
+        super().__init__(offset=[float(offset[0]), float(offset[1])],
+                         bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
+
+        with h5py.File(filename, 'r') as f:
+            self._tdis = f['tDis'][:, 0]
+            self._tang = f['tAng'][:, 0]
+
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.Circle(win=win,
+                                    radius=0, pos=self.p.offset,
+                                    lineColor=None, fillColor=self.p.fg_color)
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        xoffset, yoffset = self.p.offset
+
+        self.screen.pos = self._tang[round(frame_num)] / 180 + xoffset, yoffset
+        self.screen.radius = 1 / self._tdis[round(frame_num)]
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen.draw()
+
+
+class AdamStimGrating(VideoStim):
+    NAME = 'adamstimgrating'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, filename='pipStim.mat', offset=(0, 0), bg_color=0, fg_color=-1, **kwargs):
+        super().__init__(offset=[float(offset[0]), float(offset[1])],
+                         bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
+
+        with h5py.File(filename, 'r') as f:
+            self._tdis = f['tDis'][:, 0]
+            self._tang = f['tAng'][:, 0]
+
+        self.screen = None
+
+    def initialize(self, win):
+        self.screen = visual.Circle(win=win,
+                                    radius=0, pos=self.p.offset,
+                                    lineColor=None, fillColor=self.p.fg_color)
+        self.screen2 = visual.GratingStim(win=win,
+                                          pos=[0, 0], sf=50, size=10,
+                                          phase=0)
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+
+        xoffset, yoffset = self.p.offset
+
+        self.screen.pos = self._tang[round(frame_num)] / 180 + xoffset, yoffset
+        self.screen.radius = 1 / self._tdis[round(frame_num)]
+
+        self.screen2.phase += 0.01
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        self.screen2.draw()
+        self.screen.draw()
+
+
 class MovingSquareStim(VideoStim):
     NAME = 'moving_square'
     NUM_VIDEO_FIELDS = 7
@@ -547,7 +629,8 @@ class OptModel(VideoStim):
         self.screen.draw()
 
 
-STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim, SweepingSpotStim)
+STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim, SweepingSpotStim,
+         AdamStim, AdamStimGrating)
 
 
 def stimulus_factory(name, **params):
