@@ -20,7 +20,6 @@ from psychopy.visual.windowframepack import ProjectorFramePacker
 
 
 dlp_screen = [684, 608]
-fps = 60
 
 
 def deg_to_px(deg):
@@ -63,8 +62,8 @@ class VideoStimPlaylist(object):
         elif not self._paused:
             self.play_item(next(self._playlist_iter))
 
-    def initialize(self, win):
-        [s.initialize(win) for s in self._stims.values()]
+    def initialize(self, win, fps):
+        [s.initialize(win, fps) for s in self._stims.values()]
 
     def update_and_draw(self, *args, **kwargs):
         if self._paused:
@@ -154,7 +153,7 @@ class VideoStim(object):
         """ overridable property for stimuli to determine by other means when they are finished """
         return self.frame_count > self.duration
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         raise NotImplementedError
 
     def advance(self):
@@ -197,7 +196,7 @@ class NoStim(VideoStim):
     NAME = 'none'
     NUM_VIDEO_FIELDS = 1
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         pass
 
     def update(self, win, logger, frame_num):
@@ -229,7 +228,7 @@ class GratingStim(VideoStim):
                          bg_color=float(bg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.GratingStim(win=win, size=self.p.stim_size,
                                          pos=[0, 0], sf=self.p.sf,
                                          color=self.p.stim_color, phase=0)
@@ -279,7 +278,7 @@ class SweepingSpotStim(VideoStim):
 
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.Circle(win=win,
                                     radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos),0],
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -318,7 +317,7 @@ class AdamStim(VideoStim):
 
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.Circle(win=win,
                                     radius=0, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -356,7 +355,7 @@ class AdamStimGrating(VideoStim):
 
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.Circle(win=win,
                                     radius=0, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -398,7 +397,7 @@ class MovingSquareStim(VideoStim):
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.Rect(win=win,
                                   size=self.p.size, pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -438,7 +437,7 @@ class PipStim(VideoStim):
 
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.Rect(win=win,
                                   size=(0.25, 0.25), pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -474,7 +473,7 @@ class LoomingStim(VideoStim):
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self.screen = visual.Rect(win=win,
                                   size=self.p.size_min, pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -521,7 +520,7 @@ class MayaModel(VideoStim):
         self._img_size = [right_x[frame_start:] - left_x[frame_start:],
                           top_y[frame_start:] - bottom_y[frame_start:]]
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
         self.screen = self._imgs[0]
 
@@ -602,7 +601,7 @@ class OptModel(VideoStim):
             self._img_size = np.append(self._img_size, np.array(
                 [rx_p[ii:ii + 300] - lx_p[ii:ii + 300], ty_p[ii:ii + 300] - by_p[ii:ii + 300]]), axis=1)
 
-    def initialize(self, win):
+    def initialize(self, win, fps):
         self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
         self.screen = self._imgs[0]
 
@@ -683,6 +682,14 @@ class VideoServer(object):
         for stimcls in STIMS:
             stimcls.create_log(self.logger)
 
+        self.mywin = visual.Window([608, 684],
+                                   monitor='DLP',
+                                   screen=1 if self.use_lightcrafter else 0,
+                                   useFBO=True, color=0)
+        self._fps = self.mywin.getActualFrameRate()
+        if self._fps is None:
+            raise ValueError('could not determine monitor FPS')
+
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
 
@@ -694,7 +701,7 @@ class VideoServer(object):
         self._log.info("playing: %r" % stim)
         if isinstance(stim, (VideoStim, VideoStimPlaylist)):
             assert self.mywin
-            stim.initialize(self.mywin)
+            stim.initialize(self.mywin, self._fps)
             self.stim = stim
         elif isinstance(stim, str):
             if stim in {'play', 'pause'}:
@@ -719,10 +726,6 @@ class VideoServer(object):
         """
         self._running = True
 
-        self.mywin = visual.Window([608, 684],
-                                   monitor='DLP',
-                                   screen=1 if self.use_lightcrafter else 0,
-                                   useFBO=True, color=0)
         if self.use_lightcrafter:
             self.framepacker = ProjectorFramePacker(self.mywin)
             self._log.debug('attached framepacker for lightcrafter')
