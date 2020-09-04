@@ -252,7 +252,6 @@ class GratingStim(VideoStim):
         self.screen.draw()
 
 
-# noinspection PyUnresolvedReferences
 class SweepingSpotStim(VideoStim):
     NAME = 'sweeping_spot'
     NUM_VIDEO_FIELDS = 7
@@ -279,13 +278,14 @@ class SweepingSpotStim(VideoStim):
                          bg_color=float(bg_color), fg_color=float(fg_color),
                          off_time=float(off_time), bg_time=float(bg_time),
                          fps=float(fps), **kwargs)
-
         self.screen = None
+        self._fps = None
 
     def initialize(self, win, fps):
         self.screen = visual.Circle(win=win,
-                                    radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos),0],
+                                    radius=deg_to_px(sgiotelf.p.radius), pos=[deg_to_px(self.p.init_pos),0],
                                     lineColor=None, fillColor=self.p.fg_color)
+        self._fps = fps
 
     @property
     def is_finished(self):
@@ -294,7 +294,7 @@ class SweepingSpotStim(VideoStim):
     def update(self, win, logger, frame_num):
         win.color = self.p.bg_color
 
-        self.screen.pos += [deg_to_px(self.p.velx)/fps, 0]
+        self.screen.pos += [deg_to_px(self.p.velx)/self._fps, 0]
 
         logger.log(self.log_name(),
                    np.array([frame_num,
