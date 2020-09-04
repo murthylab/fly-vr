@@ -74,7 +74,7 @@ class VideoStimPlaylist(object):
 
     def advance(self):
         if self._paused:
-            return
+            return True
 
         next_id = None
         for s in self._stims.values():
@@ -89,6 +89,8 @@ class VideoStimPlaylist(object):
 
         if next_id is not None:
             self.play_item(next_id)
+
+        return True
 
     def describe(self):
         return [{id_: s.describe()} for id_, s in self._stims.items()]
@@ -157,7 +159,9 @@ class VideoStim(object):
         raise NotImplementedError
 
     def advance(self):
-        pass
+        """ can return False when there is no further item to advance to. in the single stimulus case
+        this indicates the stimulus is finished """
+        return not self.is_finished
 
     def update_and_draw(self, *args, **kwargs):
         if self.show:
@@ -792,7 +796,8 @@ class VideoServer(object):
                 self.samples_played += 1
                 self.sync_signal += 1
 
-                self.stim.advance()
+                if not self.stim.advance():
+                    self.stim.show = False
 
         self._log.info('exiting')
 
