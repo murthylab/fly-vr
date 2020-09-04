@@ -500,6 +500,46 @@ class LoomingStim(VideoStim):
         self.screen.draw()
 
 
+class LoomingStimCircle(VideoStim):
+
+    NAME = 'loomingcircle'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self, size_min=0.05, size_max=0.8, rv=10, offset=(0, 0),
+                 bg_color=0, fg_color=-1, time=1000, **kwargs):
+        super().__init__(size_min=float(size_min), size_max=float(size_max),
+                         offset=[float(offset[0]), float(offset[1])],
+                         rv=float(rv),time=float(time),
+                         bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
+        self.screen = None
+        self._fps = None
+
+    def initialize(self, win, fps):
+        self.screen = visual.Circle(win=win,
+                                    radius=self.p.size_min, pos=self.p.offset,
+                                    lineColor=None, fillColor=self.p.fg_color)
+        self._fps = fps
+
+    @property
+    def is_finished(self):
+        return (self.p.time - self.frame_count / self._fps * 1000) < 0
+
+    def update(self, win, logger, frame_num):
+        win.color = self.p.bg_color
+        time_counter = self.p.time - self.frame_count / self._fps * 1000
+        self.screen.radius = deg_to_px(self.p.size_max/(np.pi/2)*np.arctan(self.p.rv / time_counter))
+
+        logger.log(self.log_name(),
+                   np.array([frame_num,
+                             self.p.bg_color,
+                             0,
+                             self.screen.pos[0], self.screen.pos[1],
+                             self.screen.radius, self.screen.radius]))
+
+    def draw(self):
+        self.screen.draw()
+
+
 class MayaModel(VideoStim):
 
     NAME = 'maya_model'
@@ -633,7 +673,7 @@ class OptModel(VideoStim):
 
 
 STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim, SweepingSpotStim,
-         AdamStim, AdamStimGrating)
+         AdamStim, AdamStimGrating, LoomingStimCircle)
 
 
 def stimulus_factory(name, **params):
