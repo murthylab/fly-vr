@@ -283,7 +283,7 @@ class SweepingSpotStim(VideoStim):
 
     def initialize(self, win, fps):
         self.screen = visual.Circle(win=win,
-                                    radius=deg_to_px(sgiotelf.p.radius), pos=[deg_to_px(self.p.init_pos),0],
+                                    radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos),0],
                                     lineColor=None, fillColor=self.p.fg_color)
         self._fps = fps
 
