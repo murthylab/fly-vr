@@ -124,9 +124,14 @@ class VideoStim(object):
 
     def __init__(self, **params):
         self._id = params.pop('identifier', uuid.uuid4().hex)
-        self._duration = params.pop('duration', np.inf)
+
+        self._duration_frames = params.pop('duration_frames', np.inf)
+        self._duration_seconds = params.pop('duration_seconds', None)
+
         self._show = params.pop('show', True)
         self._log = logging.getLogger('flyvr.video.%s' % self.__class__.__name__)
+
+        self._fps = None
 
         self.p = Dottable(params)
         self.frame_count = 0
@@ -148,7 +153,7 @@ class VideoStim(object):
     @property
     def duration(self):
         """ return the duration of this stimulus in frames """
-        return self._duration
+        return self._duration_frames
 
     @property
     def is_finished(self):
@@ -156,7 +161,10 @@ class VideoStim(object):
         return self.frame_count > self.duration
 
     def initialize(self, win, fps):
-        raise NotImplementedError
+        self._fps = fps
+        if np.isinf(self._duration_frames) and (self._duration_seconds is not None):
+            self._duration_frames = int(fps * self._duration_seconds)
+            self._log.debug('set duration for %d frames @ %f fps' % (self._duration_frames, fps))
 
     def advance(self):
         """ can return False when there is no further item to advance to. in the single stimulus case
@@ -200,9 +208,6 @@ class NoStim(VideoStim):
     NAME = 'none'
     NUM_VIDEO_FIELDS = 1
 
-    def initialize(self, win, fps):
-        pass
-
     def update(self, win, logger, frame_num):
         logger.log(self.log_name(),
                    np.array([frame_num]))
@@ -233,6 +238,7 @@ class GratingStim(VideoStim):
         self.screen = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.GratingStim(win=win, size=self.p.stim_size,
                                          pos=[0, 0], sf=self.p.sf,
                                          color=self.p.stim_color, phase=0)
@@ -279,13 +285,12 @@ class SweepingSpotStim(VideoStim):
                          off_time=float(off_time), bg_time=float(bg_time),
                          fps=float(fps), **kwargs)
         self.screen = None
-        self._fps = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Circle(win=win,
                                     radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos),0],
                                     lineColor=None, fillColor=self.p.fg_color)
-        self._fps = fps
 
     @property
     def is_finished(self):
@@ -322,6 +327,7 @@ class AdamStim(VideoStim):
         self.screen = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Circle(win=win,
                                     radius=0, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -360,6 +366,7 @@ class AdamStimGrating(VideoStim):
         self.screen = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Circle(win=win,
                                     radius=0, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -402,6 +409,7 @@ class MovingSquareStim(VideoStim):
         self.screen = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Rect(win=win,
                                   size=self.p.size, pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -442,6 +450,7 @@ class PipStim(VideoStim):
         self.screen = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Rect(win=win,
                                   size=(0.25, 0.25), pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -478,6 +487,7 @@ class LoomingStim(VideoStim):
         self.screen = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Rect(win=win,
                                   size=self.p.size_min, pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -506,23 +516,18 @@ class LoomingStimCircle(VideoStim):
     NUM_VIDEO_FIELDS = 7
 
     def __init__(self, size_min=0.05, size_max=0.8, rv=10, offset=(0, 0),
-                 bg_color=0, fg_color=-1, time=1000, **kwargs):
+                 bg_color=0, fg_color=-1, **kwargs):
         super().__init__(size_min=float(size_min), size_max=float(size_max),
                          offset=[float(offset[0]), float(offset[1])],
-                         rv=float(rv),time=float(time),
+                         rv=float(rv),
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
         self.screen = None
-        self._fps = None
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self.screen = visual.Circle(win=win,
                                     radius=self.p.size_min, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
-        self._fps = fps
-
-    @property
-    def is_finished(self):
-        return (self.p.time - self.frame_count / self._fps * 1000) < 0
 
     def update(self, win, logger, frame_num):
         win.color = self.p.bg_color
@@ -565,6 +570,7 @@ class MayaModel(VideoStim):
                           top_y[frame_start:] - bottom_y[frame_start:]]
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
         self.screen = self._imgs[0]
 
@@ -646,6 +652,7 @@ class OptModel(VideoStim):
                 [rx_p[ii:ii + 300] - lx_p[ii:ii + 300], ty_p[ii:ii + 300] - by_p[ii:ii + 300]]), axis=1)
 
     def initialize(self, win, fps):
+        super().initialize(win, fps)
         self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
         self.screen = self._imgs[0]
 

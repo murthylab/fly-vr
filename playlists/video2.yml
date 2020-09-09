@@ -1,5 +1,6 @@
 playlist:
   video:
     - _options: {random_mode: 'random_walk', repeat: 3}
-    - v_loom_stim: {name: 'looming', duration: 100}
-    - v_move_sq: {name: 'moving_square', duration: 200}
+    - v_loom_stim: {name: 'looming', duration_frames: 300}
+    - v_move_sq: {name: 'moving_square', duration_frames: 200}
+    - v_grating: {name: 'grating', duration_seconds: 4.5}
