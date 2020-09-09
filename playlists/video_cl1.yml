@@ -1,0 +1,3 @@
+playlist:
+  video:
+    - v_stim: {name: 'generic_fixation'}
