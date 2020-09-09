@@ -62,6 +62,9 @@ class VideoStimPlaylist(object):
         elif not self._paused:
             self.play_item(next(self._playlist_iter))
 
+    def __getitem__(self, item):
+        return self._stims[item]
+
     def initialize(self, win, fps):
         [s.initialize(win, fps) for s in self._stims.values()]
 
@@ -754,18 +757,26 @@ class VideoServer(object):
     def queue(self):
         return self._q
 
-    def _play(self, stim):
-        self._log.info("playing: %r" % stim)
-        if isinstance(stim, (VideoStim, VideoStimPlaylist)):
+    def _play(self, stim_or_cmd):
+        if isinstance(stim_or_cmd, (VideoStim, VideoStimPlaylist)):
+            self._log.info("playing: %r" % (stim_or_cmd,))
             assert self.mywin
-            stim.initialize(self.mywin, self._fps)
-            self.stim = stim
-        elif isinstance(stim, str):
-            if stim in {'play', 'pause'}:
+            stim_or_cmd.initialize(self.mywin, self._fps)
+            self.stim = stim_or_cmd
+        elif isinstance(stim_or_cmd, str):
+            self._log.info("playing item/action: %r" % (stim_or_cmd,))
+            if stim_or_cmd in {'play', 'pause'}:
                 if isinstance(self.stim, VideoStimPlaylist):
-                    self.stim.play_pause(pause=stim == 'pause')
+                    self.stim.play_pause(pause=stim_or_cmd == 'pause')
             else:
-                self.stim.play_item(stim)
+                self.stim.play_item(stim_or_cmd)
+        elif isinstance(stim_or_cmd, tuple):
+            _id, _attr, _value = stim_or_cmd
+            if isinstance(self.stim, VideoStimPlaylist):
+                _stim = self.stim[_id]
+                setattr(_stim.p, _attr, _value)
+            else:
+                raise NotImplementedError
 
     def play(self, item):
         self._q.put(item)
@@ -820,10 +831,10 @@ class VideoServer(object):
 
             try:
                 msg = self._q.get_nowait()
-                if isinstance(msg, (VideoStim, VideoStimPlaylist, str)):
+                if isinstance(msg, (VideoStim, VideoStimPlaylist, str, tuple)):
                     self._play(msg)
                 elif msg is not None:
-                    self._log.error('unsupported message: %r' % msg)
+                    self._log.error('unsupported message: %r' % (msg,))
             except queue.Empty:
                 pass
 
@@ -874,6 +885,8 @@ def _ipc_main(q):
                     q.put(elem['video_item']['identifier'])
                 elif 'video_action' in elem:
                     q.put(elem['video_action'])
+                elif 'video_mutate' in elem:
+                    q.put(elem['video_mutate'])
                 else:
                     log.debug("ignoring message: %r" % elem)
             except Exception:

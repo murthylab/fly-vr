@@ -122,6 +122,9 @@ class Experiment(object):
         assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
         self._ipc.process(**{'%s_action' % backend: action})
 
+    def item_mutate(self, backend, identifier, attribute, value):
+        self._ipc.process(**{'%s_mutate' % backend: (identifier, attribute, value)})
+
     @classmethod
     def from_yaml(cls, stream_like):
         dat = yaml.load(stream_like, Loader=yaml.SafeLoader)
