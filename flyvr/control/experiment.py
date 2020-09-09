@@ -223,7 +223,7 @@ class Experiment(object):
             t.check_dt(dt, state, self)
 
 
-def do_loop(exp, delay):
+def do_loop(exp, delay, force=False):
     from flyvr.common import SharedState
 
     flyvr_state = SharedState(None, None)
@@ -232,26 +232,23 @@ def do_loop(exp, delay):
 
     while flyvr_state.is_running_well():
         new_frame_count = data.frame_cnt
-        if old_frame_count != new_frame_count:
+        if (old_frame_count != new_frame_count) or force:
             exp.process_state(data)
             old_frame_count = new_frame_count
             time.sleep(delay)
 
 
 def main_experiment():
-    import sys
-    from flyvr.common.build_arg_parser import parse_arguments
+    from flyvr.common.build_arg_parser import build_argparser, parse_options
 
-    try:
-        options = parse_arguments()
-    except ValueError as ex:
-        sys.stderr.write("Invalid Config Error: \n" + str(ex) + "\n")
-        sys.exit(-1)
+    parser = build_argparser()
+    parser.add_argument('--force', action='store_true', help='force/fake iterate at 200fps even if no tracking data '
+                        'is present (for testing)')
+    options = parse_options(parser.parse_args(), parser)
 
     if not options.experiment:
-        sys.stderr.write("No experiment specified")
-        sys.exit(-1)
+        parser.error("No experiment specified")
 
     # noinspection PyProtectedMember
     options.experiment._log_describe()
-    do_loop(options.experiment, 1/200.)
+    do_loop(options.experiment, 1/200., options.force)
