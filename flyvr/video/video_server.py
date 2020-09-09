@@ -156,6 +156,11 @@ class VideoStim(object):
         return self._duration_frames
 
     @property
+    def elapsed_time(self):
+        """ returns """
+        return self.frame_count / self._fps
+
+    @property
     def is_finished(self):
         """ overridable property for stimuli to determine by other means when they are finished """
         return self.frame_count > self.duration
@@ -531,8 +536,9 @@ class LoomingStimCircle(VideoStim):
 
     def update(self, win, logger, frame_num):
         win.color = self.p.bg_color
-        time_counter = self.p.time - self.frame_count / self._fps * 1000
-        self.screen.radius = deg_to_px(self.p.size_max/(np.pi/2)*np.arctan(self.p.rv / time_counter))
+        time_countdown = self._duration_seconds - self.elapsed_time
+
+        self.screen.radius = deg_to_px(self.p.size_max/(np.pi/2) * np.arctan(self.p.rv / time_countdown))
 
         logger.log(self.log_name(),
                    np.array([frame_num,
