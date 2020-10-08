@@ -991,7 +991,7 @@ def run_video_server(options):
 
         log.info('initializing video playlist')
 
-    elif getattr(options, 'play_stimulus'):
+    elif getattr(options, 'play_stimulus', None):
         startup_stim = stimulus_factory(options.play_stimulus)
         log.info('selecting single visual stimulus: %s' % options.play_stimulus)
 
