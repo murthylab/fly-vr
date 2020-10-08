@@ -342,7 +342,7 @@ class SoundServer(threading.Thread):
 
 
 def run_sound_server(options):
-    from flyvr.common import SharedState
+    from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
     from flyvr.audio.stimuli import legacy_factory, stimulus_factory
     from flyvr.common.ipc import PlaylistReciever
@@ -356,13 +356,27 @@ def run_sound_server(options):
     stim_playlist = options.playlist.get('audio')
 
     if stim_playlist:
-        playlist_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
+        stims = []
+        stim_ids = []
+        option_item_defn = None
+
+        for item_def in stim_playlist:
+            id_, defn = item_def.popitem()
+
+            if id_ == Randomizer.IN_PLAYLIST_IDENTIFIER:
+                option_item_defn = {id_: defn}
+                continue
+
+            stims.append({id_: defn})
+            stim_ids.append(id_)
+
+        random = Randomizer.new_from_playlist_option_item(option_item_defn, *stim_ids, repeat=sys.maxsize)
+
+        playlist_stim = AudioStimPlaylist.fromitems(items=stims,
+                                                    random=random,
                                                     # optional because we are also called from flyvr main launcher
                                                     paused=getattr(options, 'paused', False))
-
-        log.info('initializing audio playlist: %r' % playlist_stim)
-        for s in playlist_stim:
-            log.debug('playlist item: %s (%r)' % (s.identifier, s))
+        log.info('initialized audio playlist: %r' % playlist_stim)
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
@@ -402,6 +416,7 @@ def main_sound_server():
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
     parser.add_argument('--convert-playlist', help='convert a stimulus playlist to new format')
     parser.add_argument('--paused', action='store_true', help='start paused')
+
     options = parse_options(parser.parse_args(), parser)
 
     if options.convert_playlist:

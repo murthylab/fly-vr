@@ -3,6 +3,7 @@ import abc
 import os.path
 import time
 import uuid
+import logging
 
 import h5py
 import numpy as np
@@ -11,6 +12,7 @@ from scipy import io
 from scipy import signal
 
 from flyvr.audio.signal_producer import SignalProducer, SampleChunk, MixedSignal, ConstantSignal
+from flyvr.common import Randomizer
 
 
 class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
@@ -704,45 +706,45 @@ def legacy_factory(lines, basepath, attenuator=None):
 class AudioStimPlaylist(SignalProducer):
     """A simple class that provides a generator for a sequence of AudioStim objects."""
 
-    def __init__(self, stims, shuffle_playback=False, paused=False):
+    def __init__(self, stims, random=None, paused=False):
 
         # Attach event next callbacks to this object, since it is a signal producer
         super(AudioStimPlaylist, self).__init__()
 
+        self._log = logging.getLogger('flyvr.audio.AudioStimPlaylist')
         self._stims = stims
 
-        self.shuffle_playback = shuffle_playback
+        for s in self._stims:
+            self._log.debug('playlist item: %s (%r)' % (s.identifier, s))
+
+        if random is None:
+            random = Randomizer(*[s.identifier for s in stims])
+        self._random = random
+
+        self._log.debug('playlist order: %r' % self._random)
+
         self.paused = paused
-
-        # If we want to shuffle things, get a random permutation.
-        if self.shuffle_playback:
-            self.random_seed = int(time.time())
-
-    """Lets make the class iterable since it is just a wrapper around a list of stimuli."""
-
-    def __iter__(self):
-        return iter(self._stims)
 
     def describe(self):
         return [{s.identifier: s.describe()} for s in self._stims]
 
     @classmethod
-    def from_legacy_filename(cls, filename, shuffle_playback=False, attenuator=None, paused=False):
+    def from_legacy_filename(cls, filename, random=None, attenuator=None, paused=False):
         with open(filename, 'rt') as f:
             return cls(legacy_factory(f.readlines()[1:], basepath=os.path.dirname(filename), attenuator=attenuator),
-                       shuffle_playback=shuffle_playback, paused=paused)
+                       random=random, paused=paused)
 
     @classmethod
-    def fromitems(cls, items, shuffle_playback=False, paused=False, attenuator=None):
+    def fromitems(cls, items, random=None, paused=False, attenuator=None):
         stims = []
         for item_def in items:
             id_, defn = item_def.popitem()
             defn['identifier'] = id_
             stims.append(stimulus_factory(**defn))
-        return cls(stims, shuffle_playback=shuffle_playback, paused=paused)
+        return cls(stims, random=random, paused=paused)
 
     def play_item(self, identifier):
-        # it's actually debatable if it's best do it this way
+        # it's actually debatable if it's best do it this way or explicitly reset a global+sticky next_id
         for stim in self._stims:
             if stim.identifier == identifier:
                 return stim.data_generator()
@@ -758,40 +760,23 @@ class AudioStimPlaylist(SignalProducer):
         repeated.
         :return: A generator that yields an array containing the sample data.
         """
+        data_gens = {s.identifier: s.data_generator() for s in self._stims}
+        playlist_iter = self._random.iter_items()
 
-        stim_idx = 0
-
-        # Intitalize data generators for these _stims in the play list
-        data_gens = [stim.data_generator() for stim in self._stims]
-
-        # Store a local copy playlist state objects.
-        shuffle_playback = self.shuffle_playback
-
-        if shuffle_playback:
-            rng = np.random.RandomState()
-            rng.seed(self.random_seed)
-            playback_order = rng.permutation(len(self._stims))
-        else:
-            rng = None
-            playback_order = np.arange(len(self._stims))
-
-        # Now, go through the list one at a time, call next on each one of their generators
         while True:
-
-            play_idx = playback_order[stim_idx]
-
-            sample_chunk_obj = next(data_gens[play_idx])
 
             if self.paused:
                 yield None
             else:
-                yield sample_chunk_obj
+                try:
+                    next_id = next(playlist_iter)
+                except StopIteration:
+                    # playlist finished
+                    next_id = None
 
-            stim_idx = stim_idx + 1
-
-            # If we are at the end, then either go back to beginning or reshuffle
-            if stim_idx == len(playback_order):
-                stim_idx = 0
-
-                if shuffle_playback:
-                    playback_order = rng.permutation(len(playback_order))
+                if next_id is None:
+                    yield None
+                else:
+                    self._log.info('playing item: %s' % next_id)
+                    sample_chunk_obj = next(data_gens[next_id])
+                    yield sample_chunk_obj

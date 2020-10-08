@@ -1,0 +1,7 @@
+playlist:
+  audio:
+    - _options: {random_mode: 'shuffle', repeat: 2, random_seed: 42}
+    - sin200hz: {name: 'sin', sample_rate: 44100, duration: 1000, intensity: 1.0, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 200, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin400hz: {name: 'sin', sample_rate': 44100, duration: 1000, intensity: 1.0, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 400, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin600hz: {name: 'sin', sample_rate: 44100, duration: 1000, intensity: 1.0, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 600, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin800hz: {name: 'sin', sample_rate: 44100, duration: 1000, intensity: 1.0, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 800, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}

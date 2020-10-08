@@ -55,7 +55,7 @@ class VideoStimPlaylist(object):
         self._playlist_iter = self._random.iter_items()
 
         self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
-        self._log.debug('playlist %r' % self._random)
+        self._log.debug('playlist order: %r' % self._random)
 
         self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
 
