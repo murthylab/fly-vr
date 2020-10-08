@@ -201,20 +201,20 @@ class Randomizer(object):
         self._log = logging.getLogger('flyvr.common.Randomizer')
 
     @classmethod
-    def new_from_playlist_option_item(cls, option_item_defn, *items):
+    def new_from_playlist_option_item(cls, option_item_defn, *items, **defaults):
         if option_item_defn:
             id_, defn = option_item_defn.popitem()
             if id_ == Randomizer.IN_PLAYLIST_IDENTIFIER:
                 return cls(*items,
-                           mode=defn.get('random_mode', Randomizer.MODE_NONE),
-                           repeat=int(defn.get('repeat', 1)),
-                           random_seed=defn.get('random_seed', None))
+                           mode=defn.get('random_mode', defaults.get('mode', Randomizer.MODE_NONE)),
+                           repeat=int(defn.get('repeat', defaults.get('repeat', 1))),
+                           random_seed=defn.get('random_seed', defaults.get('random_seed', None)))
 
-        return cls(*items)
+        return cls(*items, **defaults)
 
     def __repr__(self):
         import textwrap
-        return "<Randomizer(%s,mode=%s,repeat=%s>" % (
+        return "<Randomizer([%s],mode=%s,repeat=%s>" % (
             textwrap.shorten(', '.join(str(i) for i in self._items),
                              width=25), self._mode, self._repeat)
 
