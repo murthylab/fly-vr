@@ -34,8 +34,8 @@ def test_random_walk(repeat):
 
 
 @pytest.mark.parametrize('repeat', (1, 3, 5))
-def test_random_walk_non_repeat(repeat):
-    r = Randomizer(1, 2, 3, mode=Randomizer.MODE_RANDOM_WALK_NON_REPEAT, random_seed=99, repeat=repeat)
+def test_random_walk_non_consecutive(repeat):
+    r = Randomizer(1, 2, 3, mode=Randomizer.MODE_RANDOM_WALK_NON_CONSECUTIVE, random_seed=99, repeat=repeat)
     dat = [v for v in r.iter_items()]
     assert len(dat) == (3 * repeat)
 
@@ -50,8 +50,8 @@ def test_random_walk_non_repeat(repeat):
 
 
 def test_repr():
-    s = repr(Randomizer(1, 2, 3, mode=Randomizer.MODE_RANDOM_WALK_NON_REPEAT, random_seed=99))
-    assert s == '<Randomizer([1, 2, 3],mode=random_walk_non_repeat,repeat=1>'
+    s = repr(Randomizer(1, 2, 3, mode=Randomizer.MODE_RANDOM_WALK_NON_CONSECUTIVE, random_seed=99))
+    assert s == '<Randomizer([1, 2, 3],mode=random_walk_non_consecutive,repeat=1>'
     s = repr(Randomizer('looooooong', 'thing', 'asfadsf', 'werwe', 'dasdfasf', 'asfasdfasdf',
-                        mode=Randomizer.MODE_RANDOM_WALK_NON_REPEAT, random_seed=99))
-    assert s == '<Randomizer([looooooong, thing, [...]],mode=random_walk_non_repeat,repeat=1>'
+                        mode=Randomizer.MODE_RANDOM_WALK_NON_CONSECUTIVE, random_seed=99))
+    assert s == '<Randomizer([looooooong, thing, [...]],mode=random_walk_non_consecutive,repeat=1>'
