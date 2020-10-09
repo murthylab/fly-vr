@@ -13,6 +13,8 @@ from flyvr.common.concurrent_task import ConcurrentTaskThreaded, ConcurrentTask
 from flyvr.common.logger import DatasetLogger, DatasetLogServer
 from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
 from flyvr.fictrac.replay import FicTracDriverReplay
+from flyvr.hwio.phidget import run_phidget_io
+from flyvr.common.ipc import run_main_relay
 
 
 def _get_fictrac_driver(options, log):
@@ -72,6 +74,10 @@ def main_launcher():
 
     log = logging.getLogger('flyvr.main')
 
+    # start the IPC bus first as it is needed by many subsystems
+    ipc_bus = ConcurrentTask(task=run_main_relay, comms=None, taskinitargs=[])
+    ipc_bus.start()
+
     log_server = DatasetLogServer()
     logger = log_server.start_logging_server(options.record_file)
 
@@ -89,6 +95,8 @@ def main_launcher():
             time.sleep(0.2)
 
     # start the other mainloops
+    hwio = ConcurrentTask(task=run_phidget_io, comms=None, taskinitargs=[options])
+    hwio.start()
     daq = ConcurrentTask(task=run_io, comms=None, taskinitargs=[options])
     daq.start()
     video = ConcurrentTask(task=run_video_server, comms=None, taskinitargs=[options])

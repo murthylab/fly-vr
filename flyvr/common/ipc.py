@@ -125,32 +125,26 @@ RELAY_SEND_PORT = 6454
 RELAY_RECIEVE_PORT = 6455
 
 
-def mainloop_proxy(block, _ctx=None):
+def run_main_relay(_ctx=None):
+    # blocks
 
-    def _loop():
-        context = _ctx if _ctx is not None else zmq.Context()
+    context = _ctx if _ctx is not None else zmq.Context()
 
-        # Socket facing producers
-        frontend = context.socket(zmq.XPUB)
-        frontend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_RECIEVE_PORT))
+    # socket facing producers
+    frontend = context.socket(zmq.XPUB)
+    frontend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_RECIEVE_PORT))
 
-        # Socket facing consumers
-        backend = context.socket(zmq.XSUB)
-        backend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_SEND_PORT))
+    # socket facing consumers
+    backend = context.socket(zmq.XSUB)
+    backend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_SEND_PORT))
 
-        # noinspection PyUnresolvedReferences
-        zmq.proxy(frontend, backend)
+    # noinspection PyUnresolvedReferences
+    zmq.proxy(frontend, backend)
 
-        # We never get here…
-        frontend.close()
-        backend.close()
-        context.term()
-
-    if block:
-        _loop()
-    else:
-        t = threading.Thread(daemon=True, target=_loop)
-        t.start()
+    # we never get here
+    frontend.close()
+    backend.close()
+    context.term()
 
 
 def main_relay():
@@ -164,9 +158,10 @@ def main_relay():
     def ctrlc(*args):
         quit_evt.set()
 
-    with allow_interrupt(action=ctrlc):
-        mainloop_proxy(block=False)
+    t = threading.Thread(target=run_main_relay, daemon=True)
+    t.start()
 
+    with allow_interrupt(action=ctrlc):
         try:
             quit_evt.wait()
         except KeyboardInterrupt:

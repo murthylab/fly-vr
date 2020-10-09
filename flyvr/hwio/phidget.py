@@ -112,8 +112,8 @@ def run_phidget_io(options):
                    tp_stop=options.remote_stop_2P_channel,
                    tp_next=options.remote_next_2P_channel,
                    tp_enable=options.remote_2P_enable,
-                   debug_led=options.debug_led,
-                   remote_details=DEFAULT_REMOTE if options.network else None)
+                   debug_led=getattr(options, 'debug_led', 2),
+                   remote_details=DEFAULT_REMOTE if getattr(options, 'network', False) else None)
     io.run()
 
 
@@ -147,7 +147,6 @@ def main_phidget():
     t.start()
 
     with allow_interrupt(action=ctrlc):
-
         try:
             quit_evt.wait()
         except KeyboardInterrupt:
