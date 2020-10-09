@@ -18,6 +18,22 @@ def test_shuffle(repeat):
 
 
 @pytest.mark.parametrize('repeat', (1, 3, 5))
+def test_shuffle_non_repeat(repeat):
+    r = Randomizer(1, 2, 3, mode=Randomizer.MODE_SHUFFLE_NON_REPEAT, random_seed=55, repeat=repeat)
+    dat = [v for v in r.iter_items()]
+    assert len(dat) == (3 * repeat)
+
+    if repeat == 1:
+        assert dat == [3, 1, 2]
+    elif repeat == 3:
+        assert dat == [3, 1, 2, 3, 2, 1, 1, 3, 2]
+    elif repeat == 5:
+        assert dat == [3, 1, 2, 3, 2, 1, 1, 3, 2, 1, 3, 2, 1, 3, 2]
+    else:
+        raise NotImplementedError
+
+
+@pytest.mark.parametrize('repeat', (1, 3, 5))
 def test_random_walk(repeat):
     r = Randomizer(1, 2, 3, mode=Randomizer.MODE_RANDOM_WALK, random_seed=12, repeat=repeat)
     dat = [v for v in r.iter_items()]

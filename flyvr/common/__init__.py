@@ -174,6 +174,7 @@ class Randomizer(object):
     MODE_RANDOM_WALK = 'random_walk'
     MODE_RANDOM_WALK_NON_CONSECUTIVE = 'random_walk_non_consecutive'
     MODE_NONE = 'none'
+    MODE_SHUFFLE_NON_REPEAT = 'shuffle_non_repeat'
 
     IN_PLAYLIST_IDENTIFIER = '_options'
 
@@ -188,7 +189,8 @@ class Randomizer(object):
             _items = list(items)
             self._r.shuffle(_items)
             self._items = tuple(_items)
-        elif mode in (Randomizer.MODE_RANDOM_WALK, Randomizer.MODE_RANDOM_WALK_NON_CONSECUTIVE):
+        elif mode in (Randomizer.MODE_RANDOM_WALK, Randomizer.MODE_RANDOM_WALK_NON_CONSECUTIVE,
+                      Randomizer.MODE_SHUFFLE_NON_REPEAT):
             # handled in the iter below
             pass
         else:
@@ -238,6 +240,14 @@ class Randomizer(object):
 
                 last = v
                 n += 1
+        elif self._mode == Randomizer.MODE_SHUFFLE_NON_REPEAT:
+            for _ in range(self._repeat):
+                _items = list(self._items)
+                print("==", _, _items)
+                self._r.shuffle(_items)
+                print("dd", _items)
+                for i in _items:
+                    yield i
         else:
             for _ in range(self._repeat):
                 for i in self._items:
