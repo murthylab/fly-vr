@@ -2,6 +2,7 @@ import os
 import ctypes
 import subprocess
 import time
+import logging
 
 import numpy as np
 
@@ -30,6 +31,7 @@ class FicTracDriver(object):
         :param bool pgr_enable: Is Point Grey camera support needed. This just decides which executable to call, either
         'FicTrac' or 'FicTrac-PGR'.
         """
+        self._log = logging.getLogger('flyvr.fictrac.FicTracDriver')
 
         self.config_file = config_file
         self.console_output_file = console_ouput_file
@@ -49,6 +51,8 @@ class FicTracDriver(object):
 
         if self.fictrac_bin_fullpath is None:
             raise RuntimeError("Could not find " + self.fictrac_bin + " on the PATH!")
+
+        self._log.debug('fictrac binary: %s' % self.fictrac_bin_fullpath)
 
         self.fictrac_process = None
         self.fictrac_signals = None
