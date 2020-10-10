@@ -185,6 +185,12 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
 * flyvr-fictrac  
   process which launches the fictrac binary
   * `flyvr-fictrac -f FicTracPGR_ConfigMaster.txt -m log.txt`
+* flyvr-hwio  
+  device which drives the scanimage signaling and is available for future expansion for other stimulus (odor, etc).
+  It also has a few additional options to aid visual debugging
+  * `flyvr-hwio -debug_led 5`
+    * `--debug_led`  
+      port on which to flash an LED upon starting a new playlist item
 
 Similarly, the following secondary utilities are available also as separate processes to aid debugging, development, testing
 or observing experiments in progress  
@@ -203,6 +209,8 @@ or observing experiments in progress
   * `flyvr-ipc-send.exe "{\"video_item\": {\"identifier\": \"v_loom_stim\"}}"`
   * `flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"`
   * `flyvr-ipc-send.exe "{\"video_action\": \"play\"}"`
+* flyvr-ipc-relay  
+  (advanced only) internal message relay bus for start/stop/next-playlist-item messages
 
 # credits
 
