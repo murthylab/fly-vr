@@ -56,8 +56,9 @@ optional arguments:
                         A pre-defined visual stimulus
   --use_RSE             Use RSE (as opposed to differential) denoising on AI
                         DAQ inputs
-  --remote_2P_enable    Enable remote start, stop, and next file signaling the
-                        2-Photon imaging.
+  --remote_2P_disable   Disable remote start, stop, and next file signaling
+                        the 2-Photon imaging (if the phidget is not detected,
+                        signalling is disabled with a warning).
   --remote_start_2P_channel REMOTE_START_2P_CHANNEL
                         The digital channel to send remote start signal for
                         2-photon imaging. Default = port0/line0

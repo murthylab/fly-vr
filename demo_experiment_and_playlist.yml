@@ -28,7 +28,8 @@ configuration:
   analog_out_channels: null
   screen_calibration: null
   use_RSE: true
-  remote_2P_enable: false
+  remote_2P_disable: false
+  remote_start_2P_channel: null
   remote_stop_2P_channel: null
   remote_next_2P_channel: null
   fictrac_config: null

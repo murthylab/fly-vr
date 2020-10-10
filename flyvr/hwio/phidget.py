@@ -2,6 +2,7 @@ import time
 import threading
 import logging
 
+from Phidget22 import PhidgetException
 from Phidget22.Net import Net
 from Phidget22.Devices.DigitalOutput import DigitalOutput
 
@@ -55,7 +56,12 @@ class PhidgetIO(object):
 
         for tp in (self._tp_start, self._tp_stop, self._tp_next, self._tp_led):
             if tp is not None:
-                tp.openWaitForAttachment(20000 if remote_details else 5000)
+                try:
+                    tp.openWaitForAttachment(1000)
+                except PhidgetException:
+                    self._tp_start = self._tp_stop = self._tp_next = None
+                    self._log.error('2p scanimage was enabled but no phidget device detected')
+
 
         if self._tp_led is not None:
             for _ in range(6):
@@ -111,7 +117,7 @@ def run_phidget_io(options):
     io = PhidgetIO(tp_start=options.remote_start_2P_channel,
                    tp_stop=options.remote_stop_2P_channel,
                    tp_next=options.remote_next_2P_channel,
-                   tp_enable=options.remote_2P_enable,
+                   tp_enable=not options.remote_2P_disable,
                    debug_led=getattr(options, 'debug_led', 2),
                    remote_details=DEFAULT_REMOTE if getattr(options, 'network', False) else None)
     io.run()

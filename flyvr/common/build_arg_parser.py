@@ -85,8 +85,9 @@ def build_argparser(savefilename=None):
     parser.add_argument("--use_RSE", action='store_true',
                         help="Use RSE (as opposed to differential) denoising on AI DAQ inputs",
                         default=True)
-    parser.add_argument("--remote_2P_enable", action="store_true",
-                        help="Enable remote start, stop, and next file signaling the 2-Photon imaging.",
+    parser.add_argument("--remote_2P_disable", action="store_true",
+                        help="Disable remote start, stop, and next file signaling the 2-Photon imaging "
+                             "(if the phidget is not detected, signalling is disabled with a warning).",
                         default=False)
     parser.add_argument("--remote_start_2P_channel",
                         type=int,
