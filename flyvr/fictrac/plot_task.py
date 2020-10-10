@@ -16,6 +16,9 @@ FIELD_AX_LIMITS = {'speed': (0, .05),
                    'del_rot_cam_vec1': (-0.025, 0.025),
                    'del_rot_cam_vec2': (-0.025, 0.025),
                    'del_rot_cam_vec_magn': (0, 0.1),
+                   'abs_ori_cam_vec0': (-np.pi, np.pi),
+                   'abs_ori_cam_vec1': (-np.pi, np.pi),
+                   'abs_ori_cam_vec2': (-np.pi, np.pi),
                    }
 
 
