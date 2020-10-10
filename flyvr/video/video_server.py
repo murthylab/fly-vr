@@ -41,6 +41,8 @@ def deg_to_abs(deg):
 class VideoStimPlaylist(object):
 
     def __init__(self, *stims, random=None, paused=False, play_item=None):
+        self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
+
         self._stims = collections.OrderedDict()
         for s in stims:
             s.show = False
@@ -54,8 +56,7 @@ class VideoStimPlaylist(object):
         self._random = random
         self._playlist_iter = self._random.iter_items()
 
-        self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
-        self._log.debug('playlist order: %r' % self._random)
+        self._log.info('playlist paused: %s order: %r' % (paused, self._random))
 
         self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
 
@@ -971,7 +972,7 @@ def run_video_server(options):
     stim_playlist = options.playlist.get('video')
 
     if stim_playlist:
-        option_item_defn = None
+        option_item_defn = {}
 
         stims = []
         for item_def in stim_playlist:
@@ -985,11 +986,12 @@ def run_video_server(options):
 
         random = Randomizer.new_from_playlist_option_item(option_item_defn,
                                                           *[s.identifier for s in stims])
-        playlist_stim = VideoStimPlaylist(*stims, random=random,
-                                          paused=getattr(options, 'paused', False),
-                                          play_item=getattr(options, 'play_item', None))
+        paused = option_item_defn.pop('paused', None)
 
-        log.info('initializing video playlist')
+        playlist_stim = VideoStimPlaylist(*stims, random=random,
+                                          paused=paused if paused is not None else getattr(options, 'paused'),
+                                          play_item=getattr(options, 'play_item', None))
+        log.info('initialized video playlist: %r' % playlist_stim)
 
     elif getattr(options, 'play_stimulus', None):
         startup_stim = stimulus_factory(options.play_stimulus)

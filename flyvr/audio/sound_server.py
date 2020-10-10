@@ -371,11 +371,12 @@ def run_sound_server(options):
             stim_ids.append(id_)
 
         random = Randomizer.new_from_playlist_option_item(option_item_defn, *stim_ids, repeat=sys.maxsize)
+        paused = option_item_defn.pop('paused', None)
 
         playlist_stim = AudioStimPlaylist.fromitems(items=stims,
                                                     random=random,
                                                     # optional because we are also called from flyvr main launcher
-                                                    paused=getattr(options, 'paused', False))
+                                                    paused=paused if not None else getattr(options, 'paused'))
         log.info('initialized audio playlist: %r' % playlist_stim)
 
     with DatasetLogServerThreaded() as log_server:

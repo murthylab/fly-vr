@@ -1,4 +1,5 @@
 playlist:
   video:
+    - _options: {paused: true}
     - v_loom_stim: {name: 'looming'}
     - v_move_sq: {name: 'moving_square'}

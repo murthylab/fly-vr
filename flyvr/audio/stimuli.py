@@ -708,11 +708,9 @@ class AudioStimPlaylist(SignalProducer):
     """A simple class that provides a generator for a sequence of AudioStim objects."""
 
     def __init__(self, stims, random=None, paused=False):
-
-        # Attach event next callbacks to this object, since it is a signal producer
         super(AudioStimPlaylist, self).__init__()
-
         self._log = logging.getLogger('flyvr.audio.AudioStimPlaylist')
+
         self._stims = stims
 
         for s in self._stims:
@@ -722,7 +720,7 @@ class AudioStimPlaylist(SignalProducer):
             random = Randomizer(*[s.identifier for s in stims])
         self._random = random
 
-        self._log.debug('playlist order: %r' % self._random)
+        self._log.debug('playlist paused: %s order: %r' % (paused, self._random))
 
         self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
 
