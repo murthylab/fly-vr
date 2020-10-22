@@ -358,7 +358,7 @@ def run_sound_server(options):
     if stim_playlist:
         stims = []
         stim_ids = []
-        option_item_defn = None
+        option_item_defn = {}
 
         for item_def in stim_playlist:
             id_, defn = item_def.popitem()
