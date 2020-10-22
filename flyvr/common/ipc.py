@@ -1,19 +1,40 @@
-import json
 import pickle
 import threading
 
 import zmq
 
 
+class CommonMessages(object):
+
+    QUIT = 'quit'
+    READY = 'ready'
+    ERROR = 'error'
+    FINISHED = 'finished'
+    EXPERIMENT_STOP = 'stop'
+    EXPERIMENT_START = 'start'
+    EXPERIMENT_PLAYLIST_ITEM = 'item'
+
+    @staticmethod
+    def build(msg, value, **extra):
+        m = {msg: value}
+        m.update(extra)
+        return m
+
+
 class _ZMQMultipartSender(object):
-    def __init__(self, host, port, channel):
+    def __init__(self, host, port, channel, bind=True):
         ctx = zmq.Context()
 
         # fixme: IPC will be supported on windows beginning with next zmq release
         stream_address = "tcp://%s:%d" % (host, port)
 
         sock = ctx.socket(zmq.PUB)
-        sock.bind(stream_address)
+
+        if bind:
+            sock.bind(stream_address)
+        else:
+            sock.connect(stream_address)
+
         self._channel = channel
         self._stream = sock
 
@@ -21,14 +42,11 @@ class _ZMQMultipartSender(object):
         self._stream.send_multipart((self._channel, data), zmq.NOBLOCK)
 
 
-class PlaylistSender(_ZMQMultipartSender):
+class Sender(_ZMQMultipartSender):
 
-    HOST = '127.0.0.1'
-    PORT = 6444
-    PUB_CHANNEL = b'p'
-
-    def __init__(self):
-        super().__init__(self.HOST, self.PORT, self.PUB_CHANNEL)
+    @classmethod
+    def new_for_relay(cls, **kwargs):
+        return cls(**kwargs, bind=False)
 
     def process(self, **data):
         self._send(memoryview(pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)))
@@ -37,9 +55,19 @@ class PlaylistSender(_ZMQMultipartSender):
         self._stream.close(linger=-1 if block else 0)
 
 
-class PlaylistReciever(object):
+class PlaylistSender(Sender):
 
-    def __init__(self, host=PlaylistSender.HOST, port=PlaylistSender.PORT, channel=PlaylistSender.PUB_CHANNEL):
+    HOST = '127.0.0.1'
+    PORT = 6444
+    PUB_CHANNEL = b'p'
+
+    def __init__(self):
+        super().__init__(self.HOST, self.PORT, self.PUB_CHANNEL)
+
+
+class Reciever(object):
+
+    def __init__(self, host, port, channel):
         ctx = zmq.Context()
         address = "tcp://%s:%d" % (host, port)
         sock = ctx.socket(zmq.SUB)
@@ -57,15 +85,21 @@ class PlaylistReciever(object):
             return state
 
 
-class PlaylistMirror(threading.Thread):
+class PlaylistReciever(Reciever):
+
+    def __init__(self, **kwargs):
+        super().__init__(host=PlaylistSender.HOST, port=PlaylistSender.PORT, channel=PlaylistSender.PUB_CHANNEL)
+
+
+class Mirror(threading.Thread):
 
     daemon = True
 
-    def __init__(self):
+    def __init__(self, host, port, channel):
         threading.Thread.__init__(self)
         self._lock = threading.Lock()
         self._state = {}
-        self._streamer = PlaylistReciever()
+        self._streamer = Reciever(host=host, port=port, channel=channel)
 
     def __getitem__(self, item):
         return self._state[item]
@@ -78,6 +112,65 @@ class PlaylistMirror(threading.Thread):
                     state = pickle.loads(msg)
                     if state and isinstance(state, dict):
                         self._state.update(state)
+
+
+class PlaylistMirror(Mirror):
+
+    def __init__(self, **kwargs):
+        super().__init__(host=PlaylistSender.HOST, port=PlaylistSender.PORT, channel=PlaylistSender.PUB_CHANNEL)
+
+
+RELAY_HOST = '127.0.0.1'
+RELAY_SEND_PORT = 6454
+RELAY_RECIEVE_PORT = 6455
+
+
+def mainloop_proxy(block, _ctx=None):
+
+    def _loop():
+        context = _ctx if _ctx is not None else zmq.Context()
+
+        # Socket facing producers
+        frontend = context.socket(zmq.XPUB)
+        frontend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_RECIEVE_PORT))
+
+        # Socket facing consumers
+        backend = context.socket(zmq.XSUB)
+        backend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_SEND_PORT))
+
+        # noinspection PyUnresolvedReferences
+        zmq.proxy(frontend, backend)
+
+        # We never get here…
+        frontend.close()
+        backend.close()
+        context.term()
+
+    if block:
+        _loop()
+    else:
+        t = threading.Thread(daemon=True, target=_loop)
+        t.start()
+
+
+def main_relay():
+    # zmq blocking calls eat ctrl+c on windows, which means this command line entry is
+    # not ctrl+c killable. To make it so, run it instead in a daemon thread and use a zmq interrupt
+    # override to let us catch the ctrl+c and break out of the indefinite wait on the quit event
+    from zmq.utils.win32 import allow_interrupt
+
+    quit_evt = threading.Event()
+
+    def ctrlc(*args):
+        quit_evt.set()
+
+    with allow_interrupt(action=ctrlc):
+        mainloop_proxy(block=False)
+
+        try:
+            quit_evt.wait()
+        except KeyboardInterrupt:
+            pass
 
 
 def main_ipc_send():
