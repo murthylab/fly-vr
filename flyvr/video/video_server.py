@@ -8,10 +8,10 @@ import collections
 import h5py
 import numpy as np
 
-from flyvr.common import Dottable, Randomizer
+from flyvr.common import Dottable, Randomizer, BACKEND_VIDEO
 from flyvr.common.build_arg_parser import setup_logging
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
-from flyvr.common.ipc import PlaylistReciever
+from flyvr.common.ipc import PlaylistReciever, Sender, CommonMessages, RELAY_HOST, RELAY_SEND_PORT
 
 from PIL import Image
 from psychopy import visual, core, event
@@ -56,6 +56,8 @@ class VideoStimPlaylist(object):
 
         self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
         self._log.debug('playlist %r' % self._random)
+
+        self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
 
         if play_item:
             self.play_item(play_item)
@@ -107,6 +109,9 @@ class VideoStimPlaylist(object):
 
         self._log.info('playing item: %s (and un-pausing)' % identifier)
         self._paused = False
+
+        self._ipc_relay.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, identifier,
+                                                       backend=BACKEND_VIDEO))
 
     def play_pause(self, pause):
         self._paused = True if pause else False
