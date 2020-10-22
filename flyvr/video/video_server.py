@@ -404,6 +404,64 @@ class AdamStimGrating(VideoStim):
         self.screen.draw()
 
 
+class GenericStaticFixationStim(VideoStim):
+
+    NAME = 'generic_fixation'
+    NUM_VIDEO_FIELDS = 7
+
+    def __init__(self,
+                 obj1_w=0.25, obj1_h=0.25, obj1_x=-0.2, obj1_y=0.5, obj1_fg_color=1, obj1_r=0, obj1_visible=1,
+                 obj2_w=0.05, obj2_h=0.85, obj2_x=+0.2, obj2_y=0.5, obj2_fg_color=0.5, obj2_r=0, obj2_visible=1,
+                 bg_color=-1, **kwargs):
+        super().__init__(obj1_w=float(obj1_w), obj1_h=float(obj1_h), obj1_x=float(obj1_x), obj1_y=float(obj1_y),
+                         obj1_fg_color=float(obj1_fg_color), obj1_r=float(obj1_r),
+                         obj1_visible=1 if obj1_visible else 0,
+                         obj2_w=float(obj2_w), obj2_h=float(obj2_h), obj2_x=float(obj2_x), obj2_y=float(obj2_y),
+                         obj2_fg_color=float(obj2_fg_color), obj2_r=float(obj2_r),
+                         obj2_visible=1 if obj2_visible else 0,
+                         bg_color=float(bg_color), **kwargs)
+        self.obj1 = None
+        self._obj1_is_circle = obj1_r > 0
+        self.obj2 = None
+        self._obj2_is_circle = obj2_r > 0
+
+    def initialize(self, win, fps):
+        super().initialize(win, fps)
+        if self._obj1_is_circle:
+            raise NotImplementedError
+        else:
+            self.obj1 = visual.Rect(win=win,
+                                    size=(self.p.obj1_w, self.p.obj1_h),
+                                    pos=(self.p.obj1_x, self.p.obj1_y),
+                                    lineColor=None, fillColor=self.p.obj1_fg_color)
+        if self._obj2_is_circle:
+            raise NotImplementedError
+        else:
+            self.obj2 = visual.Rect(win=win,
+                                    size=(self.p.obj2_w, self.p.obj2_h),
+                                    pos=(self.p.obj2_x, self.p.obj2_y),
+                                    lineColor=None, fillColor=self.p.obj2_fg_color)
+
+    def update(self, win, logger, frame_num):
+        self.obj1.pos = self.p.obj1_x, self.p.obj1_y
+        self.obj2.pos = self.p.obj2_x, self.p.obj2_y
+        self.obj1.size = self.p.obj1_w, self.p.obj1_h
+        self.obj2.size = self.p.obj2_w, self.p.obj2_h
+
+        # logger.log(self.log_name(),
+        #            np.array([frame_num,
+        #                      self.p.bg_color,
+        #                      0,
+        #                      self.screen.pos[0], self.screen.pos[1],
+        #                      self.screen.size[0], self.screen.size[1]]))
+
+    def draw(self):
+        if self.p.obj1_visible:
+            self.obj1.draw()
+        if self.p.obj2_visible:
+            self.obj2.draw()
+
+
 class MovingSquareStim(VideoStim):
     NAME = 'moving_square'
     NUM_VIDEO_FIELDS = 7
@@ -689,7 +747,7 @@ class OptModel(VideoStim):
 
 
 STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel, PipStim, SweepingSpotStim,
-         AdamStim, AdamStimGrating, LoomingStimCircle)
+         AdamStim, AdamStimGrating, LoomingStimCircle, GenericStaticFixationStim)
 
 
 def stimulus_factory(name, **params):
