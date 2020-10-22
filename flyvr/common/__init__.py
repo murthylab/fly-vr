@@ -243,9 +243,7 @@ class Randomizer(object):
         elif self._mode == Randomizer.MODE_SHUFFLE_NON_REPEAT:
             for _ in range(self._repeat):
                 _items = list(self._items)
-                print("==", _, _items)
                 self._r.shuffle(_items)
-                print("dd", _items)
                 for i in _items:
                     yield i
         else:
