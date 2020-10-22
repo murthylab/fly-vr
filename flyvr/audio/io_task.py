@@ -27,6 +27,7 @@ from flyvr.audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
 from flyvr.common.build_arg_parser import setup_logging
+from flyvr.common.ipc import PlaylistReciever
 
 DAQ_SAMPLE_RATE = 10000
 DAQ_NUM_OUTPUT_SAMPLES = 1000
@@ -506,6 +507,27 @@ def io_task_loop(message_pipe, state):
 
     except Exception as e:
         state.runtime_error(e, -2)
+
+
+def _ipc_main(q):
+    pr = PlaylistReciever()
+    log = logging.getLogger('flyvr.daq.ipc_main')
+
+    log.debug('starting')
+
+    while True:
+        elem = pr.get_next_element()
+        if elem:
+            # noinspection PyBroadException
+            try:
+                if 'daq_item' in elem:
+                    q.put(elem['daq_item']['identifier'])
+                elif 'daq_action' in elem:
+                    q.put(elem['daq_action'])
+                else:
+                    log.debug("ignoring message: %r" % elem)
+            except Exception:
+                log.error('could not parse playlist item', exc_info=True)
 
 
 def run_io(options):
