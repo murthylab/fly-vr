@@ -9,6 +9,8 @@ import importlib.util
 import yaml
 import numpy as np
 
+from flyvr.common import BACKEND_VIDEO as _BACKEND_VIDEO, BACKEND_DAQ as _BACKEND_DAQ,\
+    BACKEND_AUDIO as _BACKEND_AUDIO
 from flyvr.common.ipc import PlaylistSender
 
 
@@ -83,7 +85,7 @@ class PlaylistItemEvent(_Event):
 
 class Experiment(object):
 
-    BACKEND_VIDEO, BACKEND_AUDIO, BACKEND_DAQ = "video", "audio", "daq"
+    BACKEND_VIDEO, BACKEND_AUDIO, BACKEND_DAQ = _BACKEND_VIDEO, _BACKEND_AUDIO, _BACKEND_DAQ
 
     def __init__(self, events=(), timed=()):
         self._events = events

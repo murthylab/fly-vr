@@ -10,6 +10,9 @@ import numpy as np
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer
 
 
+BACKEND_VIDEO, BACKEND_AUDIO, BACKEND_DAQ = "video", "audio", "daq"
+
+
 class Dottable(dict):
 
     def __init__(self, *args, **kwargs):
