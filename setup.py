@@ -36,6 +36,7 @@ setup(
             'flyvr-experiment = flyvr.control.experiment:main_experiment',
             'flyvr-ipc-send = flyvr.common.ipc:main_ipc_send',
             'flyvr-ipc-relay = flyvr.common.ipc:main_relay',
+            'flyvr-hwio = flyvr.hwio.phidget:main_phidget'
         ]
     },
 )

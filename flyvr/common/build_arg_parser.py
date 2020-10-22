@@ -89,20 +89,17 @@ def build_argparser(savefilename=None):
                         help="Enable remote start, stop, and next file signaling the 2-Photon imaging.",
                         default=False)
     parser.add_argument("--remote_start_2P_channel",
-                        type=str,
-                        help="The digital channel to send remote start signal for 2-photon imaging. "
-                             "Default = port0/line0",
-                        default="port0/line0")
+                        type=int,
+                        help="The digital channel to send remote start signal for 2-photon imaging.",
+                        default=3)
     parser.add_argument("--remote_stop_2P_channel",
-                        type=str,
-                        help="The digital channel to send remote stop signal for 2-photon imaging. "
-                             "Default = port0/line1.",
-                        default="port0/line1")
+                        type=int,
+                        help="The digital channel to send remote stop signal for 2-photon imaging.",
+                        default=4)
     parser.add_argument("--remote_next_2P_channel",
-                        type=str,
-                        help="The digital channel to send remote next file signal for 2-photon imaging. "
-                             "Default = port0/line2.",
-                        default="port0/line2")
+                        type=int,
+                        help="The digital channel to send remote next file signal for 2-photon imaging.",
+                        default=5)
     parser.add_argument('-l', "--record_file",
                         type=str,
                         help="File that stores output recorded on requested input channels. "

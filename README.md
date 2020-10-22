@@ -109,6 +109,15 @@ This also requires ASIO drivers for your audio device / soundcard. If you are no
 drivers for your audio device (and it is recommended that you do) you should install ASIO4ALL (http://www.asio4all.org/, tested with 2.14).
 When installing, ensure you choose to install the 'Offline Control Panel'.
 
+Finally, it also requires Phidgets drivers for the arbitrary IO and scanimage support. On windows you should also
+install 
+* [Phidget Control Panel (64-bit installer)](https://www.phidgets.com/docs/OS_-_Windows)
+* Network Phidget Support (optional)  
+  Note: On Windows 10 you might already have the required libraries. You can determine this by switching to the network
+  tab in the Phidgets control panel. If it is not available, you must install
+  [bonjour print service](https://support.apple.com/kb/DL999?locale=en_US). If it is available, you do not need
+  to do anything further
+
 ## flyvr
 
 * Install Python 3.7.X
@@ -120,7 +129,7 @@ When installing, ensure you choose to install the 'Offline Control Panel'.
   `python -m pip install -r requirements.txt`
 * Install flyvr
   `python -m pip install .`
-  * use `install -e` to install in development mode
+  * use `python -m pip install -e .` to install in development mode
 * Run the tests  
   `python -m pytest`
 
