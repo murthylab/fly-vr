@@ -189,6 +189,33 @@ experiment = _MyExperiment()
 Exploiting the ability to define the experiment logic in python, flyvr is now
 launched `flyvr.exe -c playlist.yaml -e experiment.py`
 
+## Stimuli Randomization and Repeat
+
+Random and repeat modes are specified in the playlist for each backend, within a special 'playlist item'
+called `_options: {}`. For example, if an audio playlist begins with the following
+
+```yaml
+playlist:
+  audio:
+    - _options: {random_mode: 'shuffle', repeat: 2, random_seed: 42}
+```
+
+This it uses a randomization strategy called 'shuffle', and all items in the playlist
+are repeated 2 times. A random seed can also be optionally specified. The supported values
+for `random_mode` are
+
+* `none`  
+  no randomization. items play in the order they are defined
+* `shuffle`  
+  items are shuffled once and then (when `repeat > 0`) repeat played in that order
+* `shuffle_non_repeat`  
+  items are shuffled after every time they are all played
+* `random_walk`
+  items are played in a random order - all stimuli are randomly walked through for a total
+  of `n_stimuli * repeat` times
+* `random_walk_non_consecutive`  
+  as `random_walk` but it is prevented to play the same item consecutively
+
 ## FlyVR Software Architecture
 
 #### inter-process communication
