@@ -139,6 +139,13 @@ need to use conda specific commands to create and activate the conda environment
   * use `python -m pip install -e .` to install in development mode
 * Run the tests  
   `python -m pytest`
+  * Note: by default, the tests will attempt to test the DAQ and soundcard. If you are running the tests
+    on a computer without this hardware, or you wish to simply develop experimental logic or visual stimuli
+    then you can skip these tests using  
+    * `python -m pytest -m "not (use_soundcard or use_daq)"`  
+      (skips both DAQ AND soundcard tests)
+    * `python -m pytest -m "not use_daq"`  
+      (skips DAQ tests)
 
 ## fictrac
 
