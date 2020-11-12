@@ -1,7 +1,9 @@
+import uuid
 import itertools
-import numpy as np
 import abc
 import copy
+
+import numpy as np
 
 
 class SignalNextEventData(object):
@@ -150,7 +152,7 @@ class MixedSignal(SignalProducer):
     arrays into a one array.
     """
 
-    def __init__(self, signals):
+    def __init__(self, signals, identifier=None):
         """
         Create the MixedSignal object that will combine these signals into one signal.
 
@@ -190,6 +192,11 @@ class MixedSignal(SignalProducer):
         self.chunk_width = sum(self.chunk_widths)
 
         self._data = np.zeros((self.chunk_size, self.chunk_width), dtype=self.dtype)
+        self._identifier = identifier or ('%s-%s' % (self.__class__.__name__, uuid.uuid4().hex))
+
+    @property
+    def identifier(self):
+        return self._identifier
 
     def data_generator(self):
         """

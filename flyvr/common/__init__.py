@@ -170,11 +170,11 @@ class Every(object):
 
 class Randomizer(object):
 
+    MODE_NONE = 'none'
     MODE_SHUFFLE = 'shuffle'
+    MODE_SHUFFLE_NON_REPEAT = 'shuffle_non_repeat'
     MODE_RANDOM_WALK = 'random_walk'
     MODE_RANDOM_WALK_NON_CONSECUTIVE = 'random_walk_non_consecutive'
-    MODE_NONE = 'none'
-    MODE_SHUFFLE_NON_REPEAT = 'shuffle_non_repeat'
 
     IN_PLAYLIST_IDENTIFIER = '_options'
 
