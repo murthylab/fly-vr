@@ -118,15 +118,21 @@ install
   tab in the Phidgets control panel. If it is not available, you must install
   [bonjour print service](https://support.apple.com/kb/DL999?locale=en_US). If it is available, you do not need
   to do anything further
-
+  
 ## flyvr
+
+(note, these installation instructions assume using the 'official' python.org python and built-in
+virtual environments, NOT conda/miniconda. If you wish to use conda/miniconda then you will
+need to use conda specific commands to create and activate the conda environment)
 
 * Install Python 3.7.X
 * Create a virtual environment (in checkout dir, named env)
   `C:\Path\To\python.exe -m venv env`  
   * if you installed python only to your user, the path is
     `"C:\Users\XXX\AppData\Local\Programs\Python\Python37\python.exe"`
-* Activate the virtual environment and install dependencies
+* Activate the virtual environment  
+  `venv\Scrips\activate.bat`
+* install dependencies  
   `python -m pip install -r requirements.txt`
 * Install flyvr
   `python -m pip install .`
@@ -162,9 +168,15 @@ For configuring FicTrac, a few files are needed:
    (if you are using a Point Grey camera).
 
 
-Question: how do I exit FicTrac??
+## lightcrafter DLP (for visual stimulus)
 
-How to calculate vfov: https://www.reddit.com/r/fictrac/comments/e71ida/how_to_get_the_right_vfov/
+Flyvr, and the `flyvr-video.exe` binary by default attempt to automatically configure and show
+the visual stimulus on a DLP lightcrafter configured in the appropriate mode. This assumes that
+the lightcrafter software has been installed, and that the lightcrafter is connected, powered on,
+and on the default 192.168.1.100 IP address.
+
+If you wish to show the visual stimulus on the desktop monitor (skipping the potential delay trying
+to configure a non-connected lightcrafter, you can pass `--disable-projector`.
 
 # flyvr-architecture
 
