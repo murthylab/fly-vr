@@ -41,7 +41,6 @@ def check_chunker(test_gen, chunk_size):
 
 
 def test_chunker():
-
     def simple_gen():
         x = 0
         while True:
@@ -59,13 +58,14 @@ def test_chunker():
     check_chunker(stim.data_generator, 10000)
     check_chunker(stim.data_generator, 10551)
 
+
 def test_mixed_signal():
     stim1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
-                   duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-                   attenuator=None)
+                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
+                    attenuator=None)
     stim2 = SinStim(frequency=330, amplitude=2.0, phase=0.0, sample_rate=40000,
-                   duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-                   attenuator=None)
+                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
+                    attenuator=None)
     mixed = MixedSignal([stim1, stim2])
 
     gen = mixed.data_generator()
@@ -73,44 +73,46 @@ def test_mixed_signal():
     chunk = next(gen)
 
     # Make sure the mixed signal has two channels
-    assert(chunk.data.shape[1] == 2)
+    assert (chunk.data.shape[1] == 2)
 
     # Make sure each channel has the correct data.
-    assert(np.array_equal(chunk.data[:,0], stim1.data))
-    assert(np.array_equal(chunk.data[:,1], stim2.data))
+    assert (np.array_equal(chunk.data[:, 0], stim1.data))
+    assert (np.array_equal(chunk.data[:, 1], stim2.data))
+
 
 def test_mixed_signal_chunked():
-
     stim1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
-                   duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-                   attenuator=None)
+                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
+                    attenuator=None)
     stim2 = SinStim(frequency=330, amplitude=2.0, phase=0.0, sample_rate=40000,
-                   duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-                   attenuator=None)
+                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
+                    attenuator=None)
     mixed = MixedSignal([stim1, stim2])
 
     check_chunker(mixed.data_generator, 128)
 
-def test_constant_signal():
 
+def test_constant_signal():
     constant = 5.0
 
     stim = ConstantSignal(constant)
     gen = stim.data_generator()
 
     for i in range(100):
-        assert(np.array_equal(next(gen).data, np.array([constant])))
+        assert (np.array_equal(next(gen).data, np.array([constant])))
 
     check_chunker(stim.data_generator, 100)
 
 
 def test_mix_different_sizes():
-
     # Create two signals, the chunks their generators yield will be different sizes.
     stim1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
                     duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                     attenuator=None)
     stim2 = ConstantSignal(5, num_samples=stim1.data.shape[0])
+
+    assert stim1.dtype is not None
+    assert stim2.dtype is not None
 
     mixed = MixedSignal([stim1, stim2])
 
@@ -118,5 +120,5 @@ def test_mix_different_sizes():
 
     for i in range(500):
         chunk = next(gen).data
-        assert(np.array_equal(chunk[:,0], stim1.data))
-        assert(np.array_equal(chunk[:,1], np.ones(shape=stim1.data.shape)*5))
+        assert (np.array_equal(chunk[:, 0], stim1.data))
+        assert (np.array_equal(chunk[:, 1], np.ones(shape=stim1.data.shape) * 5))

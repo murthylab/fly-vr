@@ -335,6 +335,7 @@ class SinStim(AudioStim):
         self.event_message["phase"] = phase
 
         self.data = self._generate_data()
+        self.dtype = self.data.dtype
 
     def describe(self):
         desc = super(SinStim, self).describe()

@@ -90,7 +90,7 @@ def build_argparser(savefilename=None):
                              "(if the phidget is not detected, signalling is disabled with a warning).",
                         default=False)
     parser.add_argument("--remote_start_2P_channel",
-                        type=int,
+                        type=int, 
                         help="The digital channel to send remote start signal for 2-photon imaging.",
                         default=3)
     parser.add_argument("--remote_stop_2P_channel",

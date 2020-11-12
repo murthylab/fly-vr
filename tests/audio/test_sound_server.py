@@ -29,12 +29,12 @@ def test_play_sin(tmpdir):
         shared_state = SharedState(None, logger)
 
         sound_server = SoundServer(flyvr_shared_state=shared_state)
-        sound_client = sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
-                                                 suggested_output_latency=0.002)
-        sound_client.play(stim1)
+        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
+                                  suggested_output_latency=0.002)
+        sound_server.play(stim1)
         time.sleep(1.5)
 
-        sound_client.close()
+        sound_server.quit()
 
     with h5py.File(dest, mode='r') as h5:
         assert '/fictrac/soundcard_synchronization_info' in h5
