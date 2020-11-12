@@ -148,7 +148,8 @@ Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - 
 `FlyCapture2_C_v100.dll` rename it. I have included this version in the fictrac_calibration folder of the repo for now.
 
 For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download
-the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases).
+the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases). Please always download
+this file as you might have an identically named old version.
 
 For configuring FicTrac, a few files are needed:
 
