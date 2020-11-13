@@ -361,8 +361,10 @@ def io_task_loop(message_pipe, state):
             # Read the playlist file and create and audio stimulus playlist object. We will pass a control
             # function to these underlying stimuli that is triggered anytime they generate data. The control sends a
             # log signal to the master logging process.
-            audio_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
-                                                     shuffle_playback=options.shuffle, attenuator=attenuator)
+            # fixme: this is broken
+            raise NotImplementedError('shuffle on DAQ')
+            # audio_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
+            #                                          shuffle_playback=options.shuffle, attenuator=attenuator)
 
             # Make a sanity check, ensure that the number of channels for this audio stimulus matches the
             # number of output channels specified in configuration file.
