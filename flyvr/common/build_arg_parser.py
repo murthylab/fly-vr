@@ -132,9 +132,12 @@ def parse_options(options, parser):
             parser.print_help()
             parser.error("parameter %s required" % r)
 
+    _config_file_path = None
+
     if options.config_file:
         with open(options.config_file) as f:
             _all_conf = yaml.safe_load(f)
+            _config_file_path = os.path.abspath(options.config_file)
     else:
         _all_conf = {}
 
@@ -173,6 +176,8 @@ def parse_options(options, parser):
 
     options.playlist = _playlist
     options.experiment = _experiment_obj
+
+    options._config_file_path = _config_file_path
 
     return options
 

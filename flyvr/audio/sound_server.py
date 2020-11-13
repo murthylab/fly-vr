@@ -355,6 +355,11 @@ def run_sound_server(options):
     playlist_stim = None
     stim_playlist = options.playlist.get('audio')
 
+    basedirs = [os.getcwd()]
+    if getattr(options, '_config_file_path'):
+        # noinspection PyProtectedMember
+        basedirs.insert(0, os.path.dirname(options._config_file_path))
+
     if stim_playlist:
         stims = []
         stim_ids = []
@@ -376,7 +381,8 @@ def run_sound_server(options):
         playlist_stim = AudioStimPlaylist.fromitems(items=stims,
                                                     random=random,
                                                     # optional because we are also called from flyvr main launcher
-                                                    paused=paused if not None else getattr(options, 'paused'))
+                                                    paused=paused if not None else getattr(options, 'paused'),
+                                                    basedirs=basedirs)
         log.info('initialized audio playlist: %r' % playlist_stim)
 
     with DatasetLogServerThreaded() as log_server:
@@ -394,9 +400,9 @@ def run_sound_server(options):
             elem = pr.get_next_element()
             if elem:
                 if 'audio_legacy' in elem:
-                    stim, = legacy_factory([elem['audio_legacy']], None)
+                    stim, = legacy_factory([elem['audio_legacy']], basedirs=basedirs)
                 elif 'audio' in elem:
-                    stim = stimulus_factory(**elem['audio'])
+                    stim = stimulus_factory(**elem['audio'], basedirs=basedirs)
                 elif 'audio_item' in elem:
                     stim = elem['audio_item']['identifier']
                 elif 'audio_action' in elem:

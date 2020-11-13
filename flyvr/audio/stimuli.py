@@ -498,6 +498,8 @@ class MATFileStim(AudioStim):
 
     NAME = 'matfile'
 
+    MATFILE_EXTENSION = '.mat'
+
     def __init__(self, filename, frequency, sample_rate, intensity=1.0, pre_silence=0, post_silence=0, attenuator=None,
                  next_event_callbacks=None, identifier=None):
 
@@ -507,11 +509,15 @@ class MATFileStim(AudioStim):
                                           frequency=frequency, next_event_callbacks=next_event_callbacks,
                                           identifier=identifier)
 
-        self.__filename = filename
+        # strip .mat for internal use
+        if filename.endswith('.mat'):
+            self.__filename = filename[:-4]
+        else:
+            self.__filename = filename
 
         # Add class specific parameters to the event message that is sent to functions in next_event_callbacks from the
         # base class generator.
-        self.event_message["stim_filename"] = filename
+        self.event_message["stim_filename"] = self.__filename
 
         self.data = self._generate_data()
         self.dtype = self.data.dtype
@@ -550,7 +556,7 @@ class MATFileStim(AudioStim):
         :rtype: numpy.ndarray
         """
         try:
-            data = scipy.io.loadmat(self.__filename, variable_names=['stim'], squeeze_me=True)
+            data = scipy.io.loadmat(self.__filename, variable_names=['stim'], squeeze_me=True, appendmat=True)
             data = data['stim']
 
             return data
@@ -562,9 +568,10 @@ class MATFileStim(AudioStim):
             return data
 
 
-def _legacy_factory(chan_name, rate, silencePre, silencePost, intensity, freq, basepath='', attenuator=None):
+def _legacy_factory(chan_name, rate, silencePre, silencePost, intensity, freq, basedirs=None, attenuator=None):
+    basedirs = basedirs or [os.getcwd()]
 
-    # fixme: I think the legacy playlist never really supported sin or square waves because there was
+    # note: I think the legacy playlist never really supported sin or square waves because there was
     #  never any ability to specify things like duration independent of sample-rate
 
     if chan_name == "optooff" or chan_name.strip() == "":
@@ -591,7 +598,18 @@ def _legacy_factory(chan_name, rate, silencePre, silencePost, intensity, freq, b
         else:
             atten = attenuator
 
-        chan = MATFileStim(filename=os.path.join(basepath, chan_name),
+        filename = None
+        for bd in basedirs:
+            # legacy did not include .mat extension
+            _filename = os.path.join(bd, chan_name + MATFileStim.MATFILE_EXTENSION)
+            if os.path.exists(_filename):
+                filename = _filename[:-4]
+                break
+
+        if filename is None:
+            raise IOError("could not find '%s' in any directory: %r" % (chan_name, basedirs))
+
+        chan = MATFileStim(filename=filename,
                            frequency=freq,
                            sample_rate=int(rate),
                            intensity=intensity,
@@ -603,10 +621,15 @@ def _legacy_factory(chan_name, rate, silencePre, silencePost, intensity, freq, b
 
 
 def stimulus_factory(**conf):
-    # stimFileName	rate	trial	silencePre	silencePost	delayPost	intensity	freq
+    basedirs = conf.pop('basedirs', [os.getcwd()])
+
     try:
-        return _legacy_factory(conf['stimFileName'], conf['rate'], conf['trial'], conf['silencePre'],
-                               conf['silencePost'], conf['delayPost'], conf['intensity'], conf['freq'])
+        # format was
+        # stimFileName	rate	trial	silencePre	silencePost	delayPost	intensity	freq
+        # but trial was always 1 and delayPost always 0
+        return _legacy_factory(conf['stimFileName'], conf['rate'], conf['silencePre'],
+                               conf['silencePost'], conf['intensity'], conf['freq'],
+                               basedirs=basedirs)
     except KeyError:
         name = conf.pop('name')
         if name == 'sin':
@@ -620,7 +643,29 @@ def stimulus_factory(**conf):
                            attenuator=conf.get('attenuator'),
                            identifier=conf.get('identifier'))
         elif name == 'matfile':
-            return MATFileStim(filename=conf['filename'],
+            filename = None
+            if os.path.isabs(conf['filename']):
+                filename = conf['filename']
+            else:
+                # take the first file that exists
+                # but be lenient with or without .mat extension
+                for bd in basedirs:
+                    _filename = os.path.join(bd, conf['filename'] + MATFileStim.MATFILE_EXTENSION)
+                    if os.path.exists(_filename):
+                        # convention is we dont include the mat file extension
+                        filename = _filename[:-4]
+                        break
+
+                    _filename = os.path.join(bd, conf['filename'])
+                    if os.path.exists(_filename):
+                        filename = _filename
+                        break
+
+            if filename is None:
+                raise IOError("could not find '%s' in any directory: %r" % (conf['filename'],
+                                                                            basedirs))
+
+            return MATFileStim(filename=filename,
                                frequency=conf['frequency'],
                                sample_rate=conf.get('sample_rate', 44100),
                                intensity=conf['intensity'],
@@ -647,13 +692,15 @@ def stimulus_factory(**conf):
         return NotImplementedError
 
 
-def legacy_factory(lines, basepath, attenuator=None):
+def legacy_factory(lines, basedirs, attenuator=None):
     def _parse_list(_s):
         _list = re.match(r"""\[([\d\s.+-]+)\]""", _s)
         if _list:
             return list(float(v.strip()) for v in _list.groups()[0].split())
         else:
             return [float(_s)]
+
+    basedirs = basedirs or [os.getcwd()]
 
     stims = []
     for idx, _line in enumerate(lines):
@@ -679,7 +726,7 @@ def legacy_factory(lines, basepath, attenuator=None):
                                    silencePost=int(silencePost),
                                    intensity=intensities[chan_idx],  # float
                                    freq=frequencies[chan_idx],  # float
-                                   basepath=basepath,
+                                   basedirs=basedirs,
                                    attenuator=attenuator)
             chans.append(chan)
 
@@ -733,16 +780,17 @@ class AudioStimPlaylist(SignalProducer):
     @classmethod
     def from_legacy_filename(cls, filename, random=None, attenuator=None, paused=False):
         with open(filename, 'rt') as f:
-            return cls(legacy_factory(f.readlines()[1:], basepath=os.path.dirname(filename), attenuator=attenuator),
+            return cls(legacy_factory(f.readlines()[1:], basedirs=[os.path.dirname(filename)], attenuator=attenuator),
                        random=random, paused=paused)
 
     @classmethod
-    def fromitems(cls, items, random=None, paused=False, attenuator=None):
+    def fromitems(cls, items, random=None, paused=False, attenuator=None, basedirs=None):
         stims = []
         for item_def in items:
             id_, defn = item_def.popitem()
             defn['identifier'] = id_
-            stims.append(stimulus_factory(**defn))
+            stims.append(stimulus_factory(**defn,
+                                          basedirs=basedirs or []))
         return cls(stims, random=random, paused=paused)
 
     def play_item(self, identifier):

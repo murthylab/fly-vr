@@ -69,7 +69,7 @@ def test_generator(stim1, stim2, stim3):
         assert (next(playGen).data == s.data).all()
 
 
-def test_multi_channel_playlist():
+def test_legacy_multi_channel_playlist(tmpdir):
     import os.path
 
     PATH = 'tests/test_data/opto_control_playlist.txt'
@@ -80,9 +80,14 @@ def test_multi_channel_playlist():
     assert (chunk.shape[1] == 4)
     assert (stimList.num_channels == 4)
 
+    with pytest.raises(IOError):
+        with open(PATH, 'rt') as f:
+            legacy_factory(f.readlines()[1:],
+                           basedirs=[tmpdir.strpath])
+
     with open(PATH, 'rt') as f:
-        stims = legacy_factory(f.readlines()[1:], os.path.dirname(PATH))
-        print(stims)
+        stims = legacy_factory(f.readlines()[1:],
+                               basedirs=[os.path.dirname(PATH)])
 
     stimList = AudioStimPlaylist(stims)
     gen = chunker(stimList.data_generator(), 1000)
