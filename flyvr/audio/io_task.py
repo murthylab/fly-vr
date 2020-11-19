@@ -324,27 +324,32 @@ def setup_playback_callbacks(stim, logger, state):
 
 
 # noinspection PyPep8Naming
-def io_task_loop(message_pipe, state):
-    print("Starting DAQ process")
+def io_task_loop(message_pipe, state, options):
+
+    log = logging.getLogger('flyvr.daq')
+    log.info('starting DAQ process')
+
+    start_immediately = getattr(options, 'start_immediately', False)
+    stim_playlist = options.playlist.get('daq')
+
+    analog_in_channels = tuple(sorted(options.analog_in_channels))
+    analog_out_channels = tuple(sorted(options.analog_out_channels))
+    digital_in_channels = None
+
     try:
 
         taskAO = None
         taskAI = None
         taskDI = None
 
-        options = state.options
-
-        start_immediately = getattr(options, 'start_immediately', False)
-        stim_playlist = options.playlist.get('daq')
-
         # Check to make sure we are doing analog output
-        if stim_playlist is None or options.analog_out_channels is None:
+        if stim_playlist is None or (not analog_out_channels):
             is_analog_out = False
         else:
             is_analog_out = True
 
         # Check to see if we are doing digital recording
-        if options.digital_in_channels is None:
+        if digital_in_channels is None:
             is_digital_in = False
         else:
             is_digital_in = True
@@ -356,7 +361,7 @@ def io_task_loop(message_pipe, state):
             if options.attenuation_file is not None:
                 attenuator = Attenuator.load_from_file(options.attenuation_file)
             else:
-                print("\nWarning: No attenuation file specified.")
+                log.warning("no attenuation file specified")
 
             # Read the playlist file and create and audio stimulus playlist object. We will pass a control
             # function to these underlying stimuli that is triggered anytime they generate data. The control sends a
@@ -368,26 +373,26 @@ def io_task_loop(message_pipe, state):
 
             # Make a sanity check, ensure that the number of channels for this audio stimulus matches the
             # number of output channels specified in configuration file.
-            if audio_stim.num_channels != len(options.analog_out_channels):
+            if audio_stim.num_channels != len(analog_out_channels):
                 raise ValueError(
                     "Number of analog output channels specified in config does not equal number specified in playlist!")
 
-        print("DAQ function: analog_out (audio): %s digital_in: %s" % (is_analog_out, is_digital_in))
+        log.info("DAQ function: analog_out (audio): %s digital_in: %s" % (is_analog_out, is_digital_in))
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
-            print("Initializing DAQ Tasks")
+            log.info("initializing DAQ Tasks")
 
             taskAO = None
             if is_analog_out:
                 # Get the input and output channels from the options
-                output_chans = ["ao" + str(s) for s in options.analog_out_channels]
+                output_chans = ["ao" + str(s) for s in analog_out_channels]
                 taskAO = IOTask(cha_name=output_chans, cha_type="output",
                                 num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
                                 num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                                 shared_state=state)
 
-            input_chans = ["ai" + str(s) for s in options.analog_in_channels]
+            input_chans = ["ai" + str(s) for s in analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
@@ -415,7 +420,7 @@ def io_task_loop(message_pipe, state):
 
             # Setup digital input recording
             if is_digital_in:
-                taskDI = IOTask(cha_name=options.digital_in_channels, cha_type="input",
+                taskDI = IOTask(cha_name=digital_in_channels, cha_type="input",
                                 digital=True,
                                 num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                                 num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
@@ -425,7 +430,7 @@ def io_task_loop(message_pipe, state):
                 taskDI.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
             # Message loop that waits for start signal
-            print("Waiting for START_DAQ")
+            log.info("waiting for START_DAQ")
             while (state.START_DAQ == 0) and state.is_running_well() and (not start_immediately):
                 time.sleep(0.2)
 
@@ -435,7 +440,7 @@ def io_task_loop(message_pipe, state):
             # Start the display and logging tasks
             disp_task.start()
 
-            print("Starting DAQ Tasks ")
+            log.info("starting DAQ Tasks ")
             if taskAO is not None:
                 # Arm the AO task
                 # It won't start until the start trigger signal arrives from the AI task
@@ -545,7 +550,7 @@ def run_io(options):
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.daq.h5'))
         state = SharedState(options=options, logger=logger)
-        io_task_loop(_MockPipe(), state)
+        io_task_loop(_MockPipe(), state, options)
 
 
 def main_io():

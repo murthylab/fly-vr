@@ -57,29 +57,13 @@ def build_argparser(savefilename=None):
         savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
 
     parser = configargparse.ArgumentParser(config_file_parser_class=YamlConfigParser,
+                                           ignore_unknown_config_file_keys=True,
                                            args_for_setting_config_path=['-c', '--config'])
     parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
     parser.add_argument("--attenuation_file", dest="attenuation_file",
                         help="A file specifying the attenuation function")
     parser.add_argument("-e", "--experiment_file", dest="experiment_file", action=FixNoneParser,
                         help="A file defining the experiment (can be a python file or a .yaml)")
-    parser.add_argument("--analog_in_channels",
-                        type=str,
-                        action=CommaListParser,
-                        help="A comma separated list of numbers specifying the input channels record."
-                             "Default channel is 0.",
-                        default=[0])
-    parser.add_argument("--digital_in_channels",
-                        type=str,
-                        action=CommaListParser,
-                        help="A comma separated list of channels specifying the digital input channels record."
-                             "Default is None.",
-                        default=None)
-    parser.add_argument("--analog_out_channels",
-                        type=str,
-                        action=CommaListParser,
-                        help="A comma separated list of numbers specifying the output channels."
-                             "Default none for no output")
     parser.add_argument("--screen_calibration", action=FixNoneParser,
                         help="Where to find the (pre-computed) screen calibration file")
     parser.add_argument("--use_RSE", action='store_true',
@@ -140,6 +124,9 @@ def parse_options(options, parser):
             _config_file_path = os.path.abspath(options.config_file)
     else:
         _all_conf = {}
+
+    options.analog_in_channels = dict(_all_conf.get('configuration', {}).get('analog_in_channels') or {})
+    options.analog_out_channels = dict(_all_conf.get('configuration', {}).get('analog_out_channels') or {})
 
     try:
         _playlist = _all_conf['playlist']

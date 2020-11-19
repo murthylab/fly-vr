@@ -1,0 +1,9 @@
+configuration:
+  analog_in_channels:
+    0: 'Sound Amplifier'
+    1: 'Copy of AO2'
+    5: 'Microphone Ch1 (left)'
+    6: 'Microphone Ch2 (right)'
+    16: 'Copy of 2P mirror y-axis'
+  analog_out_channels:
+    2: 'LED control for optogenetics'

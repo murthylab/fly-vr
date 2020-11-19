@@ -1,0 +1,9 @@
+configuration:
+  analog_in_channels:
+    0: 'Sound Amplifier'
+    2: 'Copy of 2P mirror y-axis'
+    4: 'Copy of AO1'
+    6: 'Camera shutter readout'
+    13: 'Omega controller thermostat'
+  analog_out_channels:
+    1: 'LED control for optogenetics'
