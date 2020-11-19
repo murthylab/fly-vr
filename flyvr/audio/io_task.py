@@ -334,25 +334,17 @@ def io_task_loop(message_pipe, state, options):
 
     analog_in_channels = tuple(sorted(options.analog_in_channels))
     analog_out_channels = tuple(sorted(options.analog_out_channels))
-    digital_in_channels = None
 
     try:
 
         taskAO = None
         taskAI = None
-        taskDI = None
 
         # Check to make sure we are doing analog output
         if stim_playlist is None or (not analog_out_channels):
             is_analog_out = False
         else:
             is_analog_out = True
-
-        # Check to see if we are doing digital recording
-        if digital_in_channels is None:
-            is_digital_in = False
-        else:
-            is_digital_in = True
 
         if is_analog_out:
 
@@ -376,8 +368,6 @@ def io_task_loop(message_pipe, state, options):
             if audio_stim.num_channels != len(analog_out_channels):
                 raise ValueError(
                     "Number of analog output channels specified in config does not equal number specified in playlist!")
-
-        log.info("DAQ function: analog_out (audio): %s digital_in: %s" % (is_analog_out, is_digital_in))
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
@@ -419,17 +409,6 @@ def io_task_loop(message_pipe, state, options):
                 # Connect AO start to AI start
                 taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-            # Setup digital input recording
-            if is_digital_in:
-                taskDI = IOTask(cha_name=digital_in_channels, cha_type="input",
-                                digital=True,
-                                num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
-                                num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
-                                shared_state=state)
-
-                # Connect DI start to AI start
-                taskDI.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
-
             # Message loop that waits for start signal
             log.info("waiting for START_DAQ")
             while (state.START_DAQ == 0) and state.is_running_well() and (not start_immediately):
@@ -451,10 +430,6 @@ def io_task_loop(message_pipe, state, options):
             # It won't start until the start trigger signal arrives from the AI task
             if taskDO is not None:
                 taskDO.StartTask()
-
-            # Arm the digital input task
-            if taskDI is not None:
-                taskDI.StartTask()
 
             # Start the AI task
             # This generates the AI start trigger signal and triggers the AO task
@@ -498,12 +473,6 @@ def io_task_loop(message_pipe, state, options):
                 taskDO.StopTask()
                 taskDO.stop()
                 taskDO.ClearTask()
-
-                # If we were doing digital input, end that too.
-            if taskDI is not None:
-                taskDI.StopTask()
-                taskDI.stop()
-                taskDI.ClearTask()
 
         if taskAO is not None:
             taskAO.ClearTask()

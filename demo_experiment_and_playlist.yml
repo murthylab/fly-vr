@@ -24,7 +24,6 @@ configuration:
   attenuation_file: null
   experiment_file: null
   analog_in_channels: {}
-  digital_in_channels: {}
   analog_out_channels: {}
   screen_calibration: null
   use_RSE: true
