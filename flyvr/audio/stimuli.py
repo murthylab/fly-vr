@@ -833,3 +833,13 @@ class AudioStimPlaylist(SignalProducer):
 
                     sample_chunk_obj = next(data_gens[next_id])
                     yield sample_chunk_obj
+
+    def _to_array(self):
+        arrs = []
+        for chunk in self.data_generator():
+            if chunk is None:
+                break
+            arrs.append(chunk.data)
+        return np.concatenate(arrs)
+
+

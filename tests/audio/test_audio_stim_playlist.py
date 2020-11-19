@@ -120,3 +120,46 @@ def test_no_side_effects(stim1, stim2, stim3):
     with pytest.raises(AttributeError):
         # playlist repeats exhaused
         _ = next(playGen).data
+
+
+def test_legacy_opto_parts():
+    # a complicated way to make a 60s period of 0 output
+    l = 'silentStim_TDUR4s	10000	1	30000	26000	0	5	250'
+
+    st = legacy_factory([l], basedirs=['tests/test_data/nivedita_vr1/'])[0]
+    assert st is not None
+    desc = st.describe()
+    assert desc['sample_rate'] == 10000
+    arr = st.data
+    assert arr.shape == (int((30 + 4 + 26) * desc['sample_rate']), )
+    assert arr.shape == (600000, )
+    assert arr.max() == 0.0
+    assert arr.min() == 0.0
+
+    l = '190712_opto_10sON_90sOFF	10000	1	5000	5000	0	9	-1'
+    st = legacy_factory([l], basedirs=['tests/test_data/nivedita_vr1/'])[0]
+    assert st is not None
+    desc = st.describe()
+    assert desc['pre_silence'] == 5000
+    assert desc['post_silence'] == 5000
+    assert desc['sample_rate'] == 10000
+    arr = st.data
+    assert arr.shape == (int((5 + 100 + 5) * desc['sample_rate']), )
+    assert arr.max() == 9.0
+    assert arr.min() == 0.0
+
+
+def test_legacy_opto_parts_multiple():
+    lines = ('silentStim_TDUR4s	10000	1	30000	26000	0	5	250',
+             '190712_opto_10sON_90sOFF	10000	1	5000	5000	0	9	-1')
+    stims = legacy_factory(lines, basedirs=['tests/test_data/nivedita_vr1/'])
+    ap = AudioStimPlaylist(stims)
+    arr = ap._to_array()
+    # these are seconds durations - see two tests above
+    assert arr.shape == (int((5 + 100 + 5 + 30 + 4 + 26) * 10000), )
+
+
+def test_legacy_opto_convert():
+    pl = AudioStimPlaylist.from_legacy_filename('tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt')
+    arr = pl._to_array()
+    assert arr.shape == (17100000, )
