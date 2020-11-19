@@ -194,7 +194,7 @@ to configure a non-connected lightcrafter, you can pass `--disable-projector`.
 # Updating FlyVR
 
 * Update the source code  
-  `git pull --ff-only origin/master`
+  `git pull --ff-only origin master`
 * Activate the conda or virtual environment
 * Re-install  
   * `python -m pip install -e .` to install in development mode (recommended)
