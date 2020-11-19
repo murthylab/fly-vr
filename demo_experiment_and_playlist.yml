@@ -31,6 +31,8 @@ configuration:
   remote_start_2P_channel: 3
   remote_stop_2P_channel: 4
   remote_next_2P_channel: 5
+  keepalive_video: false
+  keepalive_audio: false
   fictrac_config: null
   fictrac_console_out: null
   pgr_cam_disable: false

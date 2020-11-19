@@ -95,14 +95,25 @@ def main_launcher():
             time.sleep(0.2)
 
     # start the other mainloops
+
+    # these always run
     hwio = ConcurrentTask(task=run_phidget_io, comms=None, taskinitargs=[options])
     hwio.start()
     daq = ConcurrentTask(task=run_io, comms=None, taskinitargs=[options])
     daq.start()
-    video = ConcurrentTask(task=run_video_server, comms=None, taskinitargs=[options])
-    video.start()
-    audio = ConcurrentTask(task=run_sound_server, comms=None, taskinitargs=[options])
-    audio.start()
+
+    # these are optional
+    if options.keepalive_video or options.playlist.get('video'):
+        video = ConcurrentTask(task=run_video_server, comms=None, taskinitargs=[options])
+        video.start()
+    else:
+        log.info('not starting video backend (playlist empty or keepalive_video not specified)')
+
+    if options.keepalive_audio or options.playlist.get('audio'):
+        audio = ConcurrentTask(task=run_sound_server, comms=None, taskinitargs=[options])
+        audio.start()
+    else:
+        log.info('not starting video backend (playlist empty or keepalive_video not specified)')
 
     if state.is_running_well():
 

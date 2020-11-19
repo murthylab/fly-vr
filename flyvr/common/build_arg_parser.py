@@ -85,6 +85,16 @@ def build_argparser(savefilename=None):
                         type=int,
                         help="The digital channel to send remote next file signal for 2-photon imaging.",
                         default=5)
+    parser.add_argument('--keepalive_video', action='store_true',
+                        help="keep the video process running even if they initially provided playlist contains "
+                             "no video items (such as if you want to later play dynamic video items not declared "
+                             "in the playlist)",
+                        default=False)
+    parser.add_argument('--keepalive_audio', action='store_true',
+                        help="keep the audio process running even if they initially provided playlist contains "
+                             "no audio items (such as if you want to later play dynamic audio items not declared "
+                             "in the playlist)",
+                        default=False)
     parser.add_argument('-l', "--record_file",
                         type=str,
                         help="File that stores output recorded on requested input channels. "
