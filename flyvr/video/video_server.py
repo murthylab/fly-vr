@@ -1004,7 +1004,7 @@ def run_video_server(options):
         video_server = VideoServer(stim=startup_stim,
                                    calibration_file=options.screen_calibration,
                                    shared_state=state,
-                                   use_lightcrafter=not getattr(options, 'disable_projector', False))
+                                   use_lightcrafter=not getattr(options, 'projector_disable', False))
 
         if playlist_stim is not None:
             video_server.play(playlist_stim)
@@ -1022,7 +1022,6 @@ def main_video_server():
     from flyvr.common.build_arg_parser import build_argparser, parse_options
 
     parser = build_argparser()
-    parser.add_argument('--disable-projector', action='store_true', help='Do not setup projector')
     parser.add_argument('--play-item', help='Play this item from the playlist',
                         metavar='IDENTIFIER')
     parser.add_argument('--play-stimulus', help='Play this stimulus only (no playlist is loaded). '

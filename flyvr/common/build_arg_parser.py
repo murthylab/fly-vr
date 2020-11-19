@@ -111,6 +111,7 @@ def build_argparser(savefilename=None):
                         help="Delay the start of playback and acquisition from FicTrac tracking by this many seconds. "
                              "The default is 0 seconds.",
                         default=0.0)
+    parser.add_argument('--projector_disable', action='store_true', help='Do not setup projector in video backend')
 
     return parser
 
