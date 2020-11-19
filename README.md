@@ -4,9 +4,12 @@ FlyVR is a framework for the design and control of multisensory virtual reality 
 It is written in Python, with modular design that allows the control of open and closed loop experiments with 
 one or more sensory modality. In its current implementation, FlyVR uses fictrac (see below) to track the path of a
 fly walking on an air-suspended ball. A projector and a sound card are used for delivering visual and auditory stimuli,
-and other analog outputs (through NI-DAQ or phidgets devices) control other stimuli such as optogenetic stimulation, or triggers for synchronization (e.g., with ScanImage).
+and other analog outputs (through NI-DAQ or phidgets devices) control other stimuli such as optogenetic stimulation, or
+triggers for synchronization (e.g., with ScanImage).
 
-**FlyVR is currently under development. Please see below for credits and license info.** If you would like to contribute to testing the code, please contact David Deutsch (ddeutsch@princeton.edu), postdoc in the Murthy Lab @ the Princeton Neuroscience Institute.
+**FlyVR is currently under development. Please see below for credits and license info.** If you would like to
+contribute to testing the code, please contact David Deutsch (ddeutsch@princeton.edu), postdoc in the
+Murthy Lab @ the Princeton Neuroscience Institute.
 
 
 # Usage
@@ -135,8 +138,8 @@ need to use conda specific commands to create and activate the conda environment
 * install dependencies  
   `python -m pip install -r requirements.txt`
 * Install flyvr
-  `python -m pip install .`
-  * use `python -m pip install -e .` to install in development mode
+  * `python -m pip install -e .` to install in development mode (recommended)
+  * `python -m pip install .` to install a release version
 * Run the tests  
   `python -m pytest`
   * Note: by default, the tests will attempt to test the DAQ and soundcard. If you are running the tests
@@ -155,8 +158,8 @@ Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - 
 `FlyCapture2_C_v100.dll` rename it. I have included this version in the fictrac_calibration folder of the repo for now.
 
 For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download
-the pre-built binaries available [here](https://github.com/murthylab/fic-trac-win/releases). Please always download
-this file as you might have an identically named old version.
+the pre-built binaries available [here (private bucket)](https://bucket.pni.princeton.edu/murthy/FicTrac).
+Please always download this file as you might have an identically named old version.
 
 For configuring FicTrac, a few files are needed:
 
@@ -175,7 +178,6 @@ For configuring FicTrac, a few files are needed:
 4. To run FicTrac, run `FicTrac FicTracPGR_ConfigMaster.txt` or `FicTrac-PGR FicTracPGR_ConfigMaster.txt`
    (if you are using a Point Grey camera).
 
-
 ## lightcrafter DLP (for visual stimulus)
 
 Flyvr, and the `flyvr-video.exe` binary by default attempt to automatically configure and show
@@ -185,6 +187,17 @@ and on the default 192.168.1.100 IP address.
 
 If you wish to show the visual stimulus on the desktop monitor (skipping the potential delay trying
 to configure a non-connected lightcrafter, you can pass `--disable-projector`.
+
+# Updating FlyVR
+
+* Update the source code  
+  `git pull --ff-only origin/master`
+* Activate the conda or virtual environment
+* Re-install  
+  * `python -m pip install -e .` to install in development mode (recommended)
+  * `python -m pip install --upgrade .` to install a release version
+* Run the tests  
+  `python -m pytest`
 
 # flyvr-architecture
 
@@ -235,8 +248,11 @@ or observing experiments in progress
 
 # credits
 
-David Deutsch - Murthy lab, PNI, Princeton; Adam Calhoun - Murthy lab, PNI, Princeton; John Stowers - LoopBio, David Turner - PNI, Princeton
+David Deutsch - Murthy lab, PNI, Princeton; Adam Calhoun - Murthy lab, PNI, Princeton; 
+John Stowers - LoopBio, David Turner - PNI, Princeton
 
 # license
 Copyright (c) 2020 Princeton University
-flyvr is released under a Clear BSD License and is intended for research/academic use only. For commercial use, please contact: Laurie Tzodikov (Assistant Director, Office of Technology Licensing), Princeton University, 609-258-7256.
+flyvr is released under a Clear BSD License and is intended for research/academic use only. 
+For commercial use, please contact: Laurie Tzodikov (Assistant Director, Office of Technology Licensing), 
+Princeton University, 609-258-7256.
