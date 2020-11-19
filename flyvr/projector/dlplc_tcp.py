@@ -374,14 +374,17 @@ class Packet():
 
 
 def main():
-    # dlplc = LightCrafterTCP()
-    # dlplc.connect()
+    dlplc = LightCrafterTCP()
+    dlplc.connect()
+    dlplc.cmd_current_display_mode(0x02)
+    dlplc.cmd_current_video_mode(frame_rate=60, bit_depth=7, led_color=4)
+    print("Configuration of %r Successful" % dlplc)
     # dlplc.build_packet(0x02, 0x01, 0x00, 0x00)
-    p = Packet();
-    p.set_header(0x02, 0x01, 0x00)
+    # p = Packet();
+    # p.set_header(0x02, 0x01, 0x00)
     # p.set_payload("%c"%0x00)
-    p.show()
-    p.pack()
+    # p.show()
+    # p.pack()
 
 
 if __name__ == "__main__":

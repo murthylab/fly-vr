@@ -185,6 +185,9 @@ the visual stimulus on a DLP lightcrafter configured in the appropriate mode. Th
 the lightcrafter software has been installed, and that the lightcrafter is connected, powered on,
 and on the default 192.168.1.100 IP address.
 
+For autoconfiguration to work, the Lightcrafter software must be 'Disconnected' from the 
+projector (or closed). 
+
 If you wish to show the visual stimulus on the desktop monitor (skipping the potential delay trying
 to configure a non-connected lightcrafter, you can pass `--disable-projector`.
 
