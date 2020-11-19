@@ -393,6 +393,7 @@ def io_task_loop(message_pipe, state, options):
                                 shared_state=state)
 
             input_chans = ["ai" + str(s) for s in analog_in_channels]
+            input_chan_names = [options.analog_in_channels[s] for s in analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
@@ -401,7 +402,7 @@ def io_task_loop(message_pipe, state, options):
             taskDO = None
 
             disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
-                                       taskinitargs=[input_chans, taskAI.num_samples_per_chan, 5])
+                                       taskinitargs=[input_chan_names, taskAI.num_samples_per_chan, 5])
 
             # Setup the display task to receive messages from recording task.
             taskAI.data_recorders = [disp_task]
