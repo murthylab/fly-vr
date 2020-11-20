@@ -10,6 +10,7 @@ setup(
     description='experimental virtual reality setup for flies',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    # to distribute package data, add them to MANIFEST.in
     include_package_data=True,
     version='0.1.0',
     packages=find_packages(),

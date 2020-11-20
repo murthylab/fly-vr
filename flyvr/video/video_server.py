@@ -4,6 +4,7 @@ import os.path
 import logging
 import threading
 import collections
+import pkg_resources
 
 import h5py
 import numpy as np
@@ -20,6 +21,10 @@ from psychopy.visual.windowframepack import ProjectorFramePacker
 
 
 dlp_screen = [684, 608]
+
+
+def package_data_filename(filename_relative_to_datadir):
+    return pkg_resources.resource_filename('flyvr', os.path.join('data', filename_relative_to_datadir))
 
 
 def deg_to_px(deg):
@@ -334,7 +339,7 @@ class AdamStim(VideoStim):
         super().__init__(offset=[float(offset[0]), float(offset[1])],
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
 
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(package_data_filename(filename), 'r') as f:
             self._tdis = f['tDis'][:, 0]
             self._tang = f['tAng'][:, 0]
 
@@ -373,7 +378,7 @@ class AdamStimGrating(VideoStim):
         super().__init__(offset=[float(offset[0]), float(offset[1])],
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
 
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(package_data_filename(filename), 'r') as f:
             self._tdis = f['tDis'][:, 0]
             self._tang = f['tAng'][:, 0]
 
@@ -515,7 +520,7 @@ class PipStim(VideoStim):
         super().__init__(offset=[float(offset[0]), float(offset[1])],
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
 
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(package_data_filename(filename), 'r') as f:
             self._tdis = f['tDis'][:, 0]
             self._tang = f['tAng'][:, 0]
 
@@ -628,13 +633,14 @@ class MayaModel(VideoStim):
                          offset=[float(offset[0]), float(offset[1])], **kwargs)
 
         self._imgs = self.screen = None
-        self._image_names = ['mayamodel/femalefly360deg/fly' + str(img_num) + '.png' for img_num in range(-179, 181)]
+        self._image_names = [package_data_filename('mayamodel/femalefly360deg/fly' + str(img_num) + '.png')
+                             for img_num in range(-179, 181)]
 
-        angles = np.load('mayamodel/angles_fly19.npy')
-        top_y = np.load('mayamodel/tops_fly19.npy')
-        bottom_y = np.load('mayamodel/bottoms_fly19.npy')
-        left_x = np.load('mayamodel/lefts_fly19.npy')
-        right_x = np.load('mayamodel/rights_fly19.npy')
+        angles = np.load(package_data_filename('mayamodel/angles_fly19.npy'))
+        top_y = np.load(package_data_filename('mayamodel/tops_fly19.npy'))
+        bottom_y = np.load(package_data_filename('mayamodel/bottoms_fly19.npy'))
+        left_x = np.load(package_data_filename('mayamodel/lefts_fly19.npy'))
+        right_x = np.load(package_data_filename('mayamodel/rights_fly19.npy'))
 
         self._angles = angles[frame_start:]
         self._img_pos = [(left_x[frame_start:] + right_x[frame_start:]) / 2,
@@ -681,21 +687,22 @@ class OptModel(VideoStim):
 
         self._imgs = self.screen = None
 
-        self._image_names = ['mayamodel/femalefly360deg/fly' + str(i) + '.png' for i in range(-179, 181)]
+        self._image_names = [package_data_filename('mayamodel/femalefly360deg/fly' + str(i) + '.png')
+                             for i in range(-179, 181)]
 
-        angles_v = np.load('mayamodel/forwardvelocity/angles_optstim.npy')
+        angles_v = np.load(package_data_filename('mayamodel/forwardvelocity/angles_optstim.npy'))
 
-        ty_v = np.load('mayamodel/forwardvelocity/tops_optstim.npy')
-        by_v = np.load('mayamodel/forwardvelocity/bottoms_optstim.npy')
-        lx_v = np.load('mayamodel/forwardvelocity/lefts_optstim.npy')
-        rx_v = np.load('mayamodel/forwardvelocity/rights_optstim.npy')
+        ty_v = np.load(package_data_filename('mayamodel/forwardvelocity/tops_optstim.npy'))
+        by_v = np.load(package_data_filename('mayamodel/forwardvelocity/bottoms_optstim.npy'))
+        lx_v = np.load(package_data_filename('mayamodel/forwardvelocity/lefts_optstim.npy'))
+        rx_v = np.load(package_data_filename('mayamodel/forwardvelocity/rights_optstim.npy'))
 
-        angles_p = np.load('mayamodel/pulse/angles_optstim.npy')
+        angles_p = np.load(package_data_filename('mayamodel/pulse/angles_optstim.npy'))
 
-        ty_p = np.load('mayamodel/pulse/tops_optstim.npy')
-        by_p = np.load('mayamodel/pulse/bottoms_optstim.npy')
-        lx_p = np.load('mayamodel/pulse/lefts_optstim.npy')
-        rx_p = np.load('mayamodel/pulse/rights_optstim.npy')
+        ty_p = np.load(package_data_filename('mayamodel/pulse/tops_optstim.npy'))
+        by_p = np.load(package_data_filename('mayamodel/pulse/bottoms_optstim.npy'))
+        lx_p = np.load(package_data_filename('mayamodel/pulse/lefts_optstim.npy'))
+        rx_p = np.load(package_data_filename('mayamodel/pulse/rights_optstim.npy'))
 
         self._angles = angles_v[:300]
         self._angles = np.append(self._angles, angles_p[:300])
