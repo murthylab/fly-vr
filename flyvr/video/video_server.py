@@ -436,17 +436,24 @@ class GenericStaticFixationStim(VideoStim):
         self.obj2 = None
         self._obj2_is_circle = obj2_r > 0
 
+    # noinspection DuplicatedCode
     def initialize(self, win, fps):
         super().initialize(win, fps)
         if self._obj1_is_circle:
-            raise NotImplementedError
+            self.obj1 = visual.Circle(win=win,
+                                      radius=self.p.obj1_r,
+                                      pos=(self.p.obj1_x, self.p.obj1_y),
+                                      lineColor=None, fillColor=self.p.obj1_fg_color)
         else:
             self.obj1 = visual.Rect(win=win,
                                     size=(self.p.obj1_w, self.p.obj1_h),
                                     pos=(self.p.obj1_x, self.p.obj1_y),
                                     lineColor=None, fillColor=self.p.obj1_fg_color)
         if self._obj2_is_circle:
-            raise NotImplementedError
+            self.obj2 = visual.Circle(win=win,
+                                      radius=self.p.obj2_r,
+                                      pos=(self.p.obj2_x, self.p.obj2_y),
+                                      lineColor=None, fillColor=self.p.obj2_fg_color)
         else:
             self.obj2 = visual.Rect(win=win,
                                     size=(self.p.obj2_w, self.p.obj2_h),
@@ -456,8 +463,14 @@ class GenericStaticFixationStim(VideoStim):
     def update(self, win, logger, frame_num):
         self.obj1.pos = self.p.obj1_x, self.p.obj1_y
         self.obj2.pos = self.p.obj2_x, self.p.obj2_y
-        self.obj1.size = self.p.obj1_w, self.p.obj1_h
-        self.obj2.size = self.p.obj2_w, self.p.obj2_h
+        if self._obj1_is_circle:
+            self.obj1.radius = self.p.obj1_r
+        else:
+            self.obj1.size = self.p.obj1_w, self.p.obj1_h
+        if self._obj2_is_circle:
+            self.obj2.radius = self.p.obj2_r
+        else:
+            self.obj2.size = self.p.obj2_w, self.p.obj2_h
 
         # logger.log(self.log_name(),
         #            np.array([frame_num,
