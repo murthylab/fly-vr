@@ -380,7 +380,7 @@ def run_sound_server(options):
     playlist_stim, basedirs = get_paylist_object(options, playlist_type='audio',
                                                  # optional because we are also called
                                                  # from flyvr main launcher
-                                                 paused_fallback=getattr(options, 'paused'),
+                                                 paused_fallback=getattr(options, 'paused', False),
                                                  # dudi requested to preserve the last default
                                                  default_repeat=Randomizer.REPEAT_FOREVER,
                                                  attenuator=None)  # fixme: attenuator from config
