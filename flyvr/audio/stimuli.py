@@ -483,12 +483,8 @@ class SquareWaveStim(AudioStim):
         """
         # noinspection PyPep8Naming
         T = np.linspace(0.0, float(self.duration) / 1000.0, int((float(self.sample_rate) / 1000.0) * self.duration))
-
         # Generate the samples of the sin wave with specified amplitude, frequency, and phase.
-        data = self.amplitude * signal.square(T * 2 * np.pi * self.frequency, duty=self.duty_cycle)
-        data = np.append(np.zeros(int(self.pre_silence * self.sample_rate)), data)
-        data = np.append(data, np.zeros(int(self.post_silence * self.sample_rate)))
-        return data
+        return self.amplitude * signal.square(T * 2 * np.pi * self.frequency, duty=self.duty_cycle)
 
 
 class ConstantStim(AudioStim):
