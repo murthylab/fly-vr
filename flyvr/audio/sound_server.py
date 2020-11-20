@@ -366,9 +366,10 @@ def _get_paylist_object(options, playlist_type):
 
 
 def run_sound_server(options):
-    from flyvr.common import SharedState
+    from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
     from flyvr.audio.stimuli import legacy_factory, stimulus_factory
+    from flyvr.audio.util import get_paylist_object
     from flyvr.common.ipc import PlaylistReciever
 
     setup_logging(options)
@@ -376,7 +377,13 @@ def run_sound_server(options):
     pr = PlaylistReciever()
     log = logging.getLogger('flyvr.main_sound_server')
 
-    playlist_stim, basedirs = _get_paylist_object(options, playlist_type='audio')
+    playlist_stim, basedirs = get_paylist_object(options, playlist_type='audio',
+                                                 # optional because we are also called
+                                                 # from flyvr main launcher
+                                                 paused_fallback=getattr(options, 'paused'),
+                                                 # dudi requested to preserve the last default
+                                                 default_repeat=Randomizer.REPEAT_FOREVER,
+                                                 attenuator=None)
     if playlist_stim is not None:
         log.info('initialized audio playlist: %r' % playlist_stim)
 
@@ -412,7 +419,9 @@ def run_sound_server(options):
 def main_sound_server():
     import yaml
     import os.path
+
     from flyvr.common.build_arg_parser import build_argparser, parse_options
+    from flyvr.audio.util import plot_playlist
 
     parser = build_argparser()
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
@@ -423,17 +432,12 @@ def main_sound_server():
     options = parse_options(parser.parse_args(), parser)
 
     if options.plot:
-        import matplotlib.pyplot as plt
-
         setup_logging(options)
 
         if not options.playlist.get('audio'):
-            return parser.error('Config file contains no playlist')
-        pl, _ = _get_paylist_object(options, 'audio')
+            return parser.error('Config file contains no audio playlist')
 
-        # noinspection PyProtectedMember
-        plt.plot(pl._to_array(fix_repeat_forver=True))
-        plt.show()
+        plot_playlist(options, 'audio')
 
         return parser.exit(0)
 

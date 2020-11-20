@@ -524,11 +524,23 @@ def run_io(options):
 
 
 def main_io():
-    from flyvr.common.build_arg_parser import build_argparser, parse_options
+    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_logging
+    from flyvr.audio.util import plot_playlist
 
     parser = build_argparser()
     parser.add_argument('--start-immediately', action='store_true',
                         help='start recording immediately (do not wait for start signal)')
+    parser.add_argument('--plot', action='store_true', help='plot the stimulus playlist')
     options = parse_options(parser.parse_args(), parser)
+
+    if options.plot:
+        setup_logging(options)
+
+        if not options.playlist.get('daq'):
+            return parser.error('Config file contains no daq playlist')
+
+        plot_playlist(options, 'daq')
+
+        return parser.exit(0)
 
     run_io(options)
