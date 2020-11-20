@@ -3,7 +3,7 @@ playlist:
   audio:
   - Delay:
       attenuator: null
-      intensity: 0.0
+      amplitude: 0.0
       duration: 4000
       name: constant
       post_silence: 26000

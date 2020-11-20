@@ -496,9 +496,9 @@ class ConstantStim(AudioStim):
 
     NAME = 'constant'
 
-    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence=0, post_silence=0, attenuator=None,
+    def __init__(self, sample_rate, duration, amplitude=1.0, pre_silence=0, post_silence=0, attenuator=None,
                  next_event_callbacks=None, identifier=None):
-        super(ConstantStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
+        super(ConstantStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=amplitude,
                                            pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
                                            frequency=None, next_event_callbacks=next_event_callbacks,
                                            identifier=identifier)
@@ -510,6 +510,7 @@ class ConstantStim(AudioStim):
 
     def describe(self):
         desc = super(ConstantStim, self).describe()
+        desc['amplitude'] = desc.pop('intensity')
         desc.pop('frequency')
         return desc
 
@@ -699,7 +700,7 @@ def stimulus_factory(**conf):
 
         elif name == 'constant':
             return ConstantStim(sample_rate=conf.get('sample_rate', 44100),
-                                intensity=conf['intensity'],
+                                amplitude=conf['amplitude'],
                                 duration=conf['duration'],
                                 pre_silence=conf.get('pre_silence', 0),
                                 post_silence=conf.get('post_silence', 0),
