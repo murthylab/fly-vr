@@ -224,6 +224,15 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
   list available sound cards (`flyvr-audio --list-devices`).
   * you can also plot the audio playlist using `--plot` which will plot the audio timeseries  
     `flyvr-audio.exe --plot --config playlists\audio2.yml`
+  * you can convert single-channel audio/daq playlists into the new format with `--convert-playlist` with the following
+    caveats:
+    * playlists should be first converted to single-channel format, so if it is a mixed or multiple channel v1
+      playlist then you need to make it single channel for the backend (audio/daq) which you care about. I.e.
+      compare 'tests/sample_data/v1/IPI36_16pulses_randomTiming_SC.txt' with
+      'tests/sample_data/v1/IPI36_16pulses_randomTiming_SC_1channel.txt'. in the DAQ case, see
+      'tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt'
+    * if the playlist was a complicated mixed audio/opto playlists then per the conversion requirement above,
+      you will convert the input to two old v1 playlists, and call `--convert-playlist` twice
 * flyvr-video
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
 * flyvr-daq
