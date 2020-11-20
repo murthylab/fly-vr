@@ -2,7 +2,7 @@ playlist:
   audio:
   - MATFileStim-825836f9a2464d8cbfefa94a2b366190:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -13,7 +13,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-3d882e7dd3cd49f19d46ea7f49228113:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -24,7 +24,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-e184d5561d6247f4a3921bf717e4ab0f:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -35,7 +35,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-b52683625a5f4d5293c2073e13e2474d:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -46,7 +46,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-4472538e8cbf4fa8bf4607a47845e286:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -57,7 +57,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-14433a5373174fed8e1615585177e331:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -68,7 +68,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-5050087192124f2aa7ed7eff3ff0f634:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -79,7 +79,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-126f3529423441dfbe0df2f4b02bceb6:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -90,7 +90,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-a51ee1529ae54f6680bdd354e6c97324:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -101,7 +101,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-91b43ee271134750aa3469691b3b0001:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -112,7 +112,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-cda07e3baf1a401198b4d103a487c81e:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -123,7 +123,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-8ad6c08297574124957392205fa634a2:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -134,7 +134,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-9bcd2b0d5e8e4781b6296c25212d8470:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -145,7 +145,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-75b07d4e140b43dcbf348f997606cec7:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -156,7 +156,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-255c3331db45420f8658bd1ddda62873:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -167,7 +167,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-71297c2f9a864b8f8a6591ceb40a81d7:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -178,7 +178,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-2eb8aa495d7c457c859b1eec96198837:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -189,7 +189,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-b1c8dc742f1a4a1e93b07674b0dae805:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -200,7 +200,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-81843affca2c47f2b6cadb0c5ec9ea82:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -211,7 +211,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-8948f1761b2e43d9a2af477ae8d0707f:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -222,7 +222,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-f8c6bf54ab9a477ba61e7d8e41f423f2:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -233,7 +233,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-508903b04fb74daaa239486f2cfb14d3:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -244,7 +244,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-b335b4247da54932a6d2741ae7a5576c:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -255,7 +255,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-e061c2b3126249c083380d5a7935c23f:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -266,7 +266,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-bef19d394e5b44a29ca3cdd7f555301e:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -277,7 +277,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-8a49ec53904c4f69a8e742255ee558bf:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -288,7 +288,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-286d2a663f6d4e98b9edbfbf21e94734:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -299,7 +299,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-4e4d7a2de58941e09aaf52b452997703:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -310,7 +310,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-90b7db40961442cc8ff6058784cd70e2:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
@@ -321,7 +321,7 @@ playlist:
       sample_rate: 44100
   - MATFileStim-ff29a9a5b20c41a1b931ee3da716059e:
       attenuator: null
-      filename: tests\test_data\dudi_new\pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
+      filename: pulsetrain_16pdur_20ppau_16pnum_250pcar_sc
       frequency: 250.0
       intensity: 5.0
       max_value: 10.0
