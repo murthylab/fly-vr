@@ -56,12 +56,13 @@ class PhidgetIO(object):
 
         for tp in (self._tp_start, self._tp_stop, self._tp_next, self._tp_led):
             if tp is not None:
+                # noinspection PyBroadException
                 try:
                     tp.openWaitForAttachment(1000)
-                except PhidgetException:
-                    self._tp_start = self._tp_stop = self._tp_next = None
-                    self._log.error('2p scanimage was enabled but no phidget device detected')
-
+                except Exception:
+                    self._tp_start = self._tp_stop = self._tp_next = self._tp_led = None
+                    self._log.error('2p scanimage was enabled but not all phidget devices detected', exc_info=True)
+                    break
 
         if self._tp_led is not None:
             for _ in range(6):
@@ -76,11 +77,16 @@ class PhidgetIO(object):
                 tp.close()
 
     def _flash_led(self):
-        if self._tp_led is not None:
-            self._led ^= 1
-            self._tp_led.setDutyCycle(self._led)
+        if self._tp_led is None:
+            return
+
+        self._led ^= 1
+        self._tp_led.setDutyCycle(self._led)
 
     def next_image(self):
+        if self._tp_start is None:
+            return
+
         # pulse both start and next hight
         self._tp_start.setDutyCycle(1)
         if self._stack > 0:
@@ -105,8 +111,6 @@ class PhidgetIO(object):
 
                 if self._tp_enable:
                     self.next_image()
-
-            print(msg)
 
 
 def run_phidget_io(options):
