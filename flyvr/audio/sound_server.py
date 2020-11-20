@@ -383,7 +383,7 @@ def run_sound_server(options):
                                                  paused_fallback=getattr(options, 'paused'),
                                                  # dudi requested to preserve the last default
                                                  default_repeat=Randomizer.REPEAT_FOREVER,
-                                                 attenuator=None)
+                                                 attenuator=None)  # fixme: attenuator from config
     if playlist_stim is not None:
         log.info('initialized audio playlist: %r' % playlist_stim)
 
