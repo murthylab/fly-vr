@@ -842,6 +842,10 @@ class AudioStimPlaylist(SignalProducer):
 
         self.paused = paused
 
+    def __iter__(self):
+        for s in self._stims:
+            yield s
+
     def describe(self):
         return [{s.identifier: s.describe()} for s in self._stims]
 

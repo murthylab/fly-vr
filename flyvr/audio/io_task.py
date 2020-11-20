@@ -21,9 +21,9 @@ from PyDAQmx.DAQmxConstants import (DAQmx_Val_RSE, DAQmx_Val_Volts, DAQmx_Val_Ri
 import numpy as np
 from ctypes import byref, c_ulong
 
-from flyvr.audio.attenuation import Attenuator
-from flyvr.audio.signal_producer import chunker, MixedSignal
-from flyvr.audio.stimuli import AudioStim, SinStim, AudioStimPlaylist
+from flyvr.audio.signal_producer import chunker
+from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist
+from flyvr.audio.util import get_paylist_object
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
 from flyvr.common.build_arg_parser import setup_logging
@@ -43,7 +43,7 @@ class IOTask(daq.Task):
     output channel names.
     """
 
-    def __init__(self, dev_name="Dev1", cha_name=["ai0"], cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
+    def __init__(self, dev_name="Dev1", cha_name=("ai0",), cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
                  num_samples_per_chan=DAQ_SAMPLE_RATE, num_samples_per_event=None, digital=False, has_callback=True,
                  shared_state=None, done_callback=None, use_RSE=True):
         # check inputs
@@ -80,7 +80,7 @@ class IOTask(daq.Task):
 
         self.limits = limits
         self.cha_type = cha_type
-        self.cha_name = [dev_name + '/' + ch for ch in cha_name]  # append device name
+        self.cha_name = ['%s/%s' % (dev_name, ch) for ch in cha_name]  # append device name
         self.cha_string = ", ".join(self.cha_name)
         self.num_samples_per_chan = num_samples_per_chan
         self.num_samples_per_event = num_samples_per_event  # self.num_samples_per_chan*self.num_channels
@@ -174,14 +174,9 @@ class IOTask(daq.Task):
             self.SetWriteRegenMode(DAQmx_Val_AllowRegen)
             self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
 
-        # if self.cha_type == "output":
-        #     tranCond = daq.int32()
-        #     self.GetAODataXferReqCond(self.cha_name[0], daq.byref(tranCond))
-        #     print("Channel Type:" + self.cha_type + ", Transfer Cond: " + str(tranCond))
-
     def stop(self):
         if self.data_gen is not None:
-            self._data = self.data_gen.close()  # close data generator
+            self._data = self.data_gen.close()
 
         if self.data_recorders is not None:
             for data_rec in self.data_recorders:
@@ -280,6 +275,7 @@ class IOTask(daq.Task):
 
         return 0  # The function should return an integer
 
+    # noinspection PyUnusedLocal
     def DoneCallback(self, status):
 
         if self.done_callback is not None:
@@ -300,10 +296,11 @@ def setup_playback_callbacks(stim, logger, state):
     :return: None
     """
 
-    def make_log_stim_playback(logger, state):
+    # noinspection PyUnusedLocal
+    def make_log_stim_playback(_logger, _state):
         def callback(event_message):
-            logger.log("/output/history",
-                       np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]))
+            _logger.log("/output/history",
+                        np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]))
 
         return callback
 
@@ -330,44 +327,29 @@ def io_task_loop(message_pipe, state, options):
     log.info('starting DAQ process')
 
     start_immediately = getattr(options, 'start_immediately', False)
-    stim_playlist = options.playlist.get('daq')
 
     analog_in_channels = tuple(sorted(options.analog_in_channels))
     analog_out_channels = tuple(sorted(options.analog_out_channels))
+
+    if len(analog_out_channels) > 1:
+        raise NotImplementedError('only a single DAQ output channel is supported')
+
+    daq_stim, _ = get_paylist_object(options, playlist_type='daq',
+                                     paused_fallback=False,
+                                     default_repeat=1,  # repeat=1 is more sensible for DAQ?
+                                     attenuator=None)
+
+    if daq_stim is not None:
+        if daq_stim.num_channels != 1:
+            raise NotImplementedError('only a single DAQ output channel is supported '
+                                      '(yet the playlist has 2 channels of data)')
+
+    is_analog_out = (daq_stim is not None) and len(analog_out_channels) == 1
 
     try:
 
         taskAO = None
         taskAI = None
-
-        # Check to make sure we are doing analog output
-        if stim_playlist is None or (not analog_out_channels):
-            is_analog_out = False
-        else:
-            is_analog_out = True
-
-        if is_analog_out:
-
-            # If the user passed in an attenuation file function, apply it to the playlist
-            attenuator = None
-            if options.attenuation_file is not None:
-                attenuator = Attenuator.load_from_file(options.attenuation_file)
-            else:
-                log.warning("no attenuation file specified")
-
-            # Read the playlist file and create and audio stimulus playlist object. We will pass a control
-            # function to these underlying stimuli that is triggered anytime they generate data. The control sends a
-            # log signal to the master logging process.
-            # fixme: this is broken
-            raise NotImplementedError('shuffle on DAQ')
-            # audio_stim = AudioStimPlaylist.fromitems(items=stim_playlist,
-            #                                          shuffle_playback=options.shuffle, attenuator=attenuator)
-
-            # Make a sanity check, ensure that the number of channels for this audio stimulus matches the
-            # number of output channels specified in configuration file.
-            if audio_stim.num_channels != len(analog_out_channels):
-                raise ValueError(
-                    "Number of analog output channels specified in config does not equal number specified in playlist!")
 
         # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
         while state.is_running_well():
@@ -400,11 +382,11 @@ def io_task_loop(message_pipe, state, options):
             # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
             # and when.
             if is_analog_out:
-                setup_playback_callbacks(audio_stim, state.logger, state)
+                setup_playback_callbacks(daq_stim, state.logger, state)
 
             if taskAO is not None:
                 # Setup the stimulus playlist as the data generator
-                taskAO.set_data_generator(audio_stim.data_generator())
+                taskAO.set_data_generator(daq_stim.data_generator())
 
                 # Connect AO start to AI start
                 taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
@@ -429,6 +411,7 @@ def io_task_loop(message_pipe, state, options):
             # Arm the digital output task
             # It won't start until the start trigger signal arrives from the AI task
             if taskDO is not None:
+                # noinspection PyUnresolvedReferences
                 taskDO.StartTask()
 
             # Start the AI task
@@ -440,16 +423,17 @@ def io_task_loop(message_pipe, state, options):
 
             while state.is_running_well():
                 if message_pipe.poll(0.1):
+                    # noinspection PyBroadException
                     try:
                         msg = message_pipe.recv()
 
                         # If we have received a stimulus object, feed this object to output task for playback
                         if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                            audio_stim = msg
+                            daq_stim = msg
 
-                            # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
-                            # and when.
-                            setup_playback_callbacks(audio_stim, state.logger, state)
+                            # Setup callbacks that will generate log messages to the logging process.
+                            # these will signal what is playing and when.
+                            setup_playback_callbacks(daq_stim, state.logger, state)
 
                             if taskAO is not None:
                                 # Setup the stimulus playlist as the data generator
@@ -457,7 +441,7 @@ def io_task_loop(message_pipe, state, options):
 
                         if isinstance(msg, str) and msg == "STOP":
                             break
-                    except:
+                    except Exception:
                         pass
 
             # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
@@ -470,8 +454,11 @@ def io_task_loop(message_pipe, state, options):
 
             # If we were doing digital output, end that too.
             if taskDO is not None:
+                # noinspection PyUnresolvedReferences
                 taskDO.StopTask()
+                # noinspection PyUnresolvedReferences
                 taskDO.stop()
+                # noinspection PyUnresolvedReferences
                 taskDO.ClearTask()
 
         if taskAO is not None:
@@ -514,6 +501,7 @@ def run_io(options):
     setup_logging(options)
 
     class _MockPipe:
+        # noinspection PyUnusedLocal,PyMethodMayBeStatic
         def poll(self, *args):
             return False
 

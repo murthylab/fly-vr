@@ -1,0 +1,37 @@
+playlist:
+  daq:
+  - Delay:
+      attenuator: null
+      amplitude: 0.0
+      duration: 4000
+      name: constant
+      post_silence: 26000
+      pre_silence: 30000
+      sample_rate: 10000
+  - Opto1090-9-1:
+      amplitude_a: 9.0
+      duration_a: 10000
+      amplitude_b: 0.0
+      duration_b: 90000
+      name: pulse
+      post_silence: 5000
+      pre_silence: 5000
+      sample_rate: 10000
+  - Opto1090-8-1:
+      amplitude_a: 8.0
+      duration_a: 10000
+      amplitude_b: 0.0
+      duration_b: 90000
+      name: pulse
+      post_silence: 5000
+      pre_silence: 5000
+      sample_rate: 10000
+  - Opto1090-7-1:
+      amplitude_a: 7.0
+      duration_a: 10000
+      amplitude_b: 0.0
+      duration_b: 90000
+      name: pulse
+      post_silence: 5000
+      pre_silence: 5000
+      sample_rate: 10000

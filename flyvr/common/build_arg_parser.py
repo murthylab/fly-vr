@@ -139,6 +139,9 @@ def parse_options(options, parser):
     options.analog_in_channels = dict(_all_conf.get('configuration', {}).get('analog_in_channels') or {})
     options.analog_out_channels = dict(_all_conf.get('configuration', {}).get('analog_out_channels') or {})
 
+    if len(options.analog_out_channels) > 1:
+        raise NotImplementedError('only a single DAQ output channel is supported')
+
     try:
         _playlist = _all_conf['playlist']
     except KeyError:
