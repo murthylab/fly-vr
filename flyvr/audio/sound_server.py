@@ -441,7 +441,7 @@ def main_sound_server():
         src = options.convert_playlist
         if os.path.isfile(src):
             pl = AudioStimPlaylist.from_legacy_filename(src)
-            dest = options.convert_playlist + '.yaml'
+            dest = options.convert_playlist + '.yml'
             with open(dest, 'wt') as f:
                 yaml.dump({'playlist': {'audio': pl.describe()}}, f)
 
