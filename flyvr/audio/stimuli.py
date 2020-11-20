@@ -491,6 +491,29 @@ class SquareWaveStim(AudioStim):
         return data
 
 
+class ConstantStim(AudioStim):
+    """A constant value signal, however supporting also pre_ and post_silence and attenuator """
+
+    NAME = 'constant'
+
+    def __init__(self, sample_rate, duration, intensity=1.0, pre_silence=0, post_silence=0, attenuator=None,
+                 next_event_callbacks=None, identifier=None):
+        super(ConstantStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
+                                           pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
+                                           frequency=None, next_event_callbacks=next_event_callbacks,
+                                           identifier=identifier)
+        self.data = self._generate_data()
+        self.dtype = self.data.dtype
+
+    def _generate_data(self):
+        return np.full((int(self.duration / 1000. * self.sample_rate),), self.intensity)
+
+    def describe(self):
+        desc = super(ConstantStim, self).describe()
+        desc.pop('frequency')
+        return desc
+
+
 class MATFileStim(AudioStim):
     """A class to encapsulate stimulus data that has been pre-generated and stored as MATLAB MAT files. The lab has a
     significant number of pre-generated audio stimulus patterns stored as MAT files. This class allows
@@ -674,10 +697,14 @@ def stimulus_factory(**conf):
                                attenuator=conf.get('attenuator'),
                                identifier=conf.get('identifier'))
 
-        elif name == 'optooff':
-            return ConstantSignal(0.0)
-        elif name == "optoon":
-            return ConstantSignal(5.0)
+        elif name == 'constant':
+            return ConstantStim(sample_rate=conf.get('sample_rate', 44100),
+                                intensity=conf['intensity'],
+                                duration=conf['duration'],
+                                pre_silence=conf.get('pre_silence', 0),
+                                post_silence=conf.get('post_silence', 0),
+                                attenuator=conf.get('attenuator'),
+                                identifier=conf.get('identifier'))
         elif name == "square":
             return SquareWaveStim(frequency=conf['frequency'],
                                   amplitude=conf['amplitude'],
