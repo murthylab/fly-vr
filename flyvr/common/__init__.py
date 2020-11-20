@@ -178,6 +178,8 @@ class Randomizer(object):
 
     IN_PLAYLIST_IDENTIFIER = '_options'
 
+    REPEAT_FOREVER = sys.maxsize
+
     def __init__(self, *items, mode=MODE_NONE, repeat=1, random_seed=None):
         self._r = np.random.RandomState(seed=random_seed)
         self._mode = mode
@@ -216,9 +218,11 @@ class Randomizer(object):
 
     def __repr__(self):
         import textwrap
-        return "<Randomizer([%s],mode=%s,repeat=%s>" % (
-            textwrap.shorten(', '.join(str(i) for i in self._items),
-                             width=25), self._mode, self._repeat)
+
+        return "<Randomizer([%s],mode=%s,repeat=%s>" % (textwrap.shorten(', '.join(str(i) for i in self._items),
+                                                                         width=25),
+                                                        self._mode,
+                                                        'forever' if self.repeat_forever else self._repeat)
 
     def _random_walk(self):
         for _ in self._items:
@@ -250,6 +254,10 @@ class Randomizer(object):
             for _ in range(self._repeat):
                 for i in self._items:
                     yield i
+
+    @property
+    def repeat_forever(self):
+        return self._repeat == Randomizer.REPEAT_FOREVER
 
     def iter_items(self):
         return self._repeating_iter()
