@@ -15,17 +15,14 @@ Murthy Lab @ the Princeton Neuroscience Institute.
 # Usage
 ```
 usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
-             [-e EXPERIMENT_FILE] [--analog_in_channels ANALOG_IN_CHANNELS]
-             [--digital_in_channels DIGITAL_IN_CHANNELS]
-             [--analog_out_channels ANALOG_OUT_CHANNELS]
-             [--screen_calibration SCREEN_CALIBRATION]
-             [--use_RSE]
-             [--remote_2P_enable]
+             [-e EXPERIMENT_FILE] [--screen_calibration SCREEN_CALIBRATION]
+             [--use_RSE] [--remote_2P_disable]
              [--remote_start_2P_channel REMOTE_START_2P_CHANNEL]
              [--remote_stop_2P_channel REMOTE_STOP_2P_CHANNEL]
              [--remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL]
-             [-l RECORD_FILE] [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT]
-             [--pgr_cam_disable] [--start_delay START_DELAY]
+             [--keepalive_video] [--keepalive_audio] [-l RECORD_FILE]
+             [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT] [--pgr_cam_disable]
+             [--start_delay START_DELAY] [--projector_disable]
 
 Args that start with '--' (eg. --attenuation_file) can also be set in a config
 file (specified via -c). The config file uses YAML syntax and must represent a
@@ -43,20 +40,9 @@ optional arguments:
   -e EXPERIMENT_FILE, --experiment_file EXPERIMENT_FILE
                         A file defining the experiment (can be a python file
                         or a .yaml)
-  --analog_in_channels ANALOG_IN_CHANNELS
-                        A comma separated list of numbers specifying the input
-                        channels record.Default channel is 0.
-  --digital_in_channels DIGITAL_IN_CHANNELS
-                        A comma separated list of channels specifying the
-                        digital input channels record.Default is None.
-  --analog_out_channels ANALOG_OUT_CHANNELS
-                        A comma separated list of numbers specifying the
-                        output channels.Default none for no output
   --screen_calibration SCREEN_CALIBRATION
                         Where to find the (pre-computed) screen calibration
                         file
-  --visual_stimulus VISUAL_STIMULUS
-                        A pre-defined visual stimulus
   --use_RSE             Use RSE (as opposed to differential) denoising on AI
                         DAQ inputs
   --remote_2P_disable   Disable remote start, stop, and next file signaling
@@ -64,13 +50,21 @@ optional arguments:
                         signalling is disabled with a warning).
   --remote_start_2P_channel REMOTE_START_2P_CHANNEL
                         The digital channel to send remote start signal for
-                        2-photon imaging. Default = port0/line0
+                        2-photon imaging.
   --remote_stop_2P_channel REMOTE_STOP_2P_CHANNEL
                         The digital channel to send remote stop signal for
-                        2-photon imaging. Default = port0/line1.
+                        2-photon imaging.
   --remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL
                         The digital channel to send remote next file signal
-                        for 2-photon imaging. Default = port0/line2.
+                        for 2-photon imaging.
+  --keepalive_video     keep the video process running even if they initially
+                        provided playlist contains no video items (such as if
+                        you want to later play dynamic video items not
+                        declared in the playlist)
+  --keepalive_audio     keep the audio process running even if they initially
+                        provided playlist contains no audio items (such as if
+                        you want to later play dynamic audio items not
+                        declared in the playlist)
   -l RECORD_FILE, --record_file RECORD_FILE
                         File that stores output recorded on requested input
                         channels. Default is file is Ymd_HM_daq.h5 where
@@ -84,11 +78,26 @@ optional arguments:
                         Delay the start of playback and acquisition from
                         FicTrac tracking by this many seconds. The default is
                         0 seconds.
+  --projector_disable   Do not setup projector in video backend
 ```
 
 TLDR;
 
-* `flyvr`
+If you are developing a stimulus playlist (video example, substitute for audio as appropriate)
+
+ * copy an example playlist e.g. copy 'playlists/video1.yml' to 'myvideo.yml'
+ * exit, test and experiment on the playlist using the single launcher `flyvr-video.exe --config myvideo.yml`
+ 
+ 
+When you have finished the playlist and experiment development and wish to run on a rig
+
+* create a rig-specific config file (see templates in configs/) with the electrical connections
+  `analog_in_channels`, `remote_start_2P_channel`, etc
+* copy the rig-specific config template into a new config file for your experiment, 
+  e.g. 'my_upstairs_video_experiment.yml', on this rig
+* copy the contents of your tested 'myvideo.yml' playlists into 'my_upstairs_video_experiment.yml' 
+* `flyvr --config my_upstairs_audio_experiment.yml` 
+
 
 ## Usage of Individual Utilities
 
