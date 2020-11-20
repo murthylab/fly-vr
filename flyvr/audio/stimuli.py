@@ -511,6 +511,40 @@ class ConstantStim(AudioStim):
         return desc
 
 
+class PulseStim(AudioStim):
+
+    NAME = 'pulse'
+
+    def __init__(self, sample_rate, duration_a, amplitude_a, duration_b, amplitude_b,
+                 pre_silence=0, post_silence=0, attenuator=None,
+                 next_event_callbacks=None, identifier=None):
+        super(PulseStim, self).__init__(sample_rate=sample_rate, duration=duration_a + duration_b, intensity=1.0,
+                                        pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
+                                        frequency=None, next_event_callbacks=next_event_callbacks,
+                                        identifier=identifier)
+
+        self._amplitudes = amplitude_a, amplitude_b
+        self._durations = duration_a, duration_b
+
+        self.data = self._generate_data()
+        self.dtype = self.data.dtype
+
+    def _generate_data(self):
+        return np.concatenate([
+            np.full((int(self._durations[0] / 1000. * self.sample_rate),), self._amplitudes[0]),
+            np.full((int(self._durations[1] / 1000. * self.sample_rate),), self._amplitudes[1])])
+
+    def describe(self):
+        desc = super(PulseStim, self).describe()
+        desc.pop('intensity')
+        desc.pop('frequency')
+        desc['amplitude_a'] = self._amplitudes[0]
+        desc['amplitude_b'] = self._amplitudes[0]
+        desc['duration_a'] = self._durations[0]
+        desc['duration_b'] = self._durations[0]
+        return desc
+
+
 class MATFileStim(AudioStim):
     """A class to encapsulate stimulus data that has been pre-generated and stored as MATLAB MAT files. The lab has a
     significant number of pre-generated audio stimulus patterns stored as MAT files. This class allows
@@ -712,6 +746,16 @@ def stimulus_factory(**conf):
                                   post_silence=conf.get('post_silence', 0),
                                   attenuator=conf.get('attenuator'),
                                   identifier=conf.get('identifier'))
+        elif name == "pulse":
+            return PulseStim(amplitude_a=conf['amplitude_a'],
+                             amplitude_b=conf['amplitude_b'],
+                             duration_a=conf['duration_a'],
+                             duration_b=conf['duration_b'],
+                             sample_rate=conf.get('sample_rate', 44100),
+                             pre_silence=conf.get('pre_silence', 0),
+                             post_silence=conf.get('post_silence', 0),
+                             attenuator=conf.get('attenuator'),
+                             identifier=conf.get('identifier'))
 
         return NotImplementedError
 

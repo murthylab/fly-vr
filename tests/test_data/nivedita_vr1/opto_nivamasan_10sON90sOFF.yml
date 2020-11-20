@@ -1,4 +1,4 @@
-# manually converted
+# manually converted (partly) as a test
 playlist:
   audio:
   - Delay:
@@ -10,35 +10,29 @@ playlist:
       pre_silence: 30000
       sample_rate: 10000
   - Opto1090-9-1:
-      attenuator: null
-      filename: 190712_opto_10son_90soff
-      frequency: -1.0
-      intensity: 9.0
-      max_value: 10.0
-      min_value: -10.0
-      name: matfile
+      amplitude_a: 9.0
+      duration_a: 10000
+      amplitude_b: 0.0
+      duration_b: 90000
+      name: pulse
       post_silence: 5000
       pre_silence: 5000
       sample_rate: 10000
   - Opto1090-8-1:
-      attenuator: null
-      filename: 190712_opto_10son_90soff
-      frequency: -1.0
-      intensity: 8.0
-      max_value: 10.0
-      min_value: -10.0
-      name: matfile
+      amplitude_a: 8.0
+      duration_a: 10000
+      amplitude_b: 0.0
+      duration_b: 90000
+      name: pulse
       post_silence: 5000
       pre_silence: 5000
       sample_rate: 10000
   - Opto1090-7-1:
-      attenuator: null
-      filename: 190712_opto_10son_90soff
-      frequency: -1.0
-      intensity: 7.0
-      max_value: 10.0
-      min_value: -10.0
-      name: matfile
+      amplitude_a: 7.0
+      duration_a: 10000
+      amplitude_b: 0.0
+      duration_b: 90000
+      name: pulse
       post_silence: 5000
       pre_silence: 5000
       sample_rate: 10000

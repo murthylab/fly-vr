@@ -1,0 +1,11 @@
+# flyvr-audio.exe --plot --config tests\test_data\stimuli_library.yml
+playlist:
+  audio:
+    - _options: {repeat: 1}
+    - sin10hz: {name: 'sin', frequency: 10, amplitude: 2.0, duration: 100, pre_silence: 10, post_silence: 10}
+    - constant1: {name: 'constant', amplitude: 1.0, duration: 100, pre_silence: 10, post_silence: 10}
+    - sin20hz: {name: 'sin', frequency: 20, amplitude: 2.0, duration: 100, pre_silence: 10, post_silence: 10}
+    - constant2: {name: 'constant', amplitude: 2.0, duration: 100, pre_silence: 10, post_silence: 10}
+    - square40hz: {name: 'square', frequency: 40, amplitude: 1.0, duty_cycle: 0.2, duration: 100, pre_silence: 10, post_silence: 10}
+    - sin200hz: {name: 'sin', frequency: 200, amplitude: 2.0, duration: 100, pre_silence: 10, post_silence: 10}
+    - pulse: {name: 'pulse', amplitude_a: 1.2, duration_a: 10, amplitude_b: 0.2, duration_b: 90, pre_silence: 10, post_silence: 10}

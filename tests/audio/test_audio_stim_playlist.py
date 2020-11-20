@@ -189,3 +189,18 @@ def test_opto_convert_manual():
     pl3 = _from_yaml('tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt.yml')
     arr3 = pl3._to_array(fix_repeat_forver=False)
     np.testing.assert_equal(arr2, arr3)
+
+
+def test_all_stim_library():
+    with open('tests/test_data/stimuli_library.yml') as f:
+        conf = yaml.load(f)
+
+    pl = AudioStimPlaylist.from_playlist_definition(conf['playlist']['audio'],
+                                                    basedirs=[],
+                                                    paused_fallback=False,
+                                                    default_repeat=1)
+    arr = pl._to_array(fix_repeat_forver=False)
+    assert arr.shape == (37044,)
+    np.testing.assert_almost_equal(arr.max(), 4.0)
+    np.testing.assert_almost_equal(arr.min(), -1.999999873071382)
+    np.testing.assert_almost_equal(arr.mean(), 0.5595777993737178)
