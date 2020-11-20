@@ -198,7 +198,7 @@ For autoconfiguration to work, the Lightcrafter software must be 'Disconnected' 
 projector (or closed). 
 
 If you wish to show the visual stimulus on the desktop monitor (skipping the potential delay trying
-to configure a non-connected lightcrafter, you can pass `--disable_projector`.
+to configure a non-connected lightcrafter, you can pass `--projector_disable`.
 
 # Updating FlyVR
 
@@ -240,7 +240,7 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
       playlist is actually for the DAQ opto outputs
 * flyvr-video
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
-  (pass `--disable_projector` if you dont have a projector connected)
+  (pass `--projector_disable` if you dont have a projector connected)
 * flyvr-daq
   process which drives the NI DAQ for the purposes of
   * outputing the opto stimulus
