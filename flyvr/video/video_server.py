@@ -9,7 +9,8 @@ import pkg_resources
 import h5py
 import numpy as np
 
-from flyvr.common import Dottable, Randomizer, BACKEND_VIDEO
+from flyvr.common import Randomizer, BACKEND_VIDEO
+from flyvr.common.dottable import Dottable
 from flyvr.common.build_arg_parser import setup_logging
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
 from flyvr.common.ipc import PlaylistReciever, Sender, CommonMessages, RELAY_HOST, RELAY_SEND_PORT
@@ -235,7 +236,6 @@ class NoStim(VideoStim):
         pass
 
 
-# noinspection PyUnresolvedReferences
 class GratingStim(VideoStim):
     NAME = 'grating'
     NUM_VIDEO_FIELDS = 7
@@ -308,7 +308,7 @@ class SweepingSpotStim(VideoStim):
     def initialize(self, win, fps):
         super().initialize(win, fps)
         self.screen = visual.Circle(win=win,
-                                    radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos),0],
+                                    radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos), 0],
                                     lineColor=None, fillColor=self.p.fg_color)
 
     @property
@@ -352,6 +352,7 @@ class AdamStim(VideoStim):
                                     lineColor=None, fillColor=self.p.fg_color)
 
     def update(self, win, logger, frame_num):
+        # noinspection DuplicatedCode
         win.color = self.p.bg_color
 
         xoffset, yoffset = self.p.offset
@@ -382,7 +383,7 @@ class AdamStimGrating(VideoStim):
             self._tdis = f['tDis'][:, 0]
             self._tang = f['tAng'][:, 0]
 
-        self.screen = None
+        self.screen = self.screen2 = None
 
     def initialize(self, win, fps):
         super().initialize(win, fps)
@@ -394,6 +395,7 @@ class AdamStimGrating(VideoStim):
                                           phase=0)
 
     def update(self, win, logger, frame_num):
+        # noinspection DuplicatedCode
         win.color = self.p.bg_color
 
         xoffset, yoffset = self.p.offset
@@ -667,6 +669,7 @@ class MayaModel(VideoStim):
         self.screen = self._imgs[0]
 
     def update(self, win, logger, frame_num):
+        # noinspection DuplicatedCode
         win.color = self.p.bg_color
 
         xoffset, yoffset = self.p.offset
@@ -750,6 +753,7 @@ class OptModel(VideoStim):
         self.screen = self._imgs[0]
 
     def update(self, win, logger, frame_num):
+        # noinspection DuplicatedCode
         win.color = self.p.bg_color
 
         xoffset, yoffset = self.p.offset
@@ -871,7 +875,7 @@ class VideoServer(object):
 
     def run(self):
         """
-        The main process function for the video server. Handles actually setting up the videodevice object\stream.
+        The main process function for the video server. Handles actually setting up the videodevice object / stream.
         Waits to receive objects to play on the stream, sent from other processes using a Queue or Pipe.
 
         :return: None
@@ -976,6 +980,7 @@ def _ipc_main(q):
             except Exception:
                 log.error('could not parse playlist item', exc_info=True)
 
+    # noinspection PyUnreachableCode
     log.debug('exiting')
 
 
