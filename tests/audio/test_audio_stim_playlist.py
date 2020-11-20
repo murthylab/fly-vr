@@ -1,6 +1,6 @@
 import pytest
-import math
-from unittest import mock
+import yaml
+
 import numpy as np
 
 from flyvr.common import Randomizer
@@ -163,3 +163,29 @@ def test_legacy_opto_convert():
     pl = AudioStimPlaylist.from_legacy_filename('tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt')
     arr = pl._to_array()
     assert arr.shape == (17100000, )
+
+
+def test_opto_convert_manual():
+    pl1 = AudioStimPlaylist.from_legacy_filename('tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt')
+    arr1 = pl1._to_array()
+    assert arr1.shape == (17100000, )
+
+    def _from_yaml(_path):
+        with open(_path) as f:
+            conf = yaml.load(f)
+
+        return AudioStimPlaylist.from_playlist_definition(conf['playlist']['audio'],
+                                                          basedirs=['tests/test_data/nivedita_vr1/'],
+                                                          paused_fallback=False,
+                                                          default_repeat=1)
+
+    # manual conversion
+    pl2 = _from_yaml('tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.yml')
+    arr2 = pl2._to_array(fix_repeat_forver=False)
+    assert arr2.shape == (17100000, )
+    np.testing.assert_equal(arr1, arr2)
+
+    # auto conversion
+    pl3 = _from_yaml('tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt.yml')
+    arr3 = pl3._to_array(fix_repeat_forver=False)
+    np.testing.assert_equal(arr2, arr3)

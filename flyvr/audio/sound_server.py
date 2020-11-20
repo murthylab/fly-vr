@@ -353,28 +353,14 @@ def _get_paylist_object(options, playlist_type):
 
     playlist_object = None
     if stim_playlist:
-        stims = []
-        stim_ids = []
-        option_item_defn = {}
-
-        for item_def in stim_playlist:
-            id_, defn = item_def.popitem()
-
-            if id_ == Randomizer.IN_PLAYLIST_IDENTIFIER:
-                option_item_defn = {id_: defn}
-                continue
-
-            stims.append({id_: defn})
-            stim_ids.append(id_)
-
-        random = Randomizer.new_from_playlist_option_item(option_item_defn, *stim_ids, repeat=sys.maxsize)
-        paused = option_item_defn.pop('paused', None)
-
-        playlist_object = AudioStimPlaylist.fromitems(items=stims,
-                                                      random=random,
-                                                      # optional because we are also called from flyvr main launcher
-                                                      paused=paused if paused is not None else getattr(options, 'paused'),
-                                                      basedirs=basedirs)
+        playlist_object = AudioStimPlaylist.from_playlist_definition(stim_playlist,
+                                                                     basedirs=basedirs,
+                                                                     # optional because we are also called
+                                                                     # from flyvr main launcher
+                                                                     paused_fallback=getattr(options, 'paused'),
+                                                                     # dudi requested to preserve the last default
+                                                                     default_repeat=Randomizer.REPEAT_FOREVER,
+                                                                     attenuator=None)
 
     return playlist_object, basedirs
 

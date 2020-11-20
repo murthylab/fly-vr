@@ -233,6 +233,11 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
       'tests/test_data/nivedita_vr1/opto_nivamasan_10sON90sOFF.txt'
     * if the playlist was a complicated mixed audio/opto playlists then per the conversion requirement above,
       you will convert the input to two old v1 playlists, and call `--convert-playlist` twice
+    * if your playlist included matlab stimuli then you should change the paths to the matlab mat files
+      in the converted playlist. by default, if a relative path or only a filename is given, the path is
+      relative to the playlist/config file
+    * all converted playlists will be placed into an 'audio' playlist - this should be adapted to daq if the
+      playlist is actually for the DAQ opto outputs
 * flyvr-video
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
 * flyvr-daq

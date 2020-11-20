@@ -820,6 +820,31 @@ class AudioStimPlaylist(SignalProducer):
                                           basedirs=basedirs or []))
         return cls(stims, random=random, paused=paused)
 
+    @classmethod
+    def from_playlist_definition(cls, stim_playlist, basedirs, paused_fallback, default_repeat, attenuator=None):
+        stims = []
+        stim_ids = []
+        option_item_defn = {}
+
+        for item_def in stim_playlist:
+            id_, defn = item_def.popitem()
+
+            if id_ == Randomizer.IN_PLAYLIST_IDENTIFIER:
+                option_item_defn = {id_: defn}
+                continue
+
+            stims.append({id_: defn})
+            stim_ids.append(id_)
+
+        random = Randomizer.new_from_playlist_option_item(option_item_defn, *stim_ids, repeat=default_repeat)
+        paused = option_item_defn.pop('paused', None)
+
+        return cls.fromitems(items=stims,
+                             random=random,
+                             paused=paused if paused is not None else paused_fallback,
+                             basedirs=basedirs,
+                             attenuator=attenuator)
+
     def play_item(self, identifier):
         # it's actually debatable if it's best do it this way or explicitly reset a global+sticky next_id
         for stim in self._stims:
