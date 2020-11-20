@@ -334,6 +334,9 @@ def io_task_loop(message_pipe, state, options):
     if len(analog_out_channels) > 1:
         raise NotImplementedError('only a single DAQ output channel is supported')
 
+    if len(analog_in_channels) < 1:
+        raise NotImplementedError('at least 1 DAQ analog channel must be read')
+
     daq_stim, _ = get_paylist_object(options, playlist_type='daq',
                                      paused_fallback=False,
                                      default_repeat=1,  # repeat=1 is more sensible for DAQ?
