@@ -1,0 +1,62 @@
+playlist:
+  audio:
+  - _options: {repeat: 2}
+  - PulseTrain_1sec_Intensity1:
+      attenuator: null
+      filename: pulseTrain_16PDUR_20PPAU_1sec_250PCAR_SC
+      frequency: 250.0
+      intensity: 1.0
+      max_value: 10.0
+      min_value: -10.0
+      name: matfile
+      post_silence: 1000
+      pre_silence: 8000
+      sample_rate: 44100
+
+  - PulseTrain_1sec_Intensity2:
+      attenuator: null
+      filename: pulseTrain_16PDUR_20PPAU_1sec_250PCAR_SC
+      frequency: 250.0
+      intensity: 2.0
+      max_value: 10.0
+      min_value: -10.0
+      name: matfile
+      post_silence: 1000
+      pre_silence: 8000
+      sample_rate: 44100
+
+  - PulseTrain_1sec_Intensity3:
+      attenuator: null
+      filename: pulseTrain_16PDUR_20PPAU_1sec_250PCAR_SC
+      frequency: 250.0
+      intensity: 3.0
+      max_value: 10.0
+      min_value: -10.0
+      name: matfile
+      post_silence: 1000
+      pre_silence: 8000
+      sample_rate: 44100
+
+  - PulseTrain_1sec_Intensity4:
+      attenuator: null
+      filename: pulseTrain_16PDUR_20PPAU_1sec_250PCAR_SC
+      frequency: 250.0
+      intensity: 4.0
+      max_value: 10.0
+      min_value: -10.0
+      name: matfile
+      post_silence: 1000
+      pre_silence: 8000
+      sample_rate: 44100
+
+  - PulseTrain_1sec_Intensity5:
+      attenuator: null
+      filename: pulseTrain_16PDUR_20PPAU_1sec_250PCAR_SC
+      frequency: 250.0
+      intensity: 5.0
+      max_value: 10.0
+      min_value: -10.0
+      name: matfile
+      post_silence: 1000
+      pre_silence: 8000
+      sample_rate: 44100
