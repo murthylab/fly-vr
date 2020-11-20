@@ -185,6 +185,10 @@ class Randomizer(object):
         self._mode = mode
         self._items = items
 
+        self.__original_items = tuple(items)
+        self.__original_random_seed = random_seed
+        self.__original_repeat = repeat
+
         if mode == Randomizer.MODE_NONE:
             self._items = items
         elif mode == Randomizer.MODE_SHUFFLE:
@@ -258,6 +262,16 @@ class Randomizer(object):
     @property
     def repeat_forever(self):
         return self._repeat == Randomizer.REPEAT_FOREVER
+
+    def _copy_thyself(self, mode=None, repeat=None, random_seed=-1):
+        # anytime you use this it could be dangerous because this class is predominately used inside
+        # AudioStimPlaylist which has generators that are initialised and hold state outside of their
+        # iteration, so swapping out their internal randomizer might have consequences. this function
+        # is only basically to plot the 1D signal from audio/daq playlists
+        return Randomizer(*self.__original_items,
+                          mode=mode if mode is not None else self._mode,
+                          repeat=repeat if repeat is not None else self.__original_repeat,
+                          random_seed=random_seed if random_seed != -1 else self.__original_random_seed)
 
     def iter_items(self):
         return self._repeating_iter()

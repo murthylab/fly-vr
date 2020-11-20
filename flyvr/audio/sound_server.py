@@ -445,7 +445,8 @@ def main_sound_server():
             return parser.error('Config file contains no playlist')
         pl, _ = _get_paylist_object(options, 'audio')
 
-        plt.plot(pl._to_array())
+        # noinspection PyProtectedMember
+        plt.plot(pl._to_array(fix_repeat_forver=True))
         plt.show()
 
         return parser.exit(0)

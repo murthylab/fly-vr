@@ -834,9 +834,17 @@ class AudioStimPlaylist(SignalProducer):
                     sample_chunk_obj = next(data_gens[next_id])
                     yield sample_chunk_obj
 
-    def _to_array(self):
+    def _to_array(self, fix_repeat_forver=False):
         if self._random.repeat_forever:
-            raise ValueError('playlist repeats forever - so data array is infinite')
+            if fix_repeat_forver:
+                self._log.warning('previous playlist repeated forever - permuting this instance to return data. this'
+                                  'instance should not be used for anything else in this process')
+                before = repr(self._random)
+                # noinspection PyProtectedMember
+                self._random = self._random._copy_thyself(repeat=1)
+                self._log.info('copied randomizer %s -> %r' % (before, self._random))
+            else:
+                raise ValueError('playlist repeats forever - so data array is infinite')
 
         arrs = []
         for chunk in self.data_generator():
