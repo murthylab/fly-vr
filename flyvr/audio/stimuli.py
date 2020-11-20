@@ -768,7 +768,7 @@ class AudioStimPlaylist(SignalProducer):
             random = Randomizer(*[s.identifier for s in stims])
         self._random = random
 
-        self._log.debug('playlist paused: %s order: %r' % (paused, self._random))
+        self._log.info('playlist paused: %s order: %r' % (paused, self._random))
 
         self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
 
