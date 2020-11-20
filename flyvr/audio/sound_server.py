@@ -341,25 +341,17 @@ class SoundServer(threading.Thread):
         return callback
 
 
-def run_sound_server(options):
-    from flyvr.common import SharedState, Randomizer
-    from flyvr.common.logger import DatasetLogServerThreaded
-    from flyvr.audio.stimuli import legacy_factory, stimulus_factory
-    from flyvr.common.ipc import PlaylistReciever
+def _get_paylist_object(options, playlist_type):
+    from flyvr.common import Randomizer
 
-    setup_logging(options)
-
-    pr = PlaylistReciever()
-    log = logging.getLogger('flyvr.main_sound_server')
-
-    playlist_stim = None
-    stim_playlist = options.playlist.get('audio')
+    stim_playlist = options.playlist.get(playlist_type)
 
     basedirs = [os.getcwd()]
     if getattr(options, '_config_file_path'):
         # noinspection PyProtectedMember
         basedirs.insert(0, os.path.dirname(options._config_file_path))
 
+    playlist_object = None
     if stim_playlist:
         stims = []
         stim_ids = []
@@ -378,11 +370,28 @@ def run_sound_server(options):
         random = Randomizer.new_from_playlist_option_item(option_item_defn, *stim_ids, repeat=sys.maxsize)
         paused = option_item_defn.pop('paused', None)
 
-        playlist_stim = AudioStimPlaylist.fromitems(items=stims,
-                                                    random=random,
-                                                    # optional because we are also called from flyvr main launcher
-                                                    paused=paused if not None else getattr(options, 'paused'),
-                                                    basedirs=basedirs)
+        playlist_object = AudioStimPlaylist.fromitems(items=stims,
+                                                      random=random,
+                                                      # optional because we are also called from flyvr main launcher
+                                                      paused=paused if paused is not None else getattr(options, 'paused'),
+                                                      basedirs=basedirs)
+
+    return playlist_object, basedirs
+
+
+def run_sound_server(options):
+    from flyvr.common import SharedState
+    from flyvr.common.logger import DatasetLogServerThreaded
+    from flyvr.audio.stimuli import legacy_factory, stimulus_factory
+    from flyvr.common.ipc import PlaylistReciever
+
+    setup_logging(options)
+
+    pr = PlaylistReciever()
+    log = logging.getLogger('flyvr.main_sound_server')
+
+    playlist_stim, basedirs = _get_paylist_object(options, playlist_type='audio')
+    if playlist_stim is not None:
         log.info('initialized audio playlist: %r' % playlist_stim)
 
     with DatasetLogServerThreaded() as log_server:
@@ -423,8 +432,23 @@ def main_sound_server():
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
     parser.add_argument('--convert-playlist', help='convert a stimulus playlist to new format')
     parser.add_argument('--paused', action='store_true', help='start paused')
+    parser.add_argument('--plot', action='store_true', help='plot the stimulus playlist')
 
     options = parse_options(parser.parse_args(), parser)
+
+    if options.plot:
+        import matplotlib.pyplot as plt
+
+        setup_logging(options)
+
+        if not options.playlist.get('audio'):
+            return parser.error('Config file contains no playlist')
+        pl, _ = _get_paylist_object(options, 'audio')
+
+        plt.plot(pl._to_array())
+        plt.show()
+
+        return parser.exit(0)
 
     if options.convert_playlist:
         src = options.convert_playlist
@@ -434,13 +458,13 @@ def main_sound_server():
             with open(dest, 'wt') as f:
                 yaml.dump({'playlist': {'audio': pl.describe()}}, f)
 
-            parser.exit(0, message='Wrote %s' % dest)
+            return parser.exit(0, message='Wrote %s' % dest)
 
         else:
-            parser.error('Could not find %s' % src)
+            return parser.error('Could not find %s' % src)
 
     if options.print_devices:
         SoundServer.list_supported_asio_output_devices()
-        parser.exit(0)
+        return parser.exit(0)
 
     run_sound_server(options)

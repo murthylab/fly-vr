@@ -221,7 +221,9 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
   main application launcher, launches all other processes internally. usually all that is needed to be run
 * flyvr-audio  
   process which reads the audio playlist and plays audio signals via the soundcard. can also
-  list available sound cards (`flyvr-audio --list-devices`)
+  list available sound cards (`flyvr-audio --list-devices`).
+  * you can also plot the audio playlist using `--plot` which will plot the audio timeseries  
+    `flyvr-audio.exe --plot --config playlists\audio2.yml`
 * flyvr-video
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
 * flyvr-daq

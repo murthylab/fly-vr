@@ -835,11 +835,15 @@ class AudioStimPlaylist(SignalProducer):
                     yield sample_chunk_obj
 
     def _to_array(self):
+        if self._random.repeat_forever:
+            raise ValueError('playlist repeats forever - so data array is infinite')
+
         arrs = []
         for chunk in self.data_generator():
             if chunk is None:
                 break
             arrs.append(chunk.data)
+
         return np.concatenate(arrs)
 
 
