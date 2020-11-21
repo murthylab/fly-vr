@@ -374,8 +374,6 @@ def io_task_loop(message_pipe, state, options):
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
                             shared_state=state, use_RSE=options.use_RSE)
 
-            taskDO = None
-
             disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
                                        taskinitargs=[input_chan_names, taskAI.num_samples_per_chan, 5])
 
@@ -410,12 +408,6 @@ def io_task_loop(message_pipe, state, options):
                 # Arm the AO task
                 # It won't start until the start trigger signal arrives from the AI task
                 taskAO.StartTask()
-
-            # Arm the digital output task
-            # It won't start until the start trigger signal arrives from the AI task
-            if taskDO is not None:
-                # noinspection PyUnresolvedReferences
-                taskDO.StartTask()
 
             # Start the AI task
             # This generates the AI start trigger signal and triggers the AO task
@@ -454,15 +446,6 @@ def io_task_loop(message_pipe, state, options):
 
             taskAI.StopTask()
             taskAI.stop()
-
-            # If we were doing digital output, end that too.
-            if taskDO is not None:
-                # noinspection PyUnresolvedReferences
-                taskDO.StopTask()
-                # noinspection PyUnresolvedReferences
-                taskDO.stop()
-                # noinspection PyUnresolvedReferences
-                taskDO.ClearTask()
 
         if taskAO is not None:
             taskAO.ClearTask()
