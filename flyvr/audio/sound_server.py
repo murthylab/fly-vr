@@ -341,30 +341,6 @@ class SoundServer(threading.Thread):
         return callback
 
 
-def _get_paylist_object(options, playlist_type):
-    from flyvr.common import Randomizer
-
-    stim_playlist = options.playlist.get(playlist_type)
-
-    basedirs = [os.getcwd()]
-    if getattr(options, '_config_file_path'):
-        # noinspection PyProtectedMember
-        basedirs.insert(0, os.path.dirname(options._config_file_path))
-
-    playlist_object = None
-    if stim_playlist:
-        playlist_object = AudioStimPlaylist.from_playlist_definition(stim_playlist,
-                                                                     basedirs=basedirs,
-                                                                     # optional because we are also called
-                                                                     # from flyvr main launcher
-                                                                     paused_fallback=getattr(options, 'paused'),
-                                                                     # dudi requested to preserve the last default
-                                                                     default_repeat=Randomizer.REPEAT_FOREVER,
-                                                                     attenuator=None)
-
-    return playlist_object, basedirs
-
-
 def run_sound_server(options):
     from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
