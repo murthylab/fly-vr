@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 
 from flyvr.common import SharedState, BACKEND_FICTRAC
+from flyvr.common.build_arg_parser import setup_logging
 from flyvr.common.mmtimer import MMTimer
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer
 
@@ -78,14 +79,14 @@ class ReplayFictrac(object):
         t1.start(True)
 
         for idx in range(len(self._ds)):
-            self._send_row(idx)
+            ret = self._send_row(idx)
+
             try:
                 tick.get(timeout=1.)
             except queue.Empty:
                 break
 
-            # fixme:
-            if self._fictrac_signals.close_signal_var == 1:
+            if ret is None:
                 break
 
 
@@ -101,6 +102,8 @@ class FicTracDriverReplay(object):
         def _send_row(self, idx):
             if idx < 0:
                 _ = self._flyvr_shared_state.signal_ready(BACKEND_FICTRAC)
+            if self._flyvr_shared_state.is_stopped():
+                return None
             return super()._send_row(idx)
 
     def __init__(self, config_file, *args, **kwargs):
@@ -109,11 +112,13 @@ class FicTracDriverReplay(object):
         self._h5_path = config_file
 
     def run(self, message_pipe, options):
+        setup_logging(options)
         flyvr_shared_state = SharedState(options=options,
                                          logger=None,
                                          where=BACKEND_FICTRAC)
         replay = FicTracDriverReplay.StateReplayFictrac(flyvr_shared_state, self._h5_path)
         replay.replay()  # blocks
+        replay._log.info('stopped')
 
 
 def main_replay():

@@ -7,6 +7,7 @@ import logging
 import numpy as np
 
 from flyvr.common import SharedState, BACKEND_FICTRAC
+from flyvr.common.build_arg_parser import setup_logging
 from flyvr.common.logger import DatasetLogServer
 from flyvr.common.tools import which
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer, \
@@ -25,7 +26,7 @@ class FicTracDriver(object):
         on the path. If it is not, it will throw an exception.
 
         :param str config_file: The path to the configuration file that should be passed to the FicTrac command.
-        :param str console_output_file: The path to the file where console output should be stored.
+        :param str console_ouput_file: The path to the file where console output should be stored.
         :param bool pgr_enable: Is Point Grey camera support needed. This just decides which executable to call, either
         'FicTrac' or 'FicTrac-PGR'.
         """
@@ -55,6 +56,7 @@ class FicTracDriver(object):
         self.fictrac_process = None
         self.fictrac_signals = None
 
+    # noinspection PyUnusedLocal
     def run(self, message_pipe, options):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
@@ -63,6 +65,7 @@ class FicTracDriver(object):
 
         :return:
         """
+        setup_logging(options)
 
         log_server = DatasetLogServer()
         flyvr_shared_state = SharedState(options=options,

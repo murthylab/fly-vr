@@ -436,6 +436,8 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
                 if flyvr_shared_state.is_stopped():
                     running = False
 
+        log.info('stopped')
+
         if taskAO is not None:
             taskAO.StopTask()
             taskAO.stop()

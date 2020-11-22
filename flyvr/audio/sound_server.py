@@ -281,7 +281,7 @@ class SoundServer(threading.Thread):
                 if self.flyvr_shared_state.is_stopped():
                     self._running = False
 
-        self._log.info('exiting')
+        self._log.info('stopped')
 
     def _make_callback(self):
         """

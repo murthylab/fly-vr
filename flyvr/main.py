@@ -59,7 +59,7 @@ def main_fictrac():
     if trac_drv is None:
         raise parser.error('fictrac configuration error')
 
-    trac_drv.run(options)
+    trac_drv.run(None, options)
 
 
 def main_launcher():
@@ -90,6 +90,7 @@ def main_launcher():
 
         # wait till fictrac is processing frames
         flyvr_shared_state.wait_for_backends(BACKEND_FICTRAC)
+        log.info('fictrac is ready')
 
     # start the other mainloops
 
@@ -127,4 +128,3 @@ def main_launcher():
         input('Press any key to finish')
         flyvr_shared_state.signal_stop().join(timeout=5)
         break
-

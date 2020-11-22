@@ -960,7 +960,7 @@ class VideoServer(object):
             if self.flyvr_shared_state.is_stopped():
                 self._running = False
 
-        self._log.info('exiting')
+        self._log.info('stopped')
 
 
 def _ipc_main(q):
@@ -1048,8 +1048,6 @@ def run_video_server(options):
         ipc.start()
 
         video_server.run()  # blocks
-
-        log.debug('exiting')
 
 
 def main_video_server():
