@@ -284,7 +284,7 @@ class IOTask(daq.Task):
         return 0  # The function should return an integer
 
 
-def setup_playback_callbacks(stim, logger, state):
+def setup_playback_callbacks(stim, logger, flyvr_shared_state):
     """
     This function setups a control function for each stimulus in the playlist to be called when a set of data is
     generated. This control will send a log message to a logging process indicating the amount of samples generated and
@@ -292,7 +292,7 @@ def setup_playback_callbacks(stim, logger, state):
 
     :param stim: The stimulus playlist to setup callbacks on.
     :param logger: The DatasetLogger object to send log signals to.
-    :param state: The shared state variable that contains options to the program.
+    :param flyvr_shared_state: The shared state variable that contains options to the program.
     :return: None
     """
 
@@ -304,8 +304,10 @@ def setup_playback_callbacks(stim, logger, state):
 
         return callback
 
+    stim.initialize(flyvr_shared_state, BACKEND_DAQ)
+
     # Make the control function
-    callbacks = make_log_stim_playback(logger, state)
+    callbacks = make_log_stim_playback(logger, flyvr_shared_state)
 
     # Setup the control.
     if isinstance(stim, AudioStim):

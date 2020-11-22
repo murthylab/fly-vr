@@ -1,8 +1,7 @@
 import re
 import abc
-import os.path
-import time
 import uuid
+import os.path
 import logging
 
 import h5py
@@ -12,8 +11,7 @@ from scipy import io
 from scipy import signal
 
 from flyvr.audio.signal_producer import SignalProducer, SampleChunk, MixedSignal, ConstantSignal
-from flyvr.common import Randomizer, BACKEND_AUDIO
-from flyvr.common.ipc import Sender, CommonMessages, RELAY_HOST, RELAY_SEND_PORT
+from flyvr.common import Randomizer
 
 
 class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
@@ -838,13 +836,15 @@ class AudioStimPlaylist(SignalProducer):
 
         self._log.info('playlist paused: %s order: %r' % (paused, self._random))
 
-        self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
-
         self.paused = paused
 
     def __iter__(self):
         for s in self._stims:
             yield s
+
+    def initialize(self, flyvr_shared_state, backend):
+        super().initialize(flyvr_shared_state, backend)
+        self._log = logging.getLogger('flyvr.audio.AudioStimPlaylist(%s)' % backend)
 
     def describe(self):
         return [{s.identifier: s.describe()} for s in self._stims]
@@ -925,8 +925,8 @@ class AudioStimPlaylist(SignalProducer):
                     yield None
                 else:
                     self._log.info('playing item: %s' % next_id)
-                    self._ipc_relay.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, next_id,
-                                                                   backend=BACKEND_AUDIO))
+                    if self.flyvr_shared_state is not None:
+                        self.flyvr_shared_state.signal_new_playlist_item(next_id, self.backend)
 
                     sample_chunk_obj = next(data_gens[next_id])
                     yield sample_chunk_obj

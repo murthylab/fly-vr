@@ -34,6 +34,8 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
 
         :param dtype: The underlying data type for the numpy array that this class produces. float64 by default.
         """
+        self.flyvr_shared_state = None
+        self.backend = None
 
         # Use the number of instances created to set an ID for this instance
         self.producer_id = SignalProducer.instances_created
@@ -43,6 +45,10 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
 
         # Store dtype for this producer
         self.dtype = dtype
+
+    def initialize(self, flyvr_shared_state, backend):
+        self.flyvr_shared_state = flyvr_shared_state
+        self.backend = backend
 
     @abc.abstractmethod
     def data_generator(self):
