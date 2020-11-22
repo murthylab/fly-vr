@@ -351,8 +351,7 @@ class SoundServer(threading.Thread):
                                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                              self.samples_played,
                                                              producer_id]))
-
-                # self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN.value += frames
+                self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN = self.samples_played
 
             if len(data) < len(outdata):
                 outdata.fill(0)
