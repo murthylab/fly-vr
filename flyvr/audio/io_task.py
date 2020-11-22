@@ -413,6 +413,8 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
             taskAI.StartTask()
 
             while running:
+                # fixme: should replace this with a queue like the other backends and plumb
+                #  in the IPC messages
                 if message_pipe.poll(0.1):
                     # noinspection PyBroadException
                     try:
@@ -420,11 +422,10 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
 
                         # If we have received a stimulus object, feed this object to output task for playback
                         if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                            daq_stim = msg
 
                             # Setup callbacks that will generate log messages to the logging process.
                             # these will signal what is playing and when.
-                            setup_playback_callbacks(daq_stim, flyvr_shared_state.logger, flyvr_shared_state)
+                            setup_playback_callbacks(msg, flyvr_shared_state.logger, flyvr_shared_state)
 
                             if taskAO is not None:
                                 # Setup the stimulus playlist as the data generator
