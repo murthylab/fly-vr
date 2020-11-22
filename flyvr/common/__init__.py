@@ -59,6 +59,8 @@ class SharedState(object):
         self._t_rx = threading.Thread(target=self._ipc_rx, daemon=True)
         self._t_rx.start()
 
+        self._tx = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
+
     def _ipc_rx(self):
         while True:
             msg = self._rx.get_next_element()
@@ -114,6 +116,15 @@ class SharedState(object):
                 self._log.debug('signaling %r' % (msg, ))
 
         sender.close()
+
+    def signal_new_playlist_item(self, identifier, backend, **extra):
+        msg = {'backend': backend,
+               'sound_output_num_samples_written': self._shmem_state.sound_output_num_samples_written,
+               'video_output_num_frames': self._shmem_state.video_output_num_frames,
+               'daq_output_num_samples_written': self._shmem_state.daq_output_num_samples_written,
+               'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt}
+        msg.update(extra)
+        self._tx.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, identifier, **msg))
 
     def signal_ready(self, what):
         self._log.info('signaling %s ready' % what)

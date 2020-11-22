@@ -13,7 +13,7 @@ from flyvr.common import Randomizer, BACKEND_VIDEO
 from flyvr.common.dottable import Dottable
 from flyvr.common.build_arg_parser import setup_logging
 from flyvr.projector.dlplc_tcp import LightCrafterTCP
-from flyvr.common.ipc import PlaylistReciever, Sender, CommonMessages, RELAY_HOST, RELAY_SEND_PORT
+from flyvr.common.ipc import PlaylistReciever
 
 from PIL import Image
 from psychopy import visual, core, event
