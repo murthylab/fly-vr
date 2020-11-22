@@ -28,6 +28,7 @@ class _ZMQMultipartSender(object):
         # fixme: IPC will be supported on windows beginning with next zmq release
         stream_address = "tcp://%s:%d" % (host, port)
 
+        # noinspection PyUnresolvedReferences
         sock = ctx.socket(zmq.PUB)
 
         if bind:
@@ -39,6 +40,7 @@ class _ZMQMultipartSender(object):
         self._stream = sock
 
     def _send(self, data):
+        # noinspection PyUnresolvedReferences
         self._stream.send_multipart((self._channel, data), zmq.NOBLOCK)
 
 
@@ -67,6 +69,7 @@ class PlaylistSender(Sender):
 
 class Reciever(object):
 
+    # noinspection PyUnresolvedReferences
     def __init__(self, host, port, channel):
         ctx = zmq.Context()
         address = "tcp://%s:%d" % (host, port)
@@ -87,6 +90,7 @@ class Reciever(object):
 
 class PlaylistReciever(Reciever):
 
+    # noinspection PyUnusedLocal
     def __init__(self, **kwargs):
         super().__init__(host=PlaylistSender.HOST, port=PlaylistSender.PORT, channel=PlaylistSender.PUB_CHANNEL)
 
@@ -116,6 +120,7 @@ class Mirror(threading.Thread):
 
 class PlaylistMirror(Mirror):
 
+    # noinspection PyUnusedLocal
     def __init__(self, **kwargs):
         super().__init__(host=PlaylistSender.HOST, port=PlaylistSender.PORT, channel=PlaylistSender.PUB_CHANNEL)
 
@@ -131,10 +136,12 @@ def run_main_relay(_ctx=None):
     context = _ctx if _ctx is not None else zmq.Context()
 
     # socket facing producers
+    # noinspection PyUnresolvedReferences
     frontend = context.socket(zmq.XPUB)
     frontend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_RECIEVE_PORT))
 
     # socket facing consumers
+    # noinspection PyUnresolvedReferences
     backend = context.socket(zmq.XSUB)
     backend.bind("tcp://%s:%s" % (RELAY_HOST, RELAY_SEND_PORT))
 
@@ -151,10 +158,13 @@ def main_relay():
     # zmq blocking calls eat ctrl+c on windows, which means this command line entry is
     # not ctrl+c killable. To make it so, run it instead in a daemon thread and use a zmq interrupt
     # override to let us catch the ctrl+c and break out of the indefinite wait on the quit event
+
+    # noinspection PyPackageRequirements
     from zmq.utils.win32 import allow_interrupt
 
     quit_evt = threading.Event()
 
+    # noinspection PyUnusedLocal
     def ctrlc(*args):
         quit_evt.set()
 
@@ -169,7 +179,6 @@ def main_relay():
 
 
 def main_ipc_send():
-    import sys
     import json
     import time
     import argparse
@@ -202,7 +211,7 @@ def main_ipc_send():
         dat = json.loads(args.json)
     except json.JSONDecodeError as exc:
         print("PARSE ERROR:\t\n\t", (args.json, exc))
-        parser.exit(1)
+        return parser.exit(1)
 
     send = PlaylistSender()
     time.sleep(1.0)
