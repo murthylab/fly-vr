@@ -64,7 +64,7 @@ class VideoStimPlaylist(object):
 
         self._log.info('playlist paused: %s order: %r' % (paused, self._random))
 
-        self._ipc_relay = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
+        self._flyvr_shared_state = None
 
         if play_item:
             self.play_item(play_item)
@@ -74,8 +74,9 @@ class VideoStimPlaylist(object):
     def __getitem__(self, item):
         return self._stims[item]
 
-    def initialize(self, win, fps):
-        [s.initialize(win, fps) for s in self._stims.values()]
+    def initialize(self, win, fps, flyvr_shared_state):
+        self._flyvr_shared_state = flyvr_shared_state
+        [s.initialize(win, fps, flyvr_shared_state) for s in self._stims.values()]
 
     def update_and_draw(self, *args, **kwargs):
         if self._paused:
@@ -117,8 +118,8 @@ class VideoStimPlaylist(object):
         self._log.info('playing item: %s (and un-pausing)' % identifier)
         self._paused = False
 
-        self._ipc_relay.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, identifier,
-                                                       backend=BACKEND_VIDEO))
+        if self._flyvr_shared_state is not None:
+            self._flyvr_shared_state.signal_new_playlist_item(identifier, BACKEND_VIDEO)
 
     def play_pause(self, pause):
         self._paused = True if pause else False
@@ -180,7 +181,7 @@ class VideoStim(object):
         """ overridable property for stimuli to determine by other means when they are finished """
         return self.frame_count > self.duration
 
-    def initialize(self, win, fps):
+    def initialize(self, win, fps, flyvr_shared_state):
         self._fps = fps
         if np.isinf(self._duration_frames) and (self._duration_seconds is not None):
             self._duration_frames = int(fps * self._duration_seconds)
@@ -256,8 +257,8 @@ class GratingStim(VideoStim):
                          bg_color=float(bg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.GratingStim(win=win, size=self.p.stim_size,
                                          pos=[0, 0], sf=self.p.sf,
                                          color=self.p.stim_color, phase=0)
@@ -305,8 +306,8 @@ class SweepingSpotStim(VideoStim):
                          fps=float(fps), **kwargs)
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Circle(win=win,
                                     radius=deg_to_px(self.p.radius), pos=[deg_to_px(self.p.init_pos), 0],
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -345,8 +346,8 @@ class AdamStim(VideoStim):
 
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Circle(win=win,
                                     radius=0, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -385,8 +386,8 @@ class AdamStimGrating(VideoStim):
 
         self.screen = self.screen2 = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Circle(win=win,
                                     radius=0, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -439,8 +440,8 @@ class GenericStaticFixationStim(VideoStim):
         self._obj2_is_circle = obj2_r > 0
 
     # noinspection DuplicatedCode
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         if self._obj1_is_circle:
             self.obj1 = visual.Circle(win=win,
                                       radius=self.p.obj1_r,
@@ -500,8 +501,8 @@ class MovingSquareStim(VideoStim):
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Rect(win=win,
                                   size=self.p.size, pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -541,8 +542,8 @@ class PipStim(VideoStim):
 
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Rect(win=win,
                                   size=(0.25, 0.25), pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -578,8 +579,8 @@ class LoomingStim(VideoStim):
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Rect(win=win,
                                   size=self.p.size_min, pos=self.p.offset,
                                   lineColor=None, fillColor=self.p.fg_color)
@@ -615,8 +616,8 @@ class LoomingStimCircle(VideoStim):
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
         self.screen = None
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self.screen = visual.Circle(win=win,
                                     radius=self.p.size_min, pos=self.p.offset,
                                     lineColor=None, fillColor=self.p.fg_color)
@@ -663,8 +664,8 @@ class MayaModel(VideoStim):
         self._img_size = [right_x[frame_start:] - left_x[frame_start:],
                           top_y[frame_start:] - bottom_y[frame_start:]]
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
         self.screen = self._imgs[0]
 
@@ -747,8 +748,8 @@ class OptModel(VideoStim):
             self._img_size = np.append(self._img_size, np.array(
                 [rx_p[ii:ii + 300] - lx_p[ii:ii + 300], ty_p[ii:ii + 300] - by_p[ii:ii + 300]]), axis=1)
 
-    def initialize(self, win, fps):
-        super().initialize(win, fps)
+    def initialize(self, win, fps, flyvr_shared_state):
+        super().initialize(win, fps, flyvr_shared_state)
         self._imgs = [visual.ImageStim(win=win, image=Image.open(i).convert('L')) for i in self._image_names]
         self.screen = self._imgs[0]
 
@@ -849,7 +850,7 @@ class VideoServer(object):
         if isinstance(stim_or_cmd, (VideoStim, VideoStimPlaylist)):
             self._log.info("playing: %r" % (stim_or_cmd,))
             assert self.mywin
-            stim_or_cmd.initialize(self.mywin, self._fps)
+            stim_or_cmd.initialize(self.mywin, self._fps, self.flyvr_shared_state)
             self.stim = stim_or_cmd
         elif isinstance(stim_or_cmd, str):
             self._log.info("playing item/action: %r" % (stim_or_cmd,))
