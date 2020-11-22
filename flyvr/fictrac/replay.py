@@ -111,7 +111,7 @@ class FicTracDriverReplay(object):
             raise ValueError('you must supply a previous experiment h5 file containing fictrac output')
         self._h5_path = config_file
 
-    def run(self, message_pipe, options):
+    def run(self, options):
         setup_logging(options)
         flyvr_shared_state = SharedState(options=options,
                                          logger=None,

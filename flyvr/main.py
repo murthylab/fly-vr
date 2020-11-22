@@ -8,7 +8,6 @@ from flyvr.audio.io_task import run_io
 from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO, BACKEND_HWIO
 from flyvr.control.experiment import Experiment
 from flyvr.common.concurrent_task import ConcurrentTask
-from flyvr.common.logger import DatasetLogServer
 from flyvr.fictrac.fictrac_driver import FicTracDriver
 from flyvr.fictrac.replay import FicTracDriverReplay
 from flyvr.hwio.phidget import run_phidget_io
@@ -59,7 +58,7 @@ def main_fictrac():
     if trac_drv is None:
         raise parser.error('fictrac configuration error')
 
-    trac_drv.run(None, options)
+    trac_drv.run(options)
 
 
 def main_launcher():
@@ -75,17 +74,13 @@ def main_launcher():
     ipc_bus = ConcurrentTask(task=run_main_relay, comms=None, taskinitargs=[])
     ipc_bus.start()
 
-    log_server = DatasetLogServer()
-    logger = log_server.start_logging_server(options.record_file)
-
-    flyvr_shared_state = SharedState(options=options, logger=logger, where='main')
+    flyvr_shared_state = SharedState(options=options, logger=None, where='main')
 
     backend_wait = [BACKEND_FICTRAC]
 
     trac_drv = _get_fictrac_driver(options, log)
     if trac_drv is not None:
-        fictrac_task = ConcurrentTask(task=trac_drv.run, comms="pipe",
-                                      taskinitargs=[options])
+        fictrac_task = ConcurrentTask(task=trac_drv.run, comms=None, taskinitargs=[options])
         fictrac_task.start()
 
         # wait till fictrac is processing frames

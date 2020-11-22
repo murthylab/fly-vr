@@ -57,7 +57,7 @@ class FicTracDriver(object):
         self.fictrac_signals = None
 
     # noinspection PyUnusedLocal
-    def run(self, message_pipe, options):
+    def run(self, options):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
         changes in tracking data and invoke a control function when they occur. FicTrac is assumed to exist on the
