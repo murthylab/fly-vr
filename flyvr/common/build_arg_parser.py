@@ -54,7 +54,7 @@ class YamlConfigParser(configargparse.YAMLConfigFileParser):
 
 def build_argparser(savefilename=None):
     if savefilename is None:
-        savefilename = time.strftime('Y%m%d_%H%M_daq.h5')
+        savefilename = time.strftime('%Y%m%d_%H%M.h5')
 
     parser = configargparse.ArgumentParser(config_file_parser_class=YamlConfigParser,
                                            ignore_unknown_config_file_keys=True,
