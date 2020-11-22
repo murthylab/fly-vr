@@ -1,5 +1,5 @@
 import time
-import threading
+import json
 import logging
 
 from Phidget22.Net import Net
@@ -106,18 +106,28 @@ class PhidgetIO(object):
         flyvr_shared_state = SharedState(options=options,
                                          logger=None,
                                          where=BACKEND_HWIO)
+
         # fixme: only if all the things are connected
         _ = flyvr_shared_state.signal_ready(BACKEND_HWIO)
 
-        while True:
-            msg = self._rx.get_next_element()
-            if msg and (CommonMessages.EXPERIMENT_PLAYLIST_ITEM in msg):
+        with open(options.record_file.replace('.h5', '.toc.yml'), 'wt') as f:
 
-                # a backend is playing a new playlist item
-                self._flash_led()
+            # fixme: we need to  also cleanly exit
+            while True:
+                msg = self._rx.get_next_element()
+                if msg and (CommonMessages.EXPERIMENT_PLAYLIST_ITEM in msg):
 
-                if self._tp_enable:
-                    self.next_image()
+                    # a backend is playing a new playlist item
+                    self._flash_led()
+
+                    if self._tp_enable:
+                        self.next_image()
+
+                    # stream yaml records (list of dics) to the file
+                    f.write('- ')
+                    f.write(json.dumps(msg))
+                    f.write('\n')
+                    f.flush()
 
 
 def run_phidget_io(options):
