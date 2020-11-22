@@ -59,15 +59,15 @@ def build_argparser(savefilename=None):
     parser = configargparse.ArgumentParser(config_file_parser_class=YamlConfigParser,
                                            ignore_unknown_config_file_keys=True,
                                            args_for_setting_config_path=['-c', '--config'])
-    parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
+    parser.add_argument('-v', help='Verbose output.', default=False, dest='verbose', action='store_true')
     parser.add_argument("--attenuation_file", dest="attenuation_file",
-                        help="A file specifying the attenuation function")
+                        help="A file specifying the attenuation function.")
     parser.add_argument("-e", "--experiment_file", dest="experiment_file", action=FixNoneParser,
-                        help="A file defining the experiment (can be a python file or a .yaml)")
+                        help="A file defining the experiment (can be a python file or a .yaml).")
     parser.add_argument("--screen_calibration", action=FixNoneParser,
-                        help="Where to find the (pre-computed) screen calibration file")
+                        help="Where to find the (pre-computed) screen calibration file.")
     parser.add_argument("--use_RSE", action='store_true',
-                        help="Use RSE (as opposed to differential) denoising on AI DAQ inputs",
+                        help="Use RSE (as opposed to differential) denoising on AI DAQ inputs.",
                         default=True)
     parser.add_argument("--remote_2P_disable", action="store_true",
                         help="Disable remote start, stop, and next file signaling the 2-Photon imaging "
@@ -86,14 +86,14 @@ def build_argparser(savefilename=None):
                         help="The digital channel to send remote next file signal for 2-photon imaging.",
                         default=5)
     parser.add_argument('--keepalive_video', action='store_true',
-                        help="keep the video process running even if they initially provided playlist contains "
+                        help="Keep the video process running even if they initially provided playlist contains "
                              "no video items (such as if you want to later play dynamic video items not declared "
-                             "in the playlist)",
+                             "in the playlist).",
                         default=False)
     parser.add_argument('--keepalive_audio', action='store_true',
-                        help="keep the audio process running even if they initially provided playlist contains "
+                        help="Keep the audio process running even if they initially provided playlist contains "
                              "no audio items (such as if you want to later play dynamic audio items not declared "
-                             "in the playlist)",
+                             "in the playlist).",
                         default=False)
     parser.add_argument('-l', "--record_file",
                         type=str,
@@ -109,7 +109,7 @@ def build_argparser(savefilename=None):
                         default=False)
     parser.add_argument("--wait", action="store_true",
                         help="Wait for start signal before proceeding (default false in single process backends,  "
-                             "and always true in the main launcher.",
+                             "and always true in the main launcher).",
                         default=False)
     parser.add_argument("--delay", type=int, default=5,
                         help="Delay main startup by this many seconds. Negative number means wait forever.")

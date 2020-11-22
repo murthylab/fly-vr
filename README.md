@@ -22,29 +22,27 @@ usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
              [--remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL]
              [--keepalive_video] [--keepalive_audio] [-l RECORD_FILE]
              [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT] [--pgr_cam_disable]
-             [--wait] [--projector_disable]
-
+             [--wait] [--delay DELAY] [--projector_disable]
 Args that start with '--' (eg. --attenuation_file) can also be set in a config
 file (specified via -c). The config file uses YAML syntax and must represent a
 YAML 'mapping' (for details, see http://learn.getgrav.org/advanced/yaml). If
 an arg is specified in more than one place, then commandline values override
 config file values which override defaults.
-
 optional arguments:
   -h, --help            show this help message and exit
   -c CONFIG_FILE, --config CONFIG_FILE
                         config file path
-  -v                    Verbose output
+  -v                    Verbose output.
   --attenuation_file ATTENUATION_FILE
-                        A file specifying the attenuation function
+                        A file specifying the attenuation function.
   -e EXPERIMENT_FILE, --experiment_file EXPERIMENT_FILE
                         A file defining the experiment (can be a python file
-                        or a .yaml)
+                        or a .yaml).
   --screen_calibration SCREEN_CALIBRATION
                         Where to find the (pre-computed) screen calibration
-                        file
+                        file.
   --use_RSE             Use RSE (as opposed to differential) denoising on AI
-                        DAQ inputs
+                        DAQ inputs.
   --remote_2P_disable   Disable remote start, stop, and next file signaling
                         the 2-Photon imaging (if the phidget is not detected,
                         signalling is disabled with a warning).
@@ -57,14 +55,14 @@ optional arguments:
   --remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL
                         The digital channel to send remote next file signal
                         for 2-photon imaging.
-  --keepalive_video     keep the video process running even if they initially
+  --keepalive_video     Keep the video process running even if they initially
                         provided playlist contains no video items (such as if
                         you want to later play dynamic video items not
-                        declared in the playlist)
-  --keepalive_audio     keep the audio process running even if they initially
+                        declared in the playlist).
+  --keepalive_audio     Keep the audio process running even if they initially
                         provided playlist contains no audio items (such as if
                         you want to later play dynamic audio items not
-                        declared in the playlist)
+                        declared in the playlist).
   -l RECORD_FILE, --record_file RECORD_FILE
                         File that stores output recorded on requested input
                         channels. Default is file is Ymd_HM_daq.h5 where
@@ -76,8 +74,10 @@ optional arguments:
   --pgr_cam_disable     Disable Point Grey Camera support in FicTrac.
   --wait                Wait for start signal before proceeding (default false
                         in single process backends, and always true in the
-                        main launcher.
-  --projector_disable   Do not setup projector in video backend
+                        main launcher).
+  --delay DELAY         Delay main startup by this many seconds. Negative
+                        number means wait forever.
+  --projector_disable   Do not setup projector in video backend.
 ```
 
 TLDR;
@@ -86,8 +86,6 @@ If you are developing a stimulus playlist (video example, substitute for audio a
 
  * copy an example playlist e.g. copy 'playlists/video1.yml' to 'myvideo.yml'
  * exit, test and experiment on the playlist using the single launcher `flyvr-video.exe --config myvideo.yml`
- 
- 
 When you have finished the playlist and experiment development and wish to run on a rig
 
 * create a rig-specific config file (see templates in configs/) with the electrical connections
@@ -95,9 +93,7 @@ When you have finished the playlist and experiment development and wish to run o
 * copy the rig-specific config template into a new config file for your experiment, 
   e.g. 'my_upstairs_video_experiment.yml', on this rig
 * copy the contents of your tested 'myvideo.yml' playlists into 'my_upstairs_video_experiment.yml' 
-* `flyvr --config my_upstairs_audio_experiment.yml` 
-
-
+* `flyvr --config my_upstairs_audio_experiment.yml`
 ## Usage of Individual Utilities
 
 * `$ flyvr-fictrac-plot`  
@@ -129,7 +125,6 @@ install
   tab in the Phidgets control panel. If it is not available, you must install
   [bonjour print service](https://support.apple.com/kb/DL999?locale=en_US). If it is available, you do not need
   to do anything further
-  
 ## flyvr
 
 (note, these installation instructions assume using the 'official' python.org python and built-in
@@ -173,9 +168,9 @@ For configuring FicTrac, a few files are needed:
 
 1. A TIFF file used as a mask to remove non-ball areas, bright spots, etc (show examples).
    There is currently a MATLAB function that will help create this mask available in `Im2P_CreateNewMask.m`. But
-   first need to capture a single frame to use as reference point!
-       
-   Note that you probably want to reduce the resolution of the frame to minimize how much data needs to be passed around.
+   first need to capture a single frame to use as reference point!  
+   Note that you probably want to reduce the resolution of the frame to minimize how much data needs to
+   be passed around.
 
 2. A configuration file. Currently in FicTracPGR_ConfigMaster.txt
 
@@ -193,7 +188,7 @@ the visual stimulus on a DLP lightcrafter configured in the appropriate mode. Th
 the lightcrafter software has been installed, and that the lightcrafter is connected, powered on,
 and on the default 192.168.1.100 IP address.
 
-For autoconfiguration to work, the Lightcrafter software must be 'Disconnected' from the 
+For auto-configuration to work, the Lightcrafter software must be 'Disconnected' from the 
 projector (or closed). 
 
 If you wish to show the visual stimulus on the desktop monitor (skipping the potential delay trying
@@ -237,10 +232,10 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
       relative to the playlist/config file
     * all converted playlists will be placed into an 'audio' playlist - this should be adapted to daq if the
       playlist is actually for the DAQ opto outputs
-* flyvr-video
+* flyvr-video  
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
   (pass `--projector_disable` if you dont have a projector connected)
-* flyvr-daq
+* flyvr-daq  
   process which drives the NI DAQ for the purposes of
   * outputing the opto stimulus
   * recording the analog inputs
@@ -255,8 +250,7 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
       port on which to flash an LED upon starting a new playlist item
 
 Similarly, the following secondary utilities are available also as separate processes to aid debugging, development, testing
-or observing experiments in progress  
-
+or observing experiments in progress
 * flyvr-fictrac-replay  
   can replay a previously saved fictrac `.h5` file in order to test, for example, experiment logic or 
 * flyvr-experiment  
@@ -264,7 +258,7 @@ or observing experiments in progress
   often used in conjunction with `flyvr-fictrac-replay`
 * flyvr-print-state  
   prints the current flyvr state to the console
-* flyvr-fictrac-plot
+* flyvr-fictrac-plot  
   shows an animated plot of the fictrac state (ball speed, direction, etc)
 * flyvr-ipc-send  
   in internal utility for sending IPC messages to control other primary processes,
