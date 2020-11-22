@@ -48,10 +48,15 @@ class ConcurrentTask(object):
 
         self.comms = comms
 
+        self._task_repr = repr(task)
+
         taskinitargs = list(taskinitargs)
         if self._receiver is not None:
             taskinitargs.insert(0, self._receiver)  # prepend queue, i.e. sink end of pipe or end of queue
         self._process = self.process_cls(target=task, args=tuple(taskinitargs))
+
+    def __repr__(self):
+        return "<%s(task=%s, comms=%s>" % (self.__class__.__name__, self._task_repr, self.comms)
 
     def send(self, data):
         """
@@ -119,7 +124,8 @@ class ConcurrentTask(object):
         time.sleep(0.5)
 
         if self.comms != "queue":
-            self._sender.close()
+            if self._sender is not None:
+                self._sender.close()
 
             if self._receiver is not None:
                 self._receiver.close()

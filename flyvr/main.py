@@ -104,6 +104,7 @@ def main_launcher():
         backend_wait.append(BACKEND_VIDEO)
         video.start()
     else:
+        video = None
         log.info('not starting video backend (playlist empty or keepalive_video not specified)')
 
     if options.keepalive_audio or options.playlist.get('audio'):
@@ -111,6 +112,7 @@ def main_launcher():
         backend_wait.append(BACKEND_AUDIO)
         audio.start()
     else:
+        audio = None
         log.info('not starting video backend (playlist empty or keepalive_video not specified)')
 
     log.info('waiting for %r to be ready' % (backend_wait, ))
@@ -123,3 +125,12 @@ def main_launcher():
         input('Press any key to finish')
         flyvr_shared_state.signal_stop().join(timeout=5)
         break
+
+    log.info('stopped')
+
+    for task in (ipc_bus, hwio, daq, video, audio):
+        if task is not None:
+            log.debug('closing subprocess: %r' % task)
+            task.close()
+
+    log.info('finished')
