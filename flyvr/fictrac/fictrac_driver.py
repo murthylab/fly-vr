@@ -67,6 +67,7 @@ class FicTracDriver(object):
         """
         setup_logging(options)
 
+        # fixme: this should be threaded and context manager to close
         log_server = DatasetLogServer()
         flyvr_shared_state = SharedState(options=options,
                                          logger=log_server.start_logging_server(options.record_file),
