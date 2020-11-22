@@ -164,16 +164,17 @@ class SoundServer(threading.Thread):
         if isinstance(stim, AudioStim):
             if stim.sample_rate != self._sample_rate:
                 raise ValueError('AudioStim not at server samplerate: %s' % self._sample_rate)
-            self._log.info('playing: %r' % stim)
+            self._log.info('playing AudioStim object: %r' % stim)
             self.data_generator = stim.data_generator()
         elif isinstance(stim, MixedSignal):
-            self._log.info('playing Mixed Signal: %r' % stim)
+            self._log.info('playing MixedSignal object: %r' % stim)
             self.data_generator = stim.data_generator()
         elif isinstance(stim, AudioStimPlaylist):
-            self._log.info('playing AudioStimPlaylist Signal: %r' % stim)
+            self._log.info('playing AudioStimPlaylist object: %r' % stim)
             self.data_generator = stim.data_generator()
             self._stim_playlist = stim
         elif stim is None:
+            self._log.info('playing nothing')
             self.data_generator = None
         elif isinstance(stim, str) and (self._stim_playlist is not None):
             if stim in {'play', 'pause'}:
@@ -256,8 +257,15 @@ class SoundServer(threading.Thread):
 
         # initialize a block of silence to be played when the generator is none.
         self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
-        # Setup up for playback of silence.
-        self.data_generator = None
+
+        # setup initial playback
+        try:
+            msg = self._q.get_nowait()
+            self._log.debug('initial playback: %r' % (msg, ))
+            self._play(msg)
+        except queue.Empty:
+            self._log.debug('initial playback: %r' % None)
+            self.data_generator = None  # play silence
 
         _ = self.flyvr_shared_state.signal_ready(BACKEND_AUDIO)
 
@@ -271,10 +279,7 @@ class SoundServer(threading.Thread):
                 try:
                     msg = self._q.get(timeout=0.5)
                     if msg is not None:
-                        if isinstance(msg, (AudioStim, MixedSignal, AudioStimPlaylist, str)) or msg is None:
-                            self._play(msg)
-                        else:
-                            raise NotImplementedError(repr(msg))
+                        self._play(msg)
                 except queue.Empty:
                     pass
 
