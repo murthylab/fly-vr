@@ -415,6 +415,7 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
             while running:
                 # fixme: should replace this with a queue like the other backends and plumb
                 #  in the IPC messages
+                # fixme: just pop from a queue here
                 if message_pipe.poll(0.1):
                     # noinspection PyBroadException
                     try:
