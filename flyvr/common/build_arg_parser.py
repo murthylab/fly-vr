@@ -111,7 +111,10 @@ def build_argparser(savefilename=None):
                         help="Wait for start signal before proceeding (default false in single process backends,  "
                              "and always true in the main launcher.",
                         default=False)
-    parser.add_argument('--projector_disable', action='store_true', help='Do not setup projector in video backend')
+    parser.add_argument("--delay", type=int, default=5,
+                        help="Delay main startup by this many seconds. Negative number means wait forever.")
+
+    parser.add_argument('--projector_disable', action='store_true', help='Do not setup projector in video backend.')
 
     return parser
 

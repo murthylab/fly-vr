@@ -1,3 +1,4 @@
+import time
 import logging
 
 from flyvr.common.build_arg_parser import parse_arguments
@@ -118,11 +119,18 @@ def main_launcher():
     log.info('waiting for %r to be ready' % (backend_wait, ))
     flyvr_shared_state.wait_for_backends(*backend_wait)
 
-    # fixme: dont always start? move start to UI?
-    flyvr_shared_state.signal_start()
+    if options.delay < 0:
+        log.info('waiting for manual start signal')
+        flyvr_shared_state.wait_for_start()
+    elif options.delay >= 0:
+        if options.delay > 0:
+            log.info('delaying startup %ss' % options.delay)
+            time.sleep(options.delay)
+        log.info('sending start signal')
+        flyvr_shared_state.signal_start()
 
     while True:
-        input('Press any key to finish')
+        input('\n---------------\nPress any key to finish\n---------------\n')
         flyvr_shared_state.signal_stop().join(timeout=5)
         break
 
