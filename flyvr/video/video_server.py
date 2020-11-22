@@ -952,6 +952,8 @@ class VideoServer(object):
                 self.samples_played += 1
                 self.sync_signal += 1
 
+                self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES = self.samples_played
+
                 if not self.stim.advance():
                     self.stim.show = False
 
