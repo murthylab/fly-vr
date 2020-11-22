@@ -13,6 +13,9 @@ from flyvr.common import Randomizer, BACKEND_AUDIO
 from flyvr.common.build_arg_parser import setup_logging
 
 
+_QUIT = object()
+
+
 # noinspection PyProtectedMember
 def _sd_terminate():
     if sd._initialized:
@@ -151,6 +154,10 @@ class SoundServer(threading.Thread):
             else:
                 self._data_generator = chunker(data_generator, chunk_size=self._stream.blocksize)
 
+    @property
+    def queue(self):
+        return self._q
+
     def _play(self, stim):
         """
         Play an audio stimulus through the sound card. This method invokes the data generator of the stimulus to
@@ -220,9 +227,6 @@ class SoundServer(threading.Thread):
         self._running = True
         self.start()
 
-    def play(self, item):
-        self._q.put(item)
-
     # noinspection PyUnusedLocal
     def quit(self, *args, **kwargs):
         self._running = False
@@ -283,7 +287,10 @@ class SoundServer(threading.Thread):
                 try:
                     msg = self._q.get(timeout=0.5)
                     if msg is not None:
-                        self._play(msg)
+                        if msg is _QUIT:
+                            self._running = False
+                        else:
+                            self._play(msg)
                 except queue.Empty:
                     pass
 
@@ -361,16 +368,40 @@ class SoundServer(threading.Thread):
         return callback
 
 
-def run_sound_server(options):
+def _ipc_main(q, basedirs):
+    from flyvr.audio.stimuli import legacy_factory, stimulus_factory
+    from flyvr.common.ipc import PlaylistReciever
+
+    pr = PlaylistReciever()
+    log = logging.getLogger('flyvr.sound_server.ipc_main')
+
+    log.debug('starting')
+
+    while True:
+        elem = pr.get_next_element()
+        if elem:
+            if 'audio_legacy' in elem:
+                stim, = legacy_factory([elem['audio_legacy']], basedirs=basedirs)
+            elif 'audio' in elem:
+                stim = stimulus_factory(**elem['audio'], basedirs=basedirs)
+            elif 'audio_item' in elem:
+                stim = elem['audio_item']['identifier']
+            elif 'audio_action' in elem:
+                stim = elem['audio_action']
+            else:
+                stim = None
+
+            if stim is not None:
+                q.put(stim)
+
+
+def run_sound_server(options, quit_evt=None):
     from flyvr.common import SharedState, Randomizer
     from flyvr.common.logger import DatasetLogServerThreaded
-    from flyvr.audio.stimuli import legacy_factory, stimulus_factory
     from flyvr.audio.util import get_paylist_object
-    from flyvr.common.ipc import PlaylistReciever
 
     setup_logging(options)
 
-    pr = PlaylistReciever()
     log = logging.getLogger('flyvr.main_sound_server')
 
     playlist_stim, basedirs = get_paylist_object(options, playlist_type='audio',
@@ -388,28 +419,27 @@ def run_sound_server(options):
         state = SharedState(options=options, logger=logger, where=BACKEND_AUDIO)
 
         sound_server = SoundServer(flyvr_shared_state=state)
+        if playlist_stim is not None:
+            sound_server.queue.put(playlist_stim)
+
+        ipc = threading.Thread(daemon=True, name='AudioIpcThread',
+                               target=_ipc_main, args=(sound_server.queue, basedirs))
+        ipc.start()
+
+        # starts the thread
         sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
                                   suggested_output_latency=0.002)
 
-        if playlist_stim is not None:
-            sound_server.play(playlist_stim)
+        if quit_evt is not None:
+            # the single process launcher
+            try:
+                quit_evt.wait()
+            except KeyboardInterrupt:
+                sound_server.queue.put(_QUIT)
 
-        while True:
-            elem = pr.get_next_element()
-            if elem:
-                if 'audio_legacy' in elem:
-                    stim, = legacy_factory([elem['audio_legacy']], basedirs=basedirs)
-                elif 'audio' in elem:
-                    stim = stimulus_factory(**elem['audio'], basedirs=basedirs)
-                elif 'audio_item' in elem:
-                    stim = elem['audio_item']['identifier']
-                elif 'audio_action' in elem:
-                    stim = elem['audio_action']
-                else:
-                    log.debug("ignoring message: %r" % elem)
+        sound_server.join()
 
-                if stim is not None:
-                    sound_server.play(stim)
+    log.info('finished')
 
 
 def main_sound_server():
@@ -418,6 +448,7 @@ def main_sound_server():
 
     from flyvr.common.build_arg_parser import build_argparser, parse_options
     from flyvr.audio.util import plot_playlist
+    from zmq.utils.win32 import allow_interrupt
 
     parser = build_argparser()
     parser.add_argument('--print-devices', action='store_true', help='print available audio devices')
@@ -454,4 +485,11 @@ def main_sound_server():
         SoundServer.list_supported_asio_output_devices()
         return parser.exit(0)
 
-    run_sound_server(options)
+    quit_evt = threading.Event()
+
+    # noinspection PyUnusedLocal
+    def ctrlc(*args):
+        quit_evt.set()
+
+    with allow_interrupt(action=ctrlc):
+        run_sound_server(options, quit_evt)

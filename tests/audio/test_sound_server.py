@@ -31,7 +31,7 @@ def test_play_sin(tmpdir):
         sound_server = SoundServer(flyvr_shared_state=shared_state)
         sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
                                   suggested_output_latency=0.002)
-        sound_server.play(stim1)
+        sound_server.queue.put(stim1)
         time.sleep(1.5)
 
         sound_server.quit()

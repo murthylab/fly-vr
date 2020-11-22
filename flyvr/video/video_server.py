@@ -867,9 +867,6 @@ class VideoServer(object):
             else:
                 raise NotImplementedError
 
-    def play(self, item):
-        self._q.put(item)
-
     # noinspection PyUnusedLocal
     def quit(self, *args, **kwargs):
         self._running = False
@@ -1042,13 +1039,18 @@ def run_video_server(options):
                                    use_lightcrafter=not getattr(options, 'projector_disable', False))
 
         if playlist_stim is not None:
-            video_server.play(playlist_stim)
+            video_server.queue.put(playlist_stim)
 
         ipc = threading.Thread(daemon=True, name='VideoIpcThread',
                                target=_ipc_main, args=(video_server.queue,))
         ipc.start()
 
-        video_server.run()  # blocks
+        try:
+            video_server.run()  # blocks
+        except KeyboardInterrupt:
+            video_server.quit()
+
+    log.info('finished')
 
 
 def main_video_server():
