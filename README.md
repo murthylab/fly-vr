@@ -11,7 +11,6 @@ triggers for synchronization (e.g., with ScanImage).
 contribute to testing the code, please contact David Deutsch (ddeutsch@princeton.edu), postdoc in the
 Murthy Lab @ the Princeton Neuroscience Institute.
 
-
 # Usage
 ```
 usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
@@ -94,6 +93,7 @@ When you have finished the playlist and experiment development and wish to run o
   e.g. 'my_upstairs_video_experiment.yml', on this rig
 * copy the contents of your tested 'myvideo.yml' playlists into 'my_upstairs_video_experiment.yml' 
 * `flyvr --config my_upstairs_audio_experiment.yml`
+
 ## Usage of Individual Utilities
 
 * `$ flyvr-fictrac-plot`  
@@ -125,6 +125,7 @@ install
   tab in the Phidgets control panel. If it is not available, you must install
   [bonjour print service](https://support.apple.com/kb/DL999?locale=en_US). If it is available, you do not need
   to do anything further
+
 ## flyvr
 
 (note, these installation instructions assume using the 'official' python.org python and built-in
@@ -269,12 +270,21 @@ or observing experiments in progress
 * flyvr-ipc-relay  
   (advanced only) internal message relay bus for start/stop/next-playlist-item messages
 
-# credits
+# Developing
+
+* If you can reproduce an issue using the single issue launchers then please try to do so
+* Run everything with verbose `-v` arguments for more debugging information
+* It can be convenient to replay old h5 files of fictrac data for testing. With the individual
+  utilities you must run `flyvr-fictrac-replay` but within your normal config file you can
+  also run with the follwing in your yaml config  
+  `fictrac_config: 'C:/path/to/fictrac/config/180719_103_output.h5'`
+
+# Credits
 
 David Deutsch - Murthy lab, PNI, Princeton; Adam Calhoun - Murthy lab, PNI, Princeton; 
 John Stowers - [LoopBio](http://loopbio.com/consulting/), David Turner - PNI, Princeton
 
-# license
+# License
 Copyright (c) 2020 Princeton University
 flyvr is released under a Clear BSD License and is intended for research/academic use only. 
 For commercial use, please contact: Laurie Tzodikov (Assistant Director, Office of Technology Licensing), 
