@@ -6,19 +6,6 @@ import copy
 import numpy as np
 
 
-class SignalNextEventData(object):
-    """
-    A class that encapsulates all the data that SignalProducer's need to send to their control
-    functions when a next generator event occurs.
-    """
-
-    def __init__(self, producer_id, channels, metadata, num_samples):
-        self.producer_id = producer_id
-        self.metadata = metadata
-        self.num_samples = num_samples
-        self.channels = np.atleast_1d(channels)
-
-
 class SampleChunk(object):
     """
     A class that encapsulated numpy arrays containing sample data along with metadata information. This allows us to
