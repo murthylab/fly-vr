@@ -105,12 +105,12 @@ def build_argparser(savefilename=None):
     parser.add_argument('-m', "--fictrac_console_out", action=FixNoneParser,
                         help="File to save FicTrac console output to.")
     parser.add_argument("--pgr_cam_disable", action="store_true",
-                        help="Dnable Point Grey Camera support in FicTrac.",
+                        help="Disable Point Grey Camera support in FicTrac.",
                         default=False)
-    parser.add_argument("--start_delay", type=float,
-                        help="Delay the start of playback and acquisition from FicTrac tracking by this many seconds. "
-                             "The default is 0 seconds.",
-                        default=0.0)
+    parser.add_argument("--wait", action="store_true",
+                        help="Wait for start signal before proceeding (default false in single process backends,  "
+                             "and always true in the main launcher.",
+                        default=False)
     parser.add_argument('--projector_disable', action='store_true', help='Do not setup projector in video backend')
 
     return parser
@@ -185,7 +185,7 @@ def parse_options(options, parser):
 
 def setup_logging(options):
     logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO,
-                        format='%(name)-35s: %(levelname)-8s %(message)s')
+                        format='%(name)-40s: %(levelname)-8s %(message)s')
     logging.getLogger('PIL.Image').setLevel(logging.INFO)
     logging.getLogger('PIL.PngImagePlugin').setLevel(logging.INFO)
 

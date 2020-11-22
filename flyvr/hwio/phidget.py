@@ -2,10 +2,10 @@ import time
 import threading
 import logging
 
-from Phidget22 import PhidgetException
 from Phidget22.Net import Net
 from Phidget22.Devices.DigitalOutput import DigitalOutput
 
+from flyvr.common import SharedState, BACKEND_HWIO
 from flyvr.common.ipc import Reciever, RELAY_RECIEVE_PORT, RELAY_HOST, CommonMessages
 
 DEFAULT_REMOTE = '127.0.0.1', 5661
@@ -101,7 +101,14 @@ class PhidgetIO(object):
         self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
 
-    def run(self):
+    def run(self, options):
+
+        flyvr_shared_state = SharedState(options=options,
+                                         logger=None,
+                                         where=BACKEND_HWIO)
+        # fixme: only if all the things are connected
+        _ = flyvr_shared_state.signal_ready(BACKEND_HWIO)
+
         while True:
             msg = self._rx.get_next_element()
             if msg and (CommonMessages.EXPERIMENT_PLAYLIST_ITEM in msg):
@@ -124,7 +131,7 @@ def run_phidget_io(options):
                    tp_enable=not options.remote_2P_disable,
                    debug_led=getattr(options, 'debug_led', 2),
                    remote_details=DEFAULT_REMOTE if getattr(options, 'network', False) else None)
-    io.run()
+    io.run(options)
 
 
 def main_phidget():

@@ -6,13 +6,11 @@ import logging
 
 import numpy as np
 
+from flyvr.common import SharedState, BACKEND_FICTRAC
+from flyvr.common.logger import DatasetLogServer
 from flyvr.common.tools import which
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer, \
     SHMEMFicTracState, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
-
-
-def fictrac_poll_run_main(message_pipe, trac_drviver, state):
-    trac_drviver.run(message_pipe, state)
 
 
 class FicTracDriver(object):
@@ -57,7 +55,7 @@ class FicTracDriver(object):
         self.fictrac_process = None
         self.fictrac_signals = None
 
-    def run(self, message_pipe, state):
+    def run(self, message_pipe, options):
         """
         Start the the FicTrac process and block till it closes. This function will poll a shared memory region for
         changes in tracking data and invoke a control function when they occur. FicTrac is assumed to exist on the
@@ -65,12 +63,18 @@ class FicTracDriver(object):
 
         :return:
         """
+
+        log_server = DatasetLogServer()
+        flyvr_shared_state = SharedState(options=options,
+                                         logger=log_server.start_logging_server(options.record_file),
+                                         where=BACKEND_FICTRAC)
+
         self.fictrac_signals = new_mmap_signals_buffer()
 
         # Setup dataset to log FicTrac data to.
-        state.logger.create("/fictrac/output", shape=[2048, NUM_FICTRAC_FIELDS],
-                            maxshape=[None, NUM_FICTRAC_FIELDS], dtype=np.float64,
-                            chunks=(2048, NUM_FICTRAC_FIELDS))
+        flyvr_shared_state.logger.create("/fictrac/output", shape=[2048, NUM_FICTRAC_FIELDS],
+                                         maxshape=[None, NUM_FICTRAC_FIELDS], dtype=np.float64,
+                                         chunks=(2048, NUM_FICTRAC_FIELDS))
 
         # Start FicTrac
         with open(self.console_output_file, "wb") as out:
@@ -81,8 +85,10 @@ class FicTracDriver(object):
             data = new_mmap_shmem_buffer()
             first_frame_count = data.frame_cnt
             old_frame_count = data.frame_cnt
-            print("Waiting for FicTrac updates in shared memory ... ")
-            while self.fictrac_process.poll() is None:
+
+            running = True
+            self._log.info("waiting for fictrac updates in shared memory")
+            while (self.fictrac_process.poll() is None) and running:
                 new_frame_count = data.frame_cnt
 
                 if old_frame_count != new_frame_count:
@@ -90,42 +96,40 @@ class FicTracDriver(object):
                     # If this is our first frame incremented, then send a signal to the
                     # that we have started processing frames
                     if old_frame_count == first_frame_count:
-                        state.FICTRAC_READY = 1
+                        _ = flyvr_shared_state.signal_ready(BACKEND_FICTRAC)
 
-                    if new_frame_count - old_frame_count != 1 and state.RUN != 1:
+                    if new_frame_count - old_frame_count != 1:
                         self.fictrac_process.terminate()
-                        print(("FicTrac frame counter jumped by more than 1! oldFrame = " +
-                               str(old_frame_count) + ", newFrame = " + str(new_frame_count)))
+                        self._log.warning("frame counter jumped by more than 1 (%s vs %s)" % (
+                            old_frame_count, new_frame_count))
 
                     old_frame_count = new_frame_count
 
-                    # Copy the current state.
+                    # Copy the current fictrac state.
                     data_copy = SHMEMFicTracState()
                     ctypes.pointer(data_copy)[0] = data
 
                     # Log the FicTrac data to our master log file.
-                    state.logger.log('/fictrac/output', fictrac_state_to_vec(data_copy))
+                    flyvr_shared_state.logger.log('/fictrac/output', fictrac_state_to_vec(data_copy))
 
                     if self.experiment is not None:
-                        self.experiment.process_state(state)
+                        self.experiment.process_state(data_copy)
 
                 # If we detect it is time to shutdown, kill the FicTrac process
-                if not state.is_running_well():
-                    self.stop()
-                    break
+                if flyvr_shared_state.is_stopped():
+                    running = False
 
-        state.FICTRAC_READY = 0
+        self.stop()  # blocks
 
-        # Get the fic trac process return code
+        self._log.info('fictrac process finished')
+
+        # Get the fictrac process return code
         if self.fictrac_process.returncode is not None and self.fictrac_process.returncode != 0:
-            state.RUN = 0
-            state.RUNTIME_ERROR = -5
-            raise RuntimeError(
-                "FicTrac failed because of an application error. Consult the FicTrac console output file.")
+            self._log.error('fictrac failed because of an application error. Consult the fictrac console output file')
+            flyvr_shared_state.runtime_error(2)
 
     def stop(self):
-
-        print("Sending stop signal to FicTrac ... ")
+        self._log.info("sending stop signal to fictrac")
 
         # We keep sending signals to the FicTrac process until it dies
         while self.fictrac_process.poll() is None:

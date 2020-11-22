@@ -1,9 +1,11 @@
 import queue
 import os.path
+import logging
 
 import h5py
 import numpy as np
 
+from flyvr.common import SharedState, BACKEND_FICTRAC
 from flyvr.common.mmtimer import MMTimer
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer
 
@@ -18,15 +20,23 @@ class ReplayFictrac(object):
             self._f.close()
             raise ValueError('h5 file does not contain fictrac output')
 
+        self._log = logging.getLogger('flyvr.fictrac.replay')
+        self._log.info('loaded %s' % h5_path)
+
         self._fictrac_state = new_mmap_shmem_buffer()
         self._fictrac_signals = new_mmap_signals_buffer()
 
+        # -1 as a sentinel for derived classes
+        self._send_row(-1)
         self._send_row(0)
 
     def _send_row(self, idx):
         """
         returns: fn, ts
         """
+        if idx < 0:
+            return
+
         r = self._ds[idx].tolist()  # to python std types (all floats)
 
         self._fictrac_state.del_rot_cam_vec = tuple(r[1:4])
@@ -61,7 +71,8 @@ class ReplayFictrac(object):
         # use a queue as a simple tick-tock threadsafe rate-limiter
         tick = queue.Queue(maxsize=1)
 
-        print('Fictrac replay at %.1fhz (every %s ms)' % (1. / dt, ms))
+        self._log.info('replay at %.1fhz (dt=%.2f ms%s)' % (1. / dt, ms,
+                                                            ', auto calculated from file' if fps == 'auto' else ''))
 
         t1 = MMTimer(int(ms), lambda: tick.put(None, block=True, timeout=min(0.5, 10.*dt)))
         t1.start(True)
@@ -73,6 +84,7 @@ class ReplayFictrac(object):
             except queue.Empty:
                 break
 
+            # fixme:
             if self._fictrac_signals.close_signal_var == 1:
                 break
 
@@ -82,33 +94,40 @@ class FicTracDriverReplay(object):
 
     class StateReplayFictrac(ReplayFictrac):
 
-        def __init__(self, state, *args, **kwargs):
-            self._state = state
+        def __init__(self, flyvr_shared_state, *args, **kwargs):
+            self._flyvr_shared_state = flyvr_shared_state
             super().__init__(*args, **kwargs)
 
         def _send_row(self, idx):
-            fn, ts = super()._send_row(idx)
-            self._state.FICTRAC_READY = 1
+            if idx < 0:
+                _ = self._flyvr_shared_state.signal_ready(BACKEND_FICTRAC)
+            return super()._send_row(idx)
 
     def __init__(self, config_file, *args, **kwargs):
         if not os.path.splitext(config_file)[1] == '.h5':
             raise ValueError('you must supply a previous experiment h5 file containing fictrac output')
         self._h5_path = config_file
 
-    def run(self, message_pipe, state):
-        replay = FicTracDriverReplay.StateReplayFictrac(state, self._h5_path)
-        replay.replay()
-        state.FICTRAC_READY = 0
-        state.RUN = 0
+    def run(self, message_pipe, options):
+        flyvr_shared_state = SharedState(options=options,
+                                         logger=None,
+                                         where=BACKEND_FICTRAC)
+        replay = FicTracDriverReplay.StateReplayFictrac(flyvr_shared_state, self._h5_path)
+        replay.replay()  # blocks
 
 
 def main_replay():
     import argparse
+    from flyvr.common.build_arg_parser import setup_logging
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--fps', type=float, default=0, help='play back fictrac data at this fps '
                                                              '(0 = rate at which it was recorded)')
+    parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
     parser.add_argument('h5file', nargs=1, metavar='PATH', help='path to h5 file of previous flyvr session')
+
     args = parser.parse_args()
+    setup_logging(args)
 
     r = ReplayFictrac(args.h5file[0])
     r.replay('auto' if args.fps <= 0 else args.fps)

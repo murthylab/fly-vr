@@ -1,5 +1,3 @@
-import sys
-import time
 import logging
 
 from flyvr.common.build_arg_parser import parse_arguments
@@ -7,11 +5,11 @@ from flyvr.common.build_arg_parser import parse_arguments
 from flyvr.video.video_server import run_video_server
 from flyvr.audio.sound_server import run_sound_server
 from flyvr.audio.io_task import run_io
-from flyvr.common import SharedState, Every
+from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO, BACKEND_HWIO
 from flyvr.control.experiment import Experiment
-from flyvr.common.concurrent_task import ConcurrentTaskThreaded, ConcurrentTask
-from flyvr.common.logger import DatasetLogger, DatasetLogServer
-from flyvr.fictrac.fictrac_driver import FicTracDriver, fictrac_poll_run_main
+from flyvr.common.concurrent_task import ConcurrentTask
+from flyvr.common.logger import DatasetLogServer
+from flyvr.fictrac.fictrac_driver import FicTracDriver
 from flyvr.fictrac.replay import FicTracDriverReplay
 from flyvr.hwio.phidget import run_phidget_io
 from flyvr.common.ipc import run_main_relay
@@ -57,20 +55,19 @@ def main_fictrac():
 
     options, parser = parse_arguments(return_parser=True)
 
-    log_server = DatasetLogServer()
-    logger = log_server.start_logging_server(options.record_file)
-
-    state = SharedState(options=options, logger=logger)
-
     trac_drv = _get_fictrac_driver(options, log)
     if trac_drv is None:
         raise parser.error('fictrac configuration error')
 
-    trac_drv.run(None, state)
+    trac_drv.run(options)
 
 
 def main_launcher():
     options = parse_arguments()
+
+    # flip the default vs the individual launchers - we do need to wait for
+    # all of the backends
+    options.wait = True
 
     log = logging.getLogger('flyvr.main')
 
@@ -81,59 +78,53 @@ def main_launcher():
     log_server = DatasetLogServer()
     logger = log_server.start_logging_server(options.record_file)
 
-    state = SharedState(options=options, logger=logger)
+    flyvr_shared_state = SharedState(options=options, logger=logger, where='main')
+
+    backend_wait = [BACKEND_FICTRAC]
 
     trac_drv = _get_fictrac_driver(options, log)
-
     if trac_drv is not None:
         fictrac_task = ConcurrentTask(task=trac_drv.run, comms="pipe",
-                                      taskinitargs=[None, state])
+                                      taskinitargs=[options])
         fictrac_task.start()
 
-        # Wait till FicTrac is processing frames
-        while state.FICTRAC_READY == 0 and state.is_running_well():
-            time.sleep(0.2)
+        # wait till fictrac is processing frames
+        flyvr_shared_state.wait_for_backends(BACKEND_FICTRAC)
 
     # start the other mainloops
 
     # these always run
     hwio = ConcurrentTask(task=run_phidget_io, comms=None, taskinitargs=[options])
+    backend_wait.append(BACKEND_HWIO)
     hwio.start()
+
     daq = ConcurrentTask(task=run_io, comms=None, taskinitargs=[options])
+    backend_wait.append(BACKEND_DAQ)
     daq.start()
 
     # these are optional
     if options.keepalive_video or options.playlist.get('video'):
         video = ConcurrentTask(task=run_video_server, comms=None, taskinitargs=[options])
+        backend_wait.append(BACKEND_VIDEO)
         video.start()
     else:
         log.info('not starting video backend (playlist empty or keepalive_video not specified)')
 
     if options.keepalive_audio or options.playlist.get('audio'):
         audio = ConcurrentTask(task=run_sound_server, comms=None, taskinitargs=[options])
+        backend_wait.append(BACKEND_AUDIO)
         audio.start()
     else:
         log.info('not starting video backend (playlist empty or keepalive_video not specified)')
 
-    if state.is_running_well():
+    log.info('waiting for %r to be ready' % (backend_wait, ))
+    flyvr_shared_state.wait_for_backends(*backend_wait)
 
-        log.info("delaying start by %s" % options.start_delay)
-        time.sleep(options.start_delay)
+    # fixme: dont always start? move start to UI?
+    flyvr_shared_state.signal_start()
 
-        # send a signal to the DAQ to start playback and acquisition
-        log.info("signalling DAQ start")
-        state.START_DAQ = 1
-
-        # wait until we get a ready message from the DAQ task
-        every_3s = Every(15)
-        while state.DAQ_READY == 0 and state.is_running_well():
-            time.sleep(0.2)
-            if every_3s:
-                log.info('waiting for DAQ task to signal READY')
-
-        log.info('detected DAQ READY signal')
-
-        # wait till the user presses enter to end session
-        if state.is_running_well():
-            input("Press ENTER to end session ... ")
+    while True:
+        input('Press any key to finish')
+        flyvr_shared_state.signal_stop().join(timeout=5)
+        break
 

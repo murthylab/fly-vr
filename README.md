@@ -22,7 +22,7 @@ usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
              [--remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL]
              [--keepalive_video] [--keepalive_audio] [-l RECORD_FILE]
              [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT] [--pgr_cam_disable]
-             [--start_delay START_DELAY] [--projector_disable]
+             [--wait] [--projector_disable]
 
 Args that start with '--' (eg. --attenuation_file) can also be set in a config
 file (specified via -c). The config file uses YAML syntax and must represent a
@@ -73,11 +73,10 @@ optional arguments:
                         File that specifies FicTrac configuration information.
   -m FICTRAC_CONSOLE_OUT, --fictrac_console_out FICTRAC_CONSOLE_OUT
                         File to save FicTrac console output to.
-  --pgr_cam_disable     Dnable Point Grey Camera support in FicTrac.
-  --start_delay START_DELAY
-                        Delay the start of playback and acquisition from
-                        FicTrac tracking by this many seconds. The default is
-                        0 seconds.
+  --pgr_cam_disable     Disable Point Grey Camera support in FicTrac.
+  --wait                Wait for start signal before proceeding (default false
+                        in single process backends, and always true in the
+                        main launcher.
   --projector_disable   Do not setup projector in video backend
 ```
 
@@ -261,7 +260,8 @@ or observing experiments in progress
 * flyvr-fictrac-replay  
   can replay a previously saved fictrac `.h5` file in order to test, for example, experiment logic or 
 * flyvr-experiment  
-  allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. often used in conjunction with `flyvr-fictrac-replay`
+  allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. 
+  often used in conjunction with `flyvr-fictrac-replay`
 * flyvr-print-state  
   prints the current flyvr state to the console
 * flyvr-fictrac-plot
@@ -278,7 +278,7 @@ or observing experiments in progress
 # credits
 
 David Deutsch - Murthy lab, PNI, Princeton; Adam Calhoun - Murthy lab, PNI, Princeton; 
-John Stowers - LoopBio, David Turner - PNI, Princeton
+John Stowers - [LoopBio](http://loopbio.com/consulting/), David Turner - PNI, Princeton
 
 # license
 Copyright (c) 2020 Princeton University

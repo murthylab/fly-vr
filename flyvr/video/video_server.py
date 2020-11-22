@@ -915,7 +915,13 @@ class VideoServer(object):
         if self._initial_stim is not None:
             self._play(self._initial_stim)
 
-        while self._running and self.flyvr_shared_state.is_running_well():
+        _ = self.flyvr_shared_state.signal_ready(BACKEND_VIDEO)
+
+        if not self.flyvr_shared_state.wait_for_start():
+            self._log.info('did not receive start signal')
+            self._running = False
+
+        while self._running:
 
             try:
                 msg = self._q.get_nowait()
@@ -950,6 +956,9 @@ class VideoServer(object):
 
                 if not self.stim.advance():
                     self.stim.show = False
+
+            if self.flyvr_shared_state.is_stopped():
+                self._running = False
 
         self._log.info('exiting')
 
@@ -1014,7 +1023,7 @@ def run_video_server(options):
         paused = option_item_defn.pop('paused', None)
 
         playlist_stim = VideoStimPlaylist(*stims, random=random,
-                                          paused=paused if paused is not None else getattr(options, 'paused'),
+                                          paused=paused if paused is not None else getattr(options, 'paused', False),
                                           play_item=getattr(options, 'play_item', None))
         log.info('initialized video playlist: %r' % playlist_stim)
 
@@ -1024,7 +1033,7 @@ def run_video_server(options):
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.video_server.h5'))
-        state = SharedState(options=options, logger=logger)
+        state = SharedState(options=options, logger=logger, where=BACKEND_VIDEO)
 
         video_server = VideoServer(stim=startup_stim,
                                    calibration_file=options.screen_calibration,

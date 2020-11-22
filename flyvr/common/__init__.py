@@ -1,27 +1,31 @@
 import re
 import sys
 import mmap
+import time
 import ctypes
 import logging
-import traceback
+import itertools
+import threading
 
 import numpy as np
 
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer
+from flyvr.common.ipc import Sender, Reciever, RELAY_SEND_PORT, RELAY_RECIEVE_PORT, RELAY_HOST, CommonMessages
 
 
-BACKEND_VIDEO, BACKEND_AUDIO, BACKEND_DAQ = "video", "audio", "daq"
+BACKEND_VIDEO = "video"
+BACKEND_AUDIO = "audio"
+BACKEND_DAQ = "daq"
+
+BACKEND_HWIO = "hwio"
+BACKEND_FICTRAC = "fictrac"
 
 
 class SHMEMFlyVRState(ctypes.Structure):
     _fields_ = [
-        ('run', ctypes.c_int),
-        ('runtime_error', ctypes.c_int),
-        ('daq_ready', ctypes.c_int),
-        ('start_daq', ctypes.c_int),
-        ('fictrac_ready', ctypes.c_int),
         ('daq_output_num_samples_written', ctypes.c_int),
         ('sound_output_num_samples_written', ctypes.c_int),
+        ('video_output_num_frames', ctypes.c_int),
     ]
 
 
@@ -32,10 +36,11 @@ class SharedState(object):
     will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
     """
 
-    def __init__(self, options, logger):
-        # Lets store the options passed to the program.
+    def __init__(self, options, logger, where=''):
         self._options = options
         self._logger = logger
+
+        self._log = logging.getLogger('flyvr.common.SharedState%s' % (("(in='" + where + "')") if where else ''), )
 
         # noinspection PyTypeChecker
         buf = mmap.mmap(-1,
@@ -45,8 +50,100 @@ class SharedState(object):
         # print('Shared State: 0x%x' % ctypes.addressof(ctypes.c_void_p.from_buffer(buf)))
         self._shmem_state = SHMEMFlyVRState.from_buffer(buf)
         self._fictrac_shmem_state = new_mmap_shmem_buffer()
-
         # on unix (mmap) and windows (CreateFileMapping) initialize the memory block to zero upon creation
+
+        self._backends_ready = set()
+        self._evt_start = threading.Event()
+        self._evt_stop = threading.Event()
+        self._rx = Reciever(host=RELAY_HOST, port=RELAY_RECIEVE_PORT, channel=b'')
+        self._t_rx = threading.Thread(target=self._ipc_rx, daemon=True)
+        self._t_rx.start()
+
+    def _ipc_rx(self):
+        while True:
+            msg = self._rx.get_next_element()
+            if msg:
+                if CommonMessages.EXPERIMENT_START in msg:
+                    self._evt_start.set()
+                if CommonMessages.EXPERIMENT_STOP in msg:
+                    self._evt_stop.set()
+                if CommonMessages.READY in msg:
+                    self._backends_ready.add(msg[CommonMessages.READY])
+
+    def wait_for_start(self, timeout=180):
+        if self._options.wait:
+            self._log.info('waiting %ss for start' % timeout)
+            return self._evt_start.wait(timeout=timeout)
+        else:
+            return True
+
+    def is_stopped(self):
+        return self._evt_stop.is_set()
+
+    def wait_for_backends(self, *backends, timeout=60):
+        self._log.info('waiting %ss for %r backends' % (timeout, backends))
+
+        t0 = time.time()
+        for i in itertools.count():
+            if all(b in self._backends_ready for b in backends):
+                return True
+
+            time.sleep(0.5)
+
+            t = time.time()
+            if t > (t0 + timeout):
+                break
+
+            if (i % 10) == 0:
+                self._log.debug('ready backends: %r' % (backends, ))
+
+        return False
+
+    def _signal_thread(self, sender, msg, timeout):
+        t0 = time.time()
+        for i in itertools.count():
+            sender.process(**msg)
+
+            time.sleep(0.5)
+
+            t = time.time()
+            if t > (t0 + timeout):
+                break
+
+            if (i % 10) == 0:
+                self._log.debug('signaling %r' % (msg, ))
+
+        sender.close()
+
+    def signal_ready(self, what):
+        self._log.info('signaling %s ready' % what)
+        t = threading.Thread(target=self._signal_thread,
+                             args=(Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b''),
+                                   CommonMessages.build(CommonMessages.READY, what),
+                                   20),
+                             daemon=True)
+        t.start()
+        return t
+
+    def signal_start(self):
+        self._log.info('signaling start')
+        t = threading.Thread(target=self._signal_thread,
+                             args=(Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b''),
+                                   CommonMessages.build(CommonMessages.EXPERIMENT_START, ''),
+                                   2),
+                             daemon=True)
+        t.start()
+        return t
+
+    def signal_stop(self):
+        self._log.info('signaling stop')
+        t = threading.Thread(target=self._signal_thread,
+                             args=(Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b''),
+                                   CommonMessages.build(CommonMessages.EXPERIMENT_STOP, ''),
+                                   2),
+                             daemon=True)
+        t.start()
+        return t
 
     @property
     def SOUND_OUTPUT_NUM_SAMPLES_WRITTEN(self):
@@ -58,6 +155,15 @@ class SharedState(object):
         self._shmem_state.sound_output_num_samples_written = int(v)
 
     @property
+    def VIDEO_OUTPUT_NUM_FRAMES(self):
+        """ total number of video frames shown """
+        return self._shmem_state.video_output_num_frames
+
+    @VIDEO_OUTPUT_NUM_FRAMES.setter
+    def VIDEO_OUTPUT_NUM_FRAMES(self, v):
+        self._shmem_state.video_output_num_frames = int(v)
+
+    @property
     def DAQ_OUTPUT_NUM_SAMPLES_WRITTEN(self):
         """ total number of samples written to the DAQ """
         return self._shmem_state.daq_output_num_samples_written
@@ -67,66 +173,14 @@ class SharedState(object):
         self._shmem_state.daq_output_num_samples_written = int(v)
 
     @property
-    def FICTRAC_READY(self):
-        """ FicTrac is running an processing frames """
-        return self._shmem_state.fictrac_ready
-
-    @FICTRAC_READY.setter
-    def FICTRAC_READY(self, v):
-        self._shmem_state.fictrac_ready = int(v)
-
-    @property
     def FICTRAC_FRAME_NUM(self):
         """ FicTrac frame number """
         return self._fictrac_shmem_state.frame_cnt
 
     @property
-    def START_DAQ(self):
-        """ DAQ should start playback and acquisition """
-        return self._shmem_state.start_daq
-
-    @START_DAQ.setter
-    def START_DAQ(self, v):
-        self._shmem_state.start_daq = int(v)
-
-    @property
-    def RUN(self):
-        """ the current run state """
-        # XOR with 1 because this must be init to true in a safe manner yet the underlying memory block is
-        # initialized to zero
-        return self._shmem_state.run ^ 1
-
-    @RUN.setter
-    def RUN(self, v):
-        self._shmem_state.run = int(v) ^ 1
-
-    @property
-    def RUNTIME_ERROR(self):
-        """  a value to indicate a runtime error occurred and the whole of flyvr program should close """
-        return self._shmem_state.runtime_error
-
-    @RUNTIME_ERROR.setter
-    def RUNTIME_ERROR(self, v):
-        self._shmem_state.runtime_error = int(v)
-
-    @property
-    def DAQ_READY(self):
-        """ the daq is aquiring samples """
-        return self._shmem_state.daq_ready
-
-    @DAQ_READY.setter
-    def DAQ_READY(self, v):
-        self._shmem_state.daq_ready = int(v)
-
-    @property
     def logger(self):
         """ an object which provides and interface for sending logging messages to the logging process """
         return self._logger
-
-    @property
-    def options(self):
-        """ runtime / command line config options """
-        return self._options
 
     def _iter_state(self):
         for n in dir(self):
@@ -141,13 +195,10 @@ class SharedState(object):
         out.flush()
 
     def is_running_well(self):
-        return self.RUNTIME_ERROR == 0 and self.RUN != 0
+        return True
 
-    def runtime_error(self, excep, error_code):
-        sys.stderr.write("RUNTIME ERROR - Unhandled Exception: \n" + str(excep) + "\n")
-        traceback.print_exc()
-        self.RUN = 0
-        self.RUNTIME_ERROR = -1
+    def runtime_error(self, errno):
+        pass
 
 
 class Every(object):

@@ -24,6 +24,7 @@ from ctypes import byref, c_ulong
 from flyvr.audio.signal_producer import chunker
 from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist
 from flyvr.audio.util import get_paylist_object
+from flyvr.common import BACKEND_DAQ
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
 from flyvr.common.build_arg_parser import setup_logging
@@ -61,8 +62,7 @@ class IOTask(daq.Task):
         if not isinstance(cha_name, list):
             cha_name = [cha_name]
 
-        # If a shared_state object was passed in, store it in the class
-        self.shared_state = shared_state
+        self.flyvr_shared_state = shared_state
 
         # Is this a digital task
         self.digital = digital
@@ -245,17 +245,17 @@ class IOTask(daq.Task):
                 # Log output syncrhonization info only if the logger is valid and the task is not digital.
                 if self.logger is not None and not self.digital:
                     self.logger.log("/fictrac/daq_synchronization_info",
-                                    np.array([self.shared_state.FICTRAC_FRAME_NUM,
-                                              self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN]))
+                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN]))
 
                 if not self.digital:
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                         self._data, daq.byref(self.read), None)
 
                     # Keep track of how many samples we have written out in a global variable
-                    if self.shared_state is not None:
-                        self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN = \
-                            self.shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN + self._data.shape[0]
+                    if self.flyvr_shared_state is not None:
+                        self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN = \
+                            self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN + self._data.shape[0]
                 else:
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely,
                                            DAQmx_Val_GroupByScanNumber, self._data, None, None)
@@ -321,12 +321,10 @@ def setup_playback_callbacks(stim, logger, state):
 
 
 # noinspection PyPep8Naming
-def io_task_loop(message_pipe, state, options):
+def io_task_loop(message_pipe, flyvr_shared_state, options):
 
     log = logging.getLogger('flyvr.daq')
     log.info('starting DAQ process')
-
-    start_immediately = getattr(options, 'start_immediately', False)
 
     analog_in_channels = tuple(sorted(options.analog_in_channels))
     analog_out_channels = tuple(sorted(options.analog_out_channels))
@@ -349,13 +347,14 @@ def io_task_loop(message_pipe, state, options):
 
     is_analog_out = (daq_stim is not None) and len(analog_out_channels) == 1
 
+    # noinspection PyBroadException
     try:
 
+        running = True
         taskAO = None
         taskAI = None
 
-        # Keep the daq controller task running until exit is signalled by main thread via RUN shared memory variable
-        while state.is_running_well():
+        while running:
             log.info("initializing DAQ Tasks")
 
             taskAO = None
@@ -365,25 +364,27 @@ def io_task_loop(message_pipe, state, options):
                 taskAO = IOTask(cha_name=output_chans, cha_type="output",
                                 num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
                                 num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
-                                shared_state=state)
+                                shared_state=flyvr_shared_state)
 
             input_chans = ["ai" + str(s) for s in analog_in_channels]
             input_chan_names = [options.analog_in_channels[s] for s in analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
-                            shared_state=state, use_RSE=options.use_RSE)
+                            shared_state=flyvr_shared_state, use_RSE=options.use_RSE)
 
             disp_task = ConcurrentTask(task=plot_task_daq, comms="pipe",
                                        taskinitargs=[input_chan_names, taskAI.num_samples_per_chan, 5])
 
             # Setup the display task to receive messages from recording task.
             taskAI.data_recorders = [disp_task]
+            # start disp early so the user sees something
+            disp_task.start()
 
             # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
             # and when.
             if is_analog_out:
-                setup_playback_callbacks(daq_stim, state.logger, state)
+                setup_playback_callbacks(daq_stim, flyvr_shared_state.logger, flyvr_shared_state)
 
             if taskAO is not None:
                 # Setup the stimulus playlist as the data generator
@@ -392,18 +393,14 @@ def io_task_loop(message_pipe, state, options):
                 # Connect AO start to AI start
                 taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
 
-            # Message loop that waits for start signal
-            log.info("waiting for START_DAQ")
-            while (state.START_DAQ == 0) and state.is_running_well() and (not start_immediately):
-                time.sleep(0.2)
+            _ = flyvr_shared_state.signal_ready(BACKEND_DAQ)
 
-            # We received the start signal, lets set it back to 0
-            state.START_DAQ = 0
+            if not flyvr_shared_state.wait_for_start():
+                log.info('did not receive start signal')
+                running = False
+                continue
 
-            # Start the display and logging tasks
-            disp_task.start()
-
-            log.info("starting DAQ Tasks ")
+            log.info("starting DAQ tasks")
             if taskAO is not None:
                 # Arm the AO task
                 # It won't start until the start trigger signal arrives from the AI task
@@ -413,10 +410,7 @@ def io_task_loop(message_pipe, state, options):
             # This generates the AI start trigger signal and triggers the AO task
             taskAI.StartTask()
 
-            # Signal that the DAQ is ready and acquiring samples
-            state.DAQ_READY = 1
-
-            while state.is_running_well():
+            while running:
                 if message_pipe.poll(0.1):
                     # noinspection PyBroadException
                     try:
@@ -428,7 +422,7 @@ def io_task_loop(message_pipe, state, options):
 
                             # Setup callbacks that will generate log messages to the logging process.
                             # these will signal what is playing and when.
-                            setup_playback_callbacks(daq_stim, state.logger, state)
+                            setup_playback_callbacks(daq_stim, flyvr_shared_state.logger, flyvr_shared_state)
 
                             if taskAO is not None:
                                 # Setup the stimulus playlist as the data generator
@@ -439,13 +433,15 @@ def io_task_loop(message_pipe, state, options):
                     except Exception:
                         pass
 
-            # stop tasks and properly close callbacks (e.g. flush data to disk and close file)
-            if taskAO is not None:
-                taskAO.StopTask()
-                taskAO.stop()
+                if flyvr_shared_state.is_stopped():
+                    running = False
 
-            taskAI.StopTask()
-            taskAI.stop()
+        if taskAO is not None:
+            taskAO.StopTask()
+            taskAO.stop()
+
+        taskAI.StopTask()
+        taskAI.stop()
 
         if taskAO is not None:
             taskAO.ClearTask()
@@ -453,10 +449,8 @@ def io_task_loop(message_pipe, state, options):
         if taskAI is not None:
             taskAI.ClearTask()
 
-        state.DAQ_READY = 0
-
-    except Exception as e:
-        state.runtime_error(e, -2)
+    except Exception:
+        flyvr_shared_state.runtime_error(1)
 
 
 def _ipc_main(q):
@@ -493,7 +487,7 @@ def run_io(options):
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.daq.h5'))
-        state = SharedState(options=options, logger=logger)
+        state = SharedState(options=options, logger=logger, where=BACKEND_DAQ)
         io_task_loop(_MockPipe(), state, options)
 
 
@@ -502,8 +496,6 @@ def main_io():
     from flyvr.audio.util import plot_playlist
 
     parser = build_argparser()
-    parser.add_argument('--start-immediately', action='store_true',
-                        help='start recording immediately (do not wait for start signal)')
     parser.add_argument('--plot', action='store_true', help='plot the stimulus playlist')
     options = parse_options(parser.parse_args(), parser)
 

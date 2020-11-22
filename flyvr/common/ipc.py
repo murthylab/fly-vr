@@ -172,13 +172,37 @@ def main_ipc_send():
     import sys
     import json
     import time
+    import argparse
+
+    from flyvr.common.build_arg_parser import setup_logging
+    from flyvr.common import SharedState
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', help='Verbose output', default=False, dest='verbose', action='store_true')
+    parser.add_argument('--start', action='store_true', help='send start signal')
+    parser.add_argument('--stop', action='store_true', help='send stop signal')
+    parser.add_argument('json', nargs='?', help='raw json message contents (see README)')
+    args = parser.parse_args()
+
+    if args.start:
+        setup_logging(args)
+        SharedState(None, None, '').signal_start().join(timeout=5)
+        return parser.exit(0)
+
+    if args.stop:
+        setup_logging(args)
+        SharedState(None, None, '').signal_stop().join(timeout=5)
+        return parser.exit(0)
+
+    if not args.json:
+        return parser.exit(0, 'nothing to do')
 
     # noinspection PyBroadException
     try:
-        dat = json.loads(sys.argv[1])
+        dat = json.loads(args.json)
     except json.JSONDecodeError as exc:
-        print("PARSE ERROR:\t\n\t", (sys.argv[1], exc))
-        sys.exit(1)
+        print("PARSE ERROR:\t\n\t", (args.json, exc))
+        parser.exit(1)
 
     send = PlaylistSender()
     time.sleep(1.0)

@@ -9,6 +9,7 @@ import sounddevice as sd
 
 from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
 from flyvr.audio.io_task import chunker
+from flyvr.common import Randomizer, BACKEND_AUDIO
 from flyvr.common.build_arg_parser import setup_logging
 
 
@@ -258,8 +259,15 @@ class SoundServer(threading.Thread):
         # Setup up for playback of silence.
         self.data_generator = None
 
-        with self._stream:
-            while self._running and self.flyvr_shared_state.is_running_well():
+        _ = self.flyvr_shared_state.signal_ready(BACKEND_AUDIO)
+
+        if not self.flyvr_shared_state.wait_for_start():
+            self._log.info('did not receive start signal')
+            self._running = False
+
+        with self._stream:  # starts the stream
+
+            while self._running:
                 try:
                     msg = self._q.get(timeout=0.5)
                     if msg is not None:
@@ -269,6 +277,9 @@ class SoundServer(threading.Thread):
                             raise NotImplementedError(repr(msg))
                 except queue.Empty:
                     pass
+
+                if self.flyvr_shared_state.is_stopped():
+                    self._running = False
 
         self._log.info('exiting')
 
@@ -365,7 +376,7 @@ def run_sound_server(options):
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.sound_server.h5'))
-        state = SharedState(options=options, logger=logger)
+        state = SharedState(options=options, logger=logger, where=BACKEND_AUDIO)
 
         sound_server = SoundServer(flyvr_shared_state=state)
         sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
