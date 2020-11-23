@@ -137,10 +137,14 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
 
         # Perform limit check on data, make sure we are not exceeding
         if data.max() > self.__max_value:
-            raise ValueError("Audio stimulus value exceeded max level!")
+            raise ValueError("Audio stimulus value exceeded max level (%r, %s vs %s)" % (self,
+                                                                                         data.max(),
+                                                                                         self.__max_value))
 
         if data.min() < self.__min_value:
-            raise ValueError("Audio stimulus value lower than min level!")
+            raise ValueError("Audio stimulus value lower than min level (%r, %s vs %s)" % (self,
+                                                                                           data.min(),
+                                                                                           self.__min_value))
 
     def describe(self):
         return {'name': self.NAME,
@@ -491,20 +495,21 @@ class ConstantStim(AudioStim):
     NAME = 'constant'
 
     def __init__(self, sample_rate, duration, amplitude=1.0, pre_silence=0, post_silence=0, attenuator=None,
-                 next_event_callbacks=None, identifier=None):
-        super(ConstantStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=amplitude,
+                 intensity=1.0, next_event_callbacks=None, identifier=None):
+        super(ConstantStim, self).__init__(sample_rate=sample_rate, duration=duration, intensity=intensity,
                                            pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
                                            frequency=None, next_event_callbacks=next_event_callbacks,
                                            identifier=identifier)
+        self._amplitude = amplitude
         self.data = self._generate_data()
         self.dtype = self.data.dtype
 
     def _generate_data(self):
-        return np.full((int(self.duration / 1000. * self.sample_rate),), self.intensity)
+        return np.full((int(self.duration / 1000. * self.sample_rate),), self._amplitude)
 
     def describe(self):
         desc = super(ConstantStim, self).describe()
-        desc['amplitude'] = desc.pop('intensity')
+        desc['amplitude'] = self._amplitude
         desc.pop('frequency')
         return desc
 
@@ -514,9 +519,9 @@ class PulseStim(AudioStim):
     NAME = 'pulse'
 
     def __init__(self, sample_rate, duration_a, amplitude_a, duration_b, amplitude_b,
-                 pre_silence=0, post_silence=0, attenuator=None,
+                 pre_silence=0, post_silence=0, intensity=1.0, attenuator=None,
                  next_event_callbacks=None, identifier=None):
-        super(PulseStim, self).__init__(sample_rate=sample_rate, duration=duration_a + duration_b, intensity=1.0,
+        super(PulseStim, self).__init__(sample_rate=sample_rate, duration=duration_a + duration_b, intensity=intensity,
                                         pre_silence=pre_silence, post_silence=post_silence, attenuator=attenuator,
                                         frequency=None, next_event_callbacks=next_event_callbacks,
                                         identifier=identifier)
@@ -534,7 +539,6 @@ class PulseStim(AudioStim):
 
     def describe(self):
         desc = super(PulseStim, self).describe()
-        desc.pop('intensity')
         desc.pop('frequency')
         desc['amplitude_a'] = self._amplitudes[0]
         desc['amplitude_b'] = self._amplitudes[0]

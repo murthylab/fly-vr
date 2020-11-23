@@ -201,6 +201,6 @@ def test_all_stim_library():
                                                     default_repeat=1)
     arr = pl._to_array(fix_repeat_forver=False)
     assert arr.shape == (37044,)
-    np.testing.assert_almost_equal(arr.max(), 4.0)
+    np.testing.assert_almost_equal(arr.max(), 2.0)
     np.testing.assert_almost_equal(arr.min(), -1.999999873071382)
-    np.testing.assert_almost_equal(arr.mean(), 0.5595777993737178)
+    np.testing.assert_almost_equal(arr.mean(), 0.32148256127847963)

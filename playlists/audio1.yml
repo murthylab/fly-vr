@@ -1,5 +1,5 @@
 # note: the default repeat mode for audio playlists is to repeat all the stimuli in order, unlimited times
 playlist:
   audio:
-    - sin800hz: {name: 'sin', sample_rate: 44100, duration: 1000, intensity: 1.0, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 800, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
-    - sin200hz: {name: 'sin', sample_rate': 44100, duration: 1000, intensity: 1.0, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 400, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin800hz: {name: 'sin', sample_rate: 44100, duration: 1000, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 800, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin200hz: {name: 'sin', sample_rate': 44100, duration: 1000, pre_silence: 0, post_silence: 0, attenuator: null, frequency: 400, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
