@@ -10,7 +10,7 @@ import scipy
 from scipy import io
 from scipy import signal
 
-from flyvr.audio.signal_producer import SignalProducer, SampleChunk, MixedSignal, ConstantSignal
+from flyvr.audio.signal_producer import SignalProducer, SampleChunk, MixedSignal
 from flyvr.common import Randomizer
 
 
@@ -627,9 +627,13 @@ def _legacy_factory(chan_name, rate, silencePre, silencePost, intensity, freq, b
     #  never any ability to specify things like duration independent of sample-rate
 
     if chan_name == "optooff" or chan_name.strip() == "":
-        chan = ConstantSignal(0.0)
+        chan = ConstantStim(amplitude=0.0,
+                            duration=30000,
+                            sample_rate=int(1e4))
     elif chan_name == "optoon":
-        chan = ConstantSignal(5.0)
+        chan = ConstantStim(amplitude=5.0,
+                            duration=30000,
+                            sample_rate=int(1e4))
     elif chan_name == "square":
         chan = SquareWaveStim(frequency=freq, duty_cycle=0.75,
                               amplitude=intensity, sample_rate=int(1e4),
@@ -795,16 +799,6 @@ def legacy_factory(lines, basedirs, attenuator=None):
                                    basedirs=basedirs,
                                    attenuator=attenuator)
             chans.append(chan)
-
-            # Get the maximum duration of all the channel's stimuli
-            max_stim_len = max(1000, max([next(chan.data_generator()).data.shape[0] for chan in chans]))
-
-            # Make sure we resize all the ConstantSignal's to be as long as the maximum stim
-            # size, this will make data loading much more efficient since their generators will
-            # not need to yield a single sample many times for one chunk of data.
-            for i, chan in enumerate(chans):
-                if isinstance(chan, ConstantSignal):
-                    chans[i] = ConstantSignal(chan.constant, num_samples=max_stim_len)
 
         # Combine these stimuli into one analog signal with a channel for each.
         if len(chans) > 1:

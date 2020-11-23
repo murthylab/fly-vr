@@ -1,8 +1,8 @@
 import numpy as np
 import math
 
-from flyvr.audio.stimuli import SinStim
-from flyvr.audio.signal_producer import SampleChunk, SignalProducer, MixedSignal, chunker, ConstantSignal
+from flyvr.audio.stimuli import SinStim, ConstantStim
+from flyvr.audio.signal_producer import SampleChunk, SignalProducer, MixedSignal, chunker
 
 
 def check_chunker(test_gen, chunk_size):
@@ -92,24 +92,14 @@ def test_mixed_signal_chunked():
     check_chunker(mixed.data_generator, 128)
 
 
-def test_constant_signal():
-    constant = 5.0
-
-    stim = ConstantSignal(constant)
-    gen = stim.data_generator()
-
-    for i in range(100):
-        assert (np.array_equal(next(gen).data, np.array([constant])))
-
-    check_chunker(stim.data_generator, 100)
-
-
 def test_mix_different_sizes():
     # Create two signals, the chunks their generators yield will be different sizes.
     stim1 = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
                     duration=200, intensity=1.0, pre_silence=0, post_silence=0,
                     attenuator=None)
-    stim2 = ConstantSignal(5, num_samples=stim1.data.shape[0])
+    stim2 = ConstantStim(amplitude=5.0,
+                         duration=stim1.duration,
+                         sample_rate=40000)
 
     assert stim1.dtype is not None
     assert stim2.dtype is not None
