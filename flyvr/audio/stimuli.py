@@ -428,6 +428,7 @@ class SquareWaveStim(AudioStim):
         self.event_message["amplitude"] = amplitude
 
         self.data = self._generate_data()
+        self.dtype = self.data.dtype
 
     def describe(self):
         desc = super(SquareWaveStim, self).describe()

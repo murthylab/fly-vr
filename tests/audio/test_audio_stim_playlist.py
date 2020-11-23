@@ -30,6 +30,16 @@ def stim3():
                    attenuator=None)
 
 
+@pytest.fixture
+def stimlibraryplaylist():
+    with open('tests/test_data/stimuli_library.yml') as f:
+        conf = yaml.load(f)
+    return AudioStimPlaylist.from_playlist_definition(conf['playlist']['audio'],
+                                                      basedirs=[],
+                                                      paused_fallback=False,
+                                                      default_repeat=1)
+
+
 def test_generator(stim1, stim2, stim3):
     stims = (stim1, stim2, stim3)
 
@@ -191,16 +201,15 @@ def test_opto_convert_manual():
     np.testing.assert_equal(arr2, arr3)
 
 
-def test_all_stim_library():
-    with open('tests/test_data/stimuli_library.yml') as f:
-        conf = yaml.load(f)
-
-    pl = AudioStimPlaylist.from_playlist_definition(conf['playlist']['audio'],
-                                                    basedirs=[],
-                                                    paused_fallback=False,
-                                                    default_repeat=1)
+def test_all_stim_library(stimlibraryplaylist):
+    pl = stimlibraryplaylist
     arr = pl._to_array(fix_repeat_forver=False)
     assert arr.shape == (37044,)
     np.testing.assert_almost_equal(arr.max(), 2.0)
     np.testing.assert_almost_equal(arr.min(), -1.999999873071382)
     np.testing.assert_almost_equal(arr.mean(), 0.32148256127847963)
+
+
+def test_all_stim_library_types(stimlibraryplaylist):
+    for stim in stimlibraryplaylist:
+        assert stim.dtype == np.float64, stim
