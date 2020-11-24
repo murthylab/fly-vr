@@ -303,11 +303,12 @@ def setup_playback_callbacks(stim, logger, flyvr_shared_state):
 
     # noinspection PyUnusedLocal
     def make_log_stim_playback(_logger, _state):
-        def callback(event_message):
-            _logger.log("/output/history",
-                        np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]))
+        def _callback(chunk):
+            print('callback', chunk)
+            # _logger.log("/output/history",
+            #             np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]))
 
-        return callback
+        return _callback
 
     stim.initialize(flyvr_shared_state, BACKEND_DAQ)
 
@@ -316,10 +317,10 @@ def setup_playback_callbacks(stim, logger, flyvr_shared_state):
 
     # Setup the control.
     if isinstance(stim, AudioStim):
-        stim.next_event_callbacks = callbacks
+        stim.add_next_event_callback(callbacks)
     elif isinstance(stim, AudioStimPlaylist):
         for s in stim:
-            s.next_event_callbacks = callbacks
+            s.add_next_event_callback(callbacks)
 
     # Lets setup the logging dataset that these log events will be sent to
     logger.create("/output/history",

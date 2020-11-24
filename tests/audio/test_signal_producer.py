@@ -44,7 +44,7 @@ def test_chunker():
     def simple_gen():
         x = 0
         while True:
-            yield SampleChunk(data=np.arange(x, x + 51), producer_id=1)
+            yield SampleChunk(data=np.arange(x, x + 51), producer_identifier='', producer_instance_n=-1)
             x = x + 51
 
     # Test out the chunker on a very simple generator

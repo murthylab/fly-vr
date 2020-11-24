@@ -1,20 +1,68 @@
-import uuid
-import itertools
 import abc
 import copy
+
+from typing import Optional, Callable, Iterator
 
 import numpy as np
 
 
 class SampleChunk(object):
     """
-    A class that encapsulated numpy arrays containing sample data along with metadata information. This allows us to
-    record attributes like where the data was produced.
+    A class that encapsulated numpy arrays containing sample data along with metadata information
+    about where it was produced.
     """
 
-    def __init__(self, data, producer_id):
+    __slots__ = ["data", "producer_identifier", "producer_instance_n", "chunk_n", "producer_playlist_n",
+                 "mixed_producer", "mixed_start_offset"]
+
+    def __init__(self, data, producer_identifier, producer_instance_n, chunk_n=-1, producer_playlist_n=-1,
+                 mixed_producer=False, mixed_start_offset=0):
         self.data = data
-        self.producer_id = producer_id
+        self.producer_identifier = producer_identifier
+        self.producer_instance_n = producer_instance_n
+        self.chunk_n = chunk_n
+        self.producer_playlist_n = producer_playlist_n
+        self.mixed_producer = mixed_producer
+        self.mixed_start_offset = mixed_start_offset
+
+    def __repr__(self):
+        if self.mixed_producer:
+            return "<SampleChunk([MIXED ... %s(offset=%d)], chunk_n=%d, shape=%r)>" % (
+                self.producer_identifier, self.mixed_start_offset, self.chunk_n, self.data.shape)
+
+        extra = []
+        if self.chunk_n != -1:
+            extra.append('chunk_n=%d' % self.chunk_n)
+        if self.producer_playlist_n != -1:
+            extra.append('playlist_n=%d' % self.producer_playlist_n)
+
+        if extra:
+            extra = (', '.join(extra)) + ', '
+        else:
+            extra = ''
+
+        return "<SampleChunk(%s, n=%s, %sshape=%r)>" % (self.producer_identifier, self.producer_instance_n, extra,
+                                                        self.data.shape)
+
+    @classmethod
+    def new_silence(cls, shape):
+        return cls(np.zeros(shape, dtype=SignalProducer.SUPPORTED_DTYPES[0]),
+                   producer_identifier='_silence', producer_instance_n=-1)
+
+
+def chunk_producers_differ(prev: Optional[SampleChunk], this: Optional[SampleChunk]):
+    if (prev is not None) and (this is not None):
+        return this.mixed_producer or (prev.producer_identifier,
+                                       prev.producer_playlist_n) != (this.producer_identifier,
+                                                                     this.producer_playlist_n)
+    elif (prev is None) and (this is not None):
+        return True
+    else:
+        # handles either non-None
+        return prev == this
+
+
+CallbackFunction = Callable[[SampleChunk], None]
 
 
 class SignalProducer(object, metaclass=abc.ABCMeta):
@@ -24,39 +72,44 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
     and others inherit from this class to standardize their interface.
     """
 
-    # We want to keep track of every instance of a signal producer class. These instance IDs will be appended to their
-    # event messages.
+    # keep track of every instance of a signal producer class.
     instances_created = 0
 
-    def __init__(self, dtype=np.float64):
-        """
-        Create a signal producer instance.
+    SUPPORTED_DTYPES = np.float64,
 
-        :param dtype: The underlying data type for the numpy array that this class produces. float64 by default.
-        """
+    def __init__(self, type_, instance_identifier,
+                 next_event_callback: Optional[CallbackFunction] = None):
+
         self.flyvr_shared_state = None
         self.backend = None
 
-        # Use the number of instances created to set an ID for this instance
-        self.producer_id = SignalProducer.instances_created
-
-        # Increment the class shared number of instances created
+        self.producer_instance_n = SignalProducer.instances_created
         SignalProducer.instances_created += 1
 
-        # Store dtype for this producer
-        self.dtype = dtype
+        self.type = type_
+        self.identifier = instance_identifier
+        self.dtype = np.float64
+
+        self._next_event_callbacks = []
+        if next_event_callback is not None:
+            self._next_event_callbacks.append(next_event_callback)
 
     def initialize(self, flyvr_shared_state, backend):
         self.flyvr_shared_state = flyvr_shared_state
         self.backend = backend
 
+    def add_next_event_callback(self, func: CallbackFunction):
+        self._next_event_callbacks.append(func)
+
+    def trigger_next_callback(self, sample_chunk):
+        for func in self._next_event_callbacks:
+            func(sample_chunk)
+
     @abc.abstractmethod
-    def data_generator(self):
+    def data_generator(self) -> Iterator[Optional[SampleChunk]]:
         """
         All signal producers need to define a data_generator() method that creates a generator iterator that produces
         the data when called.
-
-        :return: A generator iterator that produces the signal data.
         """
 
     @property
@@ -84,7 +137,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         return data.shape[0]
 
 
-def chunker(gen, chunk_size=100):
+def chunker(gen, chunk_size=100) -> Iterator[Optional[SampleChunk]]:
     """
     A function that takes a generator function that outputs arbitrary size SampleChunk objects. These object contain
     a numpy array of arbitrary size. This function can take SampleChunk objects and turn them into fix sized object or
@@ -100,8 +153,12 @@ def chunker(gen, chunk_size=100):
     curr_chunk_sample = 0
     data = None
     num_samples = 0
+    chunk_n = 0
+    chunk_mixed = False
+    # noinspection PyUnusedLocal
+    chunk_mixed_start_offset = 0
 
-    for i in itertools.count():
+    while True:
 
         if curr_data_sample == num_samples:
             sample_chunk_obj = next(gen)
@@ -132,10 +189,29 @@ def chunker(gen, chunk_size=100):
         curr_data_sample = curr_data_sample + sz
 
         if curr_chunk_sample == chunk_size:
-            curr_chunk_sample = 0
-            sample_chunk_obj = copy.copy(sample_chunk_obj)
+            # noinspection PyUnboundLocalVariable
+            sample_chunk_obj = copy.copy(sample_chunk_obj)  # type: SampleChunk
             sample_chunk_obj.data = next_chunk.copy()
+
+            chunk_mixed_start_offset = chunk_size - curr_data_sample
+
+            sample_chunk_obj.chunk_n = chunk_n
+            sample_chunk_obj.mixed_producer = chunk_mixed
+            sample_chunk_obj.mixed_start_offset = 0 if chunk_mixed_start_offset < 0 else chunk_mixed_start_offset
+
+            # print("\n\t", chunk_n, "chunk return", sample_chunk_obj.producer_identifier,
+            #       'mixed=', chunk_mixed, "curr_chunk_sample",
+            #       curr_chunk_sample, "curr_data_sample", curr_data_sample, "offset", chunk_size - curr_data_sample)
+
             yield sample_chunk_obj
+
+            chunk_n += 1
+            chunk_mixed = False
+            curr_chunk_sample = 0
+        else:
+            # this chunk was not filled by the input stim/chunk, so taken another bite out of the next one
+            # by looping again
+            chunk_mixed = True
 
 
 class MixedSignal(SignalProducer):
@@ -145,31 +221,27 @@ class MixedSignal(SignalProducer):
     arrays into a one array.
     """
 
-    def __init__(self, signals, identifier=None):
+    def __init__(self, stims, identifier=None, next_event_callback=None):
         """
-        Create the MixedSignal object that will combine these signals into one signal.
-
-        :param signals: The list of signals to combine, one for each channel.
+        Create the MixedSignal object that will combine these stims into one signal
         """
 
-        self.signals = signals
-
-        # Check the dtypes of each producer to make sure they are compatible
-        dtypes = [sig.dtype for sig in self.signals]
-
-        dtype = dtypes[0]
-
-        # Make sure all signals have the same dtype.
-        if not all(typ == dtype for typ in dtypes):
+        dtypes = set(s.dtype for s in stims)
+        if len(dtypes) > 1:
             raise ValueError("Cannot created mixed signal from signals with different dtypes: %s" % (
-                ', '.join('%s:%s' % (s.producer_id, s.dtype) for s in signals)))
+                ', '.join('%s:%s' % (s.identifier, s.dtype) for s in stims)))
+        _dtype = dtypes.pop()
+        assert _dtype == SignalProducer.SUPPORTED_DTYPES[0]
 
-        # Attach event next callbacks to this object, since it is a signal producer
-        super(MixedSignal, self).__init__(dtype=dtype)
+        self._stims = stims
+
+        super(MixedSignal, self).__init__(type_='_mixed',
+                                          instance_identifier=identifier or '|'.join(s.identifier for s in stims),
+                                          next_event_callback=next_event_callback)
 
         # Grab a chunk from each generator to see how big their chunks are, we will need to make sure they are all the
         # same size later when we output a single chunk with multiple channels.
-        data_gens = [signal.data_generator() for signal in self.signals]
+        data_gens = [s.data_generator() for s in self._stims]
         chunk_sizes = [next(gen).data.shape[0] for gen in data_gens]
 
         # Get the number of channels for each signal
@@ -185,23 +257,16 @@ class MixedSignal(SignalProducer):
         self.chunk_width = sum(self.chunk_widths)
 
         self._data = np.zeros((self.chunk_size, self.chunk_width), dtype=self.dtype)
-        self._identifier = identifier or ('%s-%s' % (self.__class__.__name__, uuid.uuid4().hex))
 
-    @property
-    def identifier(self):
-        return self._identifier
-
-    def data_generator(self):
+    def data_generator(self) -> Iterator[Optional[SampleChunk]]:
         """
         Create a data generator for this signal. Each signal passed to the constructor will be yielded as a separate
         column of the data chunk returned by this generator.
-
-        :return: A generator that yields the combined signal SampleChunk(s)
         """
 
-        # Intitialize data generators for these signals in the play list. Wrap each generator in a chunker with the same
-        # size.
-        data_gens = [chunker(signal.data_generator(), self.chunk_size) for signal in self.signals]
+        # Initialize data generators for these signals in the play list.
+        # Wrap each generator in a chunker with the same size.
+        data_gens = [chunker(s.data_generator(), self.chunk_size) for s in self._stims]
 
         while True:
 
@@ -222,9 +287,7 @@ class MixedSignal(SignalProducer):
 
                 channel_idx = channel_idx + self.chunk_widths[i]
 
-            # We are about to yield, send an event to our callbacks
-            # self.trigger_next_callback(message_data=self.event_message, num_samples=self._data.shape[0])
-
-            yield SampleChunk(data=self._data, producer_id=self.producer_id)
-
-
+            chunk = SampleChunk(data=self._data, producer_identifier=self.identifier,
+                                producer_instance_n=self.producer_instance_n)
+            self.trigger_next_callback(chunk)
+            yield chunk

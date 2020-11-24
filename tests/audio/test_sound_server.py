@@ -3,6 +3,7 @@ import pytest
 from flyvr.audio.sound_server import SoundServer
 from flyvr.audio.stimuli import SinStim
 from flyvr.common import SharedState
+from flyvr.common.dottable import Dottable
 from flyvr.common.logger import DatasetLogServer
 
 
@@ -26,7 +27,8 @@ def test_play_sin(tmpdir):
     with DatasetLogServer() as log_server:
         logger = log_server.start_logging_server(dest)
 
-        shared_state = SharedState(None, logger)
+        options = Dottable(wait=False)
+        shared_state = SharedState(options, logger)
 
         sound_server = SoundServer(flyvr_shared_state=shared_state)
         sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,

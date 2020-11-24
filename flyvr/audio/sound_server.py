@@ -325,15 +325,15 @@ class SoundServer(threading.Thread):
             try:
                 # If we have no data generator set, then play silence. If not, call its next method
                 if self._data_generator is None:
-                    producer_id = -1  # Lets code silence as -1
+                    producer_instance_n = -1  # Lets code silence as -1
                     data = self._silence
                 else:
                     data_chunk = next(self._data_generator)
                     if data_chunk is None:
-                        producer_id = -1
+                        producer_instance_n = -1
                         data = self._silence
                     else:
-                        producer_id = data_chunk.producer_id
+                        producer_instance_n = data_chunk.producer_instance_n
                         data = data_chunk.data.data
 
                 # Make extra sure the length of the data we are getting is the correct number of samples
@@ -352,7 +352,7 @@ class SoundServer(threading.Thread):
                 self.flyvr_shared_state.logger.log("/fictrac/soundcard_synchronization_info",
                                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                              self.samples_played,
-                                                             producer_id]))
+                                                             producer_instance_n]))
                 self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN = self.samples_played
 
             if len(data) < len(outdata):
