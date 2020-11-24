@@ -263,6 +263,10 @@ class SoundServer(threading.Thread):
 
         self._log.info('opened %s @ %fHz' % (self._device, self._sample_rate))
 
+        cbf = self._sample_rate / float(self._stream.blocksize)
+        self._log.info('buffer size: %d (buffer callback called every %.3fs, at %.1fHz)' % (self._stream.blocksize,
+                                                                                            1. / cbf, cbf))
+
         # initialize a block of silence to be played when the generator is none.
         self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
 

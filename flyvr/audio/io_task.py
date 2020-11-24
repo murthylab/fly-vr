@@ -163,6 +163,11 @@ class IOTask(daq.Task):
             self._data_lock = threading.Lock()
             self._newdata_event = threading.Event()
             if self.cha_type is "output":
+
+                cbf = rate / float(self.num_samples_per_event)
+                self._log.info('buffer size: %d (buffer callback called every %.3fs, at %.1fHz)' % (
+                    self.num_samples_per_event, 1./cbf, cbf))
+
                 self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
                 # ensures continuous output and avoids collision of old and new data in buffer
                 # self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
