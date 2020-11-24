@@ -64,7 +64,7 @@ class SoundServer(threading.Thread):
         self._silence = None
 
         self._stream = self._device = self._num_channels = \
-            self._dtype = self._sample_rate = self._frames_per_buffer = self._suggested_output_latency = None
+            self._dtype = self._sample_rate = self._frames_per_buffer = None
 
         self._running = False
         self._q = queue.Queue()
@@ -201,7 +201,7 @@ class SoundServer(threading.Thread):
     def start_stream(self,
                      device=DEVICE_DEFAULT, num_channels=DEVICE_OUTPUT_NUM_CHANNELS,
                      dtype=DEVICE_OUTPUT_DTYPE, sample_rate=DEVICE_SAMPLE_RATE,
-                     frames_per_buffer=0, suggested_output_latency=0.005):
+                     frames_per_buffer=0):
         """
         Start a stream of audio data for playback to the device
 
@@ -210,10 +210,7 @@ class SoundServer(threading.Thread):
         :param dtype: The datatype of each samples. Default is 'float32' and the only type currently supported.
         :param sample_rate: The sample rate of the signal in Hz. Default is 44100 Hz
         :param frames_per_buffer: The number of frames to output per write to the sound card. This will effect latency.
-        try to keep it as a power of 2 or better yet leave it to 0 and allow the sound card to pick it based on your
-        suggested latency. Default is 0.
-        :param suggested_output_latency: The suggested latency in seconds for output playback. Set as low as possible
-        without glitches in audio. Default is 0.005 seconds.
+        try to keep it as a power of 2
         :return: None
         """
 
@@ -222,7 +219,8 @@ class SoundServer(threading.Thread):
         self._dtype = dtype
         self._sample_rate = sample_rate
         self._frames_per_buffer = frames_per_buffer
-        self._suggested_output_latency = suggested_output_latency
+
+        assert self._frames_per_buffer > 0
 
         self._running = True
         self.start()
@@ -257,7 +255,7 @@ class SoundServer(threading.Thread):
         # open stream using control
         self._stream = sd.OutputStream(device=self._device,
                                        samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
-                                       latency=self._suggested_output_latency, channels=self._num_channels,
+                                       latency=None, channels=self._num_channels,
                                        dtype=self._dtype, callback=self._make_callback(),
                                        finished_callback=self.quit)
 
@@ -430,8 +428,7 @@ def run_sound_server(options, quit_evt=None):
         ipc.start()
 
         # starts the thread
-        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
-                                  suggested_output_latency=0.002)
+        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE)
 
         if quit_evt is not None:
             # the single process launcher
