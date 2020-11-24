@@ -893,13 +893,9 @@ class AudioStimPlaylist(SignalProducer):
                     yield None
                 else:
                     self._log.info('playing item: %s' % next_id)
-                    if self.flyvr_shared_state is not None:
-                        self.flyvr_shared_state.signal_new_playlist_item(next_id, self.backend)
 
                     sample_chunk_obj = next(data_gens[next_id])  # type: SampleChunk
                     sample_chunk_obj.producer_playlist_n = n
-
-                    self.trigger_next_callback(sample_chunk_obj)
 
                     yield sample_chunk_obj
 

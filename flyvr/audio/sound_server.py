@@ -4,11 +4,13 @@ import queue
 import logging
 import threading
 
+from typing import Optional
+
 import numpy as np
 import sounddevice as sd
 
 from flyvr.audio.stimuli import AudioStim, MixedSignal, AudioStimPlaylist
-from flyvr.audio.io_task import chunker
+from flyvr.audio.signal_producer import SampleChunk, chunker, chunk_producers_differ
 from flyvr.common import Randomizer, BACKEND_AUDIO
 from flyvr.common.build_arg_parser import setup_logging
 
@@ -58,10 +60,10 @@ class SoundServer(threading.Thread):
 
         # No data generator has been set yet
         self._data_generator = None
-        self._stim_playlist = None  # type: AudioStimPlaylist
+        self._stim_playlist = None  # type: Optional[AudioStimPlaylist]
 
-        # Once, we know the block size and number of channels, we will pre-allocate a block of silence data
-        self._silence = None
+        self._silence_chunk = None  # type: Optional[SampleChunk]
+        self._last_chunk = None  # type: Optional[SampleChunk]
 
         self._stream = self._device = self._num_channels = \
             self._dtype = self._sample_rate = self._frames_per_buffer = None
@@ -79,8 +81,6 @@ class SoundServer(threading.Thread):
 
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
-
-    H5_NUM_FIELDS = 3
 
     DEVICE_DEFAULT = 'ASIO4ALL v2'
     DEVICE_OUTPUT_DTYPE = 'float32'
@@ -247,10 +247,11 @@ class SoundServer(threading.Thread):
             _sd_reset()
 
         # setup a dataset to store timing information logged from the callback
-        self.flyvr_shared_state.logger.create("/fictrac/soundcard_synchronization_info",
-                                              shape=[2048, self.H5_NUM_FIELDS],
-                                              maxshape=[None, self.H5_NUM_FIELDS], dtype=np.float64,
-                                              chunks=(2048, self.H5_NUM_FIELDS))
+        self.flyvr_shared_state.logger.create("/audio/chunk_synchronization_info",
+                                              shape=[2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                              maxshape=[None, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                              dtype=np.int64,
+                                              chunks=(2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS))
 
         # open stream using control
         self._stream = sd.OutputStream(device=self._device,
@@ -266,7 +267,8 @@ class SoundServer(threading.Thread):
                                                                                             1. / cbf, cbf))
 
         # initialize a block of silence to be played when the generator is none.
-        self._silence = np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype))
+        self._silence_chunk = SampleChunk.new_silence(
+            np.squeeze(np.zeros((self._stream.blocksize, self._stream.channels), dtype=self._stream.dtype)))
 
         # setup initial playback
         try:
@@ -325,18 +327,14 @@ class SoundServer(threading.Thread):
             try:
                 # If we have no data generator set, then play silence. If not, call its next method
                 if self._data_generator is None:
-                    producer_instance_n = -1  # Lets code silence as -1
-                    data = self._silence
+                    chunk = self._silence_chunk
                 else:
-                    data_chunk = next(self._data_generator)
-                    if data_chunk is None:
-                        producer_instance_n = -1
-                        data = self._silence
-                    else:
-                        producer_instance_n = data_chunk.producer_instance_n
-                        data = data_chunk.data.data
+                    chunk = next(self._data_generator)  # type: SampleChunk
+                    if chunk is None:
+                        chunk = self._silence_chunk
 
                 # Make extra sure the length of the data we are getting is the correct number of samples
+                data = chunk.data
                 assert (len(data) == frames)
 
             except StopIteration:
@@ -344,16 +342,26 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
-            # Lets keep track of some running information
-            self.samples_played = self.samples_played + frames
-
-            # Update the number of samples played in the shared state counter
             if self.flyvr_shared_state is not None:
-                self.flyvr_shared_state.logger.log("/fictrac/soundcard_synchronization_info",
+
+                self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
                                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                              self.samples_played,
-                                                             producer_instance_n]))
+                                                             chunk.producer_instance_n,
+                                                             chunk.chunk_n,
+                                                             chunk.producer_playlist_n,
+                                                             chunk.mixed_producer,
+                                                             chunk.mixed_start_offset], dtype=np.int64))
+
                 self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN = self.samples_played
+
+                if chunk_producers_differ(self._last_chunk, chunk):
+                    self.flyvr_shared_state.signal_new_playlist_item(chunk.producer_identifier, BACKEND_AUDIO,
+                                                                     chunk_producer_instance_n=chunk.producer_instance_n,
+                                                                     chunk_n=chunk.chunk_n,
+                                                                     chunk_producer_playlist_n=chunk.producer_instance_n,
+                                                                     chunk_mixed_producer=chunk.mixed_producer,
+                                                                     chunk_mixed_start_offset=chunk.mixed_start_offset)
 
             if len(data) < len(outdata):
                 outdata.fill(0)
@@ -365,6 +373,9 @@ class SoundServer(threading.Thread):
                     outdata[:, 1] = data
                 else:
                     outdata[:] = data
+
+            self.samples_played = self.samples_played + frames
+            self._last_chunk = chunk
 
         return callback
 

@@ -12,6 +12,9 @@ class SampleChunk(object):
     about where it was produced.
     """
 
+    SYNCHRONIZATION_INFO_NUM_FIELDS = 7  # (X, Y, producer_instance_n, chunk_n, producer_playlist_n,
+    #                                       mixed_producer, mixed_start_offset
+
     __slots__ = ["data", "producer_identifier", "producer_instance_n", "chunk_n", "producer_playlist_n",
                  "mixed_producer", "mixed_start_offset"]
 
@@ -45,8 +48,8 @@ class SampleChunk(object):
                                                         self.data.shape)
 
     @classmethod
-    def new_silence(cls, shape):
-        return cls(np.zeros(shape, dtype=SignalProducer.SUPPORTED_DTYPES[0]),
+    def new_silence(cls, data):
+        return cls(data,
                    producer_identifier='_silence', producer_instance_n=-1)
 
 

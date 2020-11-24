@@ -2,6 +2,7 @@ import pytest
 
 from flyvr.audio.sound_server import SoundServer
 from flyvr.audio.stimuli import SinStim
+from flyvr.audio.signal_producer import SampleChunk
 from flyvr.common import SharedState
 from flyvr.common.dottable import Dottable
 from flyvr.common.logger import DatasetLogServer
@@ -31,12 +32,11 @@ def test_play_sin(tmpdir):
         shared_state = SharedState(options, logger)
 
         sound_server = SoundServer(flyvr_shared_state=shared_state)
-        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE,
-                                  suggested_output_latency=0.002)
+        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE)
         sound_server.queue.put(stim1)
         time.sleep(1.5)
 
         sound_server.quit()
 
     with h5py.File(dest, mode='r') as h5:
-        assert '/fictrac/soundcard_synchronization_info' in h5
+        assert h5['audio']['chunk_synchronization_info'].shape[-1] == SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS
