@@ -33,7 +33,8 @@ from flyvr.common.plot_task import plot_task_daq
 from flyvr.common.build_arg_parser import setup_logging
 from flyvr.common.ipc import PlaylistReciever
 
-DAQ_SAMPLE_RATE = 10000
+DAQ_SAMPLE_RATE_DEFAULT = 10000
+
 DAQ_NUM_OUTPUT_SAMPLES = 5000
 DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 250
 DAQ_NUM_INPUT_SAMPLES = 10000
@@ -47,7 +48,7 @@ class IOTask(daq.Task):
     output channel names.
     """
 
-    def __init__(self, dev_name="Dev1", cha_name=("ai0",), cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
+    def __init__(self, dev_name="Dev1", cha_name=("ai0",), cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE_DEFAULT,
                  num_samples_per_chan=None, num_samples_per_event=None, digital=False, has_callback=True,
                  shared_state=None, done_callback=None, use_RSE=True):
         # check inputs
@@ -346,6 +347,15 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
 
     is_analog_out = (daq_stim is not None) and len(analog_out_channels) == 1
 
+    sr = int(options.samplerate_daq)
+    for s in daq_stim:
+        if s.sample_rate != sr:
+            raise ValueError('stimulus %r sample rate %s does not match DAQ sample rate %s' % (
+                s, s.sample_rate, sr))
+
+    if sr != DAQ_SAMPLE_RATE_DEFAULT:
+        log.warning('changing DAQ sample rate from default %s to %s' % (DAQ_SAMPLE_RATE_DEFAULT, sr))
+
     # noinspection PyBroadException
     try:
 
@@ -361,6 +371,7 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
                 # Get the input and output channels from the options
                 output_chans = ["ao" + str(s) for s in analog_out_channels]
                 taskAO = IOTask(cha_name=output_chans, cha_type="output",
+                                rate=sr,
                                 num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
                                 num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                                 shared_state=flyvr_shared_state)
@@ -368,6 +379,7 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
             input_chans = ["ai" + str(s) for s in analog_in_channels]
             input_chan_names = [options.analog_in_channels[s] for s in analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
+                            rate=sr,
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
                             shared_state=flyvr_shared_state, use_RSE=options.use_RSE)

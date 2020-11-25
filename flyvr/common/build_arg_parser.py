@@ -113,8 +113,9 @@ def build_argparser(savefilename=None):
                         default=False)
     parser.add_argument("--delay", type=int, default=5,
                         help="Delay main startup by this many seconds. Negative number means wait forever.")
-
     parser.add_argument('--projector_disable', action='store_true', help='Do not setup projector in video backend.')
+    parser.add_argument('--samplerate_daq', default=10000, type=int,
+                        help='DAQ sample rate (advanced option, do not change)')
 
     return parser
 
