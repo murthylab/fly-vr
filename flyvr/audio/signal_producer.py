@@ -12,8 +12,9 @@ class SampleChunk(object):
     about where it was produced.
     """
 
-    SYNCHRONIZATION_INFO_NUM_FIELDS = 7  # (X, Y, producer_instance_n, chunk_n, producer_playlist_n,
-    #                                       mixed_producer, mixed_start_offset
+    SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num', '_X', 'producer_instance_n', 'chunk_n', 'producer_playlist_n',
+                                   'mixed_producer', 'mixed_start_offset')
+    SYNCHRONIZATION_INFO_NUM_FIELDS = len(SYNCHRONIZATION_INFO_FIELDS)
 
     __slots__ = ["data", "producer_identifier", "producer_instance_n", "chunk_n", "producer_playlist_n",
                  "mixed_producer", "mixed_start_offset"]

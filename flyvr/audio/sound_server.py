@@ -255,6 +255,11 @@ class SoundServer(threading.Thread):
                                               dtype=np.int64,
                                               chunks=(2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS))
 
+        for cn, cname in enumerate(SampleChunk.SYNCHRONIZATION_INFO_FIELDS):
+            self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
+                                               str('sound_output_num_samples_written' if cname == '_X' else cname),
+                                               attribute_name='column_%d' % cn)
+
         # open stream using control
         self._stream = sd.OutputStream(device=self._device,
                                        samplerate=self._sample_rate, blocksize=self._frames_per_buffer,
