@@ -21,6 +21,11 @@ from psychopy.visual.windowwarp import Warper
 from psychopy.visual.windowframepack import ProjectorFramePacker
 
 
+SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num', 'video_output_num_frames',
+                               'producer_instance_n', 'producer_playlist_n')
+SYNCHRONIZATION_INFO_NUM_FIELDS = len(SYNCHRONIZATION_INFO_FIELDS)
+
+
 dlp_screen = [684, 608]
 
 
@@ -825,9 +830,16 @@ class VideoServer(object):
         self._running = False
         self._q = queue.Queue()
 
-        self.logger.create("/video/synchronization_info", shape=[1024, 2], maxshape=[None, 2],
+        self.logger.create("/video/synchronization_info",
+                           shape=[1024, SYNCHRONIZATION_INFO_NUM_FIELDS],
+                           maxshape=[None, SYNCHRONIZATION_INFO_NUM_FIELDS],
                            dtype=np.int64,
-                           chunks=(1024, 2))
+                           chunks=(1024, SYNCHRONIZATION_INFO_NUM_FIELDS))
+        for cn, cname in enumerate(SYNCHRONIZATION_INFO_FIELDS):
+            self.logger.log("/video/synchronization_info",
+                            str(cname),
+                            attribute_name='column_%d' % cn)
+
         for stimcls in STIMS:
             stimcls.create_log(self.logger)
 
@@ -951,6 +963,13 @@ class VideoServer(object):
 
                 self.samples_played += 1
                 self.sync_signal += 1
+
+                self.logger.log("/video/synchronization_info",
+                                np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                                          self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                                          # fixme: producer_instance_n, producer_playlist_n
+                                          0,
+                                          0], dtype=np.int64))
 
                 self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES = self.samples_played
 
