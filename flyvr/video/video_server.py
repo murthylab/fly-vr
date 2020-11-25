@@ -70,6 +70,7 @@ class VideoStimPlaylist(object):
         self._log.info('playlist paused: %s order: %r' % (paused, self._random))
 
         self._flyvr_shared_state = None
+        self._child_playlist_n = 0
 
         if play_item:
             self.play_item(play_item)
@@ -117,14 +118,28 @@ class VideoStimPlaylist(object):
         self._stims[identifier].update_params(**params)
 
     def play_item(self, identifier):
+        producer_instance_n = None
+
         for sid, s in self._stims.items():
-            s.show = sid == identifier
+            if sid == identifier:
+                s.show = True
+                s.producer_playlist_n = self._child_playlist_n
+                producer_instance_n = s.producer_instance_n
+            else:
+                s.show = False
+                s.producer_playlist_n = -1
 
-        self._log.info('playing item: %s (and un-pausing)' % identifier)
-        self._paused = False
+        if producer_instance_n is not None:
+            # we found the item
+            self._log.info('playing item: %s (and un-pausing)' % identifier)
+            self._paused = False
 
-        if self._flyvr_shared_state is not None:
-            self._flyvr_shared_state.signal_new_playlist_item(identifier, BACKEND_VIDEO)
+            if self._flyvr_shared_state is not None:
+                self._flyvr_shared_state.signal_new_playlist_item(identifier, BACKEND_VIDEO,
+                                                                  producer_instance_n=producer_instance_n,
+                                                                  producer_playlist_n=self._child_playlist_n)
+
+            self._child_playlist_n += 1
 
     def play_pause(self, pause):
         self._paused = True if pause else False
@@ -140,8 +155,11 @@ class VideoStimPlaylist(object):
 
 
 class VideoStim(object):
-    NAME = 'grating'
-    NUM_VIDEO_FIELDS = 7
+
+    NAME = None
+    NUM_VIDEO_FIELDS = 0
+
+    instances_created = 0
 
     def __init__(self, **params):
         self._id = params.pop('identifier', uuid.uuid4().hex)
@@ -156,6 +174,10 @@ class VideoStim(object):
 
         self.p = Dottable(params)
         self.frame_count = 0
+
+        self.producer_playlist_n = -1
+        self.producer_instance_n = VideoStim.instances_created
+        VideoStim.instances_created += 1
 
     @property
     def show(self):
