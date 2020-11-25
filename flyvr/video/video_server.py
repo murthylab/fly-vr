@@ -818,16 +818,16 @@ STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel
 def stimulus_factory(name, **params):
     for s in STIMS:
         if name == s.NAME:
+            print(name, params)
             return s(**params)
     raise ValueError("VideoStimulus '%s' not found" % name)
 
 
 class VideoServer(object):
 
-    def __init__(self, stim=None, shared_state=None, calibration_file=None, use_lightcrafter=True):
+    def __init__(self, shared_state=None, calibration_file=None, use_lightcrafter=True):
         self._log = logging.getLogger('flyvr.video_server')
 
-        self._initial_stim = stim
         self._save_frames_path = None
 
         self.stim = self.mywin = self.synchRect = self.framepacker = self.warper = None
@@ -950,9 +950,6 @@ class VideoServer(object):
                                  eyepoint=[0.5, 0.5],
                                  flipHorizontal=False,
                                  flipVertical=False)
-
-        if self._initial_stim is not None:
-            self._play(self._initial_stim)
 
         _ = self.flyvr_shared_state.signal_ready(BACKEND_VIDEO)
 
@@ -1083,13 +1080,14 @@ def run_video_server(options):
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.video_server.h5'))
         state = SharedState(options=options, logger=logger, where=BACKEND_VIDEO)
 
-        video_server = VideoServer(stim=startup_stim,
-                                   calibration_file=options.screen_calibration,
+        video_server = VideoServer(calibration_file=options.screen_calibration,
                                    shared_state=state,
                                    use_lightcrafter=not getattr(options, 'projector_disable', False))
 
         if playlist_stim is not None:
             video_server.queue.put(playlist_stim)
+        elif startup_stim is not None:
+            video_server.queue.put(startup_stim)
 
         ipc = threading.Thread(daemon=True, name='VideoIpcThread',
                                target=_ipc_main, args=(video_server.queue,))
