@@ -134,6 +134,12 @@ class IOTask(daq.Task):
                                                   maxshape=[None, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
                                                   dtype=np.int64,
                                                   chunks=(2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS))
+
+            for cn, cname in enumerate(SampleChunk.SYNCHRONIZATION_INFO_FIELDS):
+                self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
+                                                   str('daq_output_num_samples_written' if cname == '_X' else cname),
+                                                   attribute_name='column_%d' % cn)
+
         elif cha_type == "input" and not digital:
             self.samples_dset_name = "/daq/input/samples"
             self.samples_time_dset_name = "/daq//input/systemtime"
