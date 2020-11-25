@@ -3,6 +3,7 @@ import pytest
 from flyvr.audio.io_task import IOTask, DAQ_NUM_OUTPUT_SAMPLES, DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT
 from flyvr.common import SharedState
 from flyvr.common.logger import DatasetLogServer
+from flyvr.audio.signal_producer import SampleChunk
 
 
 @pytest.mark.use_daq
@@ -29,4 +30,4 @@ def test_io_a_output(tmpdir):
         taskAO.ClearTask()
 
     with h5py.File(shared_state.logger.log_filename, mode='r') as h5:
-        assert h5['fictrac']['daq_synchronization_info'].shape[-1] == 2  # 2 columns
+        assert h5['daq']['chunk_synchronization_info'].shape[-1] == SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS

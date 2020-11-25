@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-import threading
-import logging
 import time
+import logging
+import threading
+
+from typing import Optional
+
 
 import PyDAQmx as daq
 # noinspection PyUnresolvedReferences
@@ -21,7 +24,7 @@ from PyDAQmx.DAQmxConstants import (DAQmx_Val_RSE, DAQmx_Val_Volts, DAQmx_Val_Ri
 import numpy as np
 from ctypes import byref, c_ulong
 
-from flyvr.audio.signal_producer import chunker
+from flyvr.audio.signal_producer import chunker, SampleChunk, chunk_producers_differ
 from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist
 from flyvr.audio.util import get_paylist_object
 from flyvr.common import BACKEND_DAQ
@@ -63,16 +66,13 @@ class IOTask(daq.Task):
             cha_name = [cha_name]
 
         self.flyvr_shared_state = shared_state
+        assert self.flyvr_shared_state is not None
 
         # Is this a digital task
         self.digital = digital
 
         # A function to call on task completion
         self.done_callback = done_callback
-
-        # A task to send signals to everytime we write a chunk of samples. We will send the current sample number and
-        # the current FicTrac frame number
-        self.logger = shared_state.logger
 
         # These are just some dummy values for pass by reference C functions that the NI DAQ api has.
         self.read = daq.int32()
@@ -82,16 +82,20 @@ class IOTask(daq.Task):
         self.cha_type = cha_type
         self.cha_name = ['%s/%s' % (dev_name, ch) for ch in cha_name]  # append device name
         self.cha_string = ", ".join(self.cha_name)
-        self.num_samples_per_chan = num_samples_per_chan
-        self.num_samples_per_event = num_samples_per_event  # self.num_samples_per_chan*self.num_channels
 
-        if self.num_samples_per_event is None:
-            self.num_samples_per_event = num_samples_per_chan
+        self.num_samples_per_chan = num_samples_per_chan
+        assert self.num_samples_per_chan is not None
+        self.num_samples_per_event = num_samples_per_event
+        assert self.num_samples_per_event is not None
 
         clock_source = None  # use internal clock
         self.callback = None
-        self.data_gen = None  # called at start of control
-        self._data_recorders = None  # called at end of control
+
+        self._data_generator = None
+        self._data_recorders = None
+
+        self._silence_chunk = None  # type: Optional[SampleChunk]
+        self._last_chunk = None  # type: Optional[SampleChunk]
 
         if self.cha_type is "input":
             if not self.digital:
@@ -125,36 +129,38 @@ class IOTask(daq.Task):
 
         # We need to create a dataset for log messages.
         if cha_type == "output" and not digital:
-            self.logger.create("/fictrac/daq_synchronization_info", shape=[1024, 2], maxshape=[None, 2],
-                               dtype=np.int64,
-                               chunks=(1024, 2))
+            self.flyvr_shared_state.logger.create("/daq/chunk_synchronization_info",
+                                                  shape=[2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                                  maxshape=[None, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                                  dtype=np.int64,
+                                                  chunks=(2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS))
         elif cha_type == "input" and not digital:
-            self.samples_dset_name = "/input/samples"
-            self.samples_time_dset_name = "/input/systemtime"
-            self.logger.create(self.samples_dset_name, shape=[512, self.num_channels],
-                               maxshape=[None, self.num_channels],
-                               chunks=(512, self.num_channels),
-                               dtype=np.float64, scaleoffset=8)
-            self.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
-                               maxshape=[None, 1], dtype=np.float64)
+            self.samples_dset_name = "/daq/input/samples"
+            self.samples_time_dset_name = "/daq//input/systemtime"
+
+            self.flyvr_shared_state.logger.create(self.samples_dset_name, shape=[512, self.num_channels],
+                                                  maxshape=[None, self.num_channels],
+                                                  chunks=(512, self.num_channels),
+                                                  dtype=np.float64, scaleoffset=8)
+            self.flyvr_shared_state.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
+                                                  maxshape=[None, 1], dtype=np.float64)
+
         elif cha_type == "input" and digital:
-            self.samples_dset_name = "/input/digital/samples"
-            self.samples_time_dset_name = "/input/digital/systemtime"
-            self.logger.create(self.samples_dset_name, shape=[2048, self.num_channels],
-                               maxshape=[None, self.num_channels],
-                               chunks=(2048, self.num_channels),
-                               dtype=np.uint8)
-            self.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
-                               maxshape=[None, 1], dtype=np.float64)
+            self.samples_dset_name = "/daq/input/digital/samples"
+            self.samples_time_dset_name = "/daq/input/digital/systemtime"
+
+            self.flyvr_shared_state.logger.create(self.samples_dset_name, shape=[2048, self.num_channels],
+                                                  maxshape=[None, self.num_channels],
+                                                  chunks=(2048, self.num_channels),
+                                                  dtype=np.uint8)
+            self.flyvr_shared_state.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
+                                                  maxshape=[None, 1], dtype=np.float64)
 
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels),
                                   dtype=np.float64)  # init empty data array
         else:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels), dtype=np.uint8)
-
-        # Since this data did not come from a sample chunk object, set it to None
-        self._sample_chunk = None
 
         self.CfgSampClkTiming(clock_source, rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.num_samples_per_chan)
         self.AutoRegisterDoneEvent(0)
@@ -168,7 +174,11 @@ class IOTask(daq.Task):
                 self._log.info('buffer size: %d (buffer callback called every %.3fs, at %.1fHz)' % (
                     self.num_samples_per_event, 1./cbf, cbf))
 
+                self._silence_chunk = SampleChunk.new_silence(
+                    np.squeeze(np.zeros((self.num_samples_per_event, self.num_channels), dtype=np.float64)))
+
                 self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
+
                 # ensures continuous output and avoids collision of old and new data in buffer
                 # self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
                 self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
@@ -180,8 +190,8 @@ class IOTask(daq.Task):
             self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
 
     def stop(self):
-        if self.data_gen is not None:
-            self._data = self.data_gen.close()
+        if self._data_generator is not None:
+            self._data = self._data_generator.close()
 
         if self.data_recorders is not None:
             for data_rec in self.data_recorders:
@@ -195,8 +205,8 @@ class IOTask(daq.Task):
         :param data_generator: A generator function of audio data.
         """
         with self._data_lock:
-            chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_chan)
-            self.data_gen = chunked_gen
+            chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_event)
+            self._data_generator = chunked_gen
 
     @property
     def data_recorders(self):
@@ -218,6 +228,7 @@ class IOTask(daq.Task):
     def send(self, data):
         if self.cha_type == "input":
             raise ValueError("Cannot send on an input channel, it must be an output channel.")
+
         if self.digital:
             self.WriteDigitalLines(data.shape[0], False, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, None,
                                    None)
@@ -228,11 +239,6 @@ class IOTask(daq.Task):
     def EveryNCallback(self):
         with self._data_lock:
             systemtime = time.clock()
-
-            # get data from data generator
-            if self.data_gen is not None:
-                self._sample_chunk = next(self.data_gen)
-                self._data = self._sample_chunk.data
 
             if self.cha_type is "input":
                 if not self.digital:
@@ -247,34 +253,55 @@ class IOTask(daq.Task):
 
             elif self.cha_type is "output":
 
-                # Log output syncrhonization info only if the logger is valid and the task is not digital.
-                if self.logger is not None and not self.digital:
-                    self.logger.log("/fictrac/daq_synchronization_info",
-                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
-                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN]))
+                if self._data_generator is None:
+                    chunk = self._silence_chunk
+                else:
+                    chunk = next(self._data_generator)  # type: SampleChunk
+                    if chunk is None:
+                        chunk = self._silence_chunk
+
+                self._data = chunk.data
+                assert (len(self._data) == self.num_samples_per_event)
 
                 if not self.digital:
+
+                    self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
+                                                       np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                                                                 self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                                 chunk.producer_instance_n,
+                                                                 chunk.chunk_n,
+                                                                 chunk.producer_playlist_n,
+                                                                 chunk.mixed_producer,
+                                                                 chunk.mixed_start_offset], dtype=np.int64))
+
+                    if chunk_producers_differ(self._last_chunk, chunk):
+                        self._log.debug('chunk from new producer: %r' % chunk)
+                        self.flyvr_shared_state.signal_new_playlist_item(chunk.producer_identifier, BACKEND_DAQ,
+                                                                         chunk_producer_instance_n=chunk.producer_instance_n,
+                                                                         chunk_n=chunk.chunk_n,
+                                                                         chunk_producer_playlist_n=chunk.producer_instance_n,
+                                                                         chunk_mixed_producer=chunk.mixed_producer,
+                                                                         chunk_mixed_start_offset=chunk.mixed_start_offset)
+
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                         self._data, daq.byref(self.read), None)
 
-                    # Keep track of how many samples we have written out in a global variable
-                    if self.flyvr_shared_state is not None:
-                        self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN = \
-                            self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN + self._data.shape[0]
+                    self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN += self._data.shape[0]
+                    self._last_chunk = chunk
+
                 else:
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely,
                                            DAQmx_Val_GroupByScanNumber, self._data, None, None)
 
-            # Send the data to a control if requested.
+            # send the data to a control if requested.
             if self.data_recorders is not None:
                 for data_rec in self.data_recorders:
                     if self._data is not None:
                         data_rec.send((self._data, systemtime))
 
-            # Send the data to our logging process
-            if self.logger is not None and self.cha_type == "input":
-                self.logger.log(self.samples_dset_name, self._data)
-                self.logger.log(self.samples_time_dset_name, np.array([systemtime]))
+            if self.cha_type == "input":
+                self.flyvr_shared_state.logger.log(self.samples_dset_name, self._data)
+                self.flyvr_shared_state.logger.log(self.samples_time_dset_name, np.array([systemtime]))
 
             self._newdata_event.set()
 
@@ -287,45 +314,6 @@ class IOTask(daq.Task):
             self.done_callback(self)
 
         return 0  # The function should return an integer
-
-
-def setup_playback_callbacks(stim, logger, flyvr_shared_state):
-    """
-    This function setups a control function for each stimulus in the playlist to be called when a set of data is
-    generated. This control will send a log message to a logging process indicating the amount of samples generated and
-    the stimulus that generated them.
-
-    :param stim: The stimulus playlist to setup callbacks on.
-    :param logger: The DatasetLogger object to send log signals to.
-    :param flyvr_shared_state: The shared state variable that contains options to the program.
-    :return: None
-    """
-
-    # noinspection PyUnusedLocal
-    def make_log_stim_playback(_logger, _state):
-        def _callback(chunk):
-            print('callback', chunk)
-            # _logger.log("/output/history",
-            #             np.array([event_message.metadata['stim_playlist_idx'], event_message.num_samples]))
-
-        return _callback
-
-    stim.initialize(flyvr_shared_state, BACKEND_DAQ)
-
-    # Make the control function
-    callbacks = make_log_stim_playback(logger, flyvr_shared_state)
-
-    # Setup the control.
-    if isinstance(stim, AudioStim):
-        stim.add_next_event_callback(callbacks)
-    elif isinstance(stim, AudioStimPlaylist):
-        for s in stim:
-            s.add_next_event_callback(callbacks)
-
-    # Lets setup the logging dataset that these log events will be sent to
-    logger.create("/output/history",
-                  shape=[2048, 2], maxshape=[None, 2],
-                  chunks=(2048, 2), dtype=np.int32)
 
 
 # noinspection PyPep8Naming
@@ -389,11 +377,6 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
             # start disp early so the user sees something
             disp_task.start()
 
-            # Setup callbacks that will generate log messages to the logging process. These will signal what is playing
-            # and when.
-            if is_analog_out:
-                setup_playback_callbacks(daq_stim, flyvr_shared_state.logger, flyvr_shared_state)
-
             if taskAO is not None:
                 # Setup the stimulus playlist as the data generator
                 taskAO.set_data_generator(daq_stim.data_generator())
@@ -427,15 +410,8 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
                     try:
                         msg = message_pipe.recv()
 
-                        # If we have received a stimulus object, feed this object to output task for playback
                         if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-
-                            # Setup callbacks that will generate log messages to the logging process.
-                            # these will signal what is playing and when.
-                            setup_playback_callbacks(msg, flyvr_shared_state.logger, flyvr_shared_state)
-
                             if taskAO is not None:
-                                # Setup the stimulus playlist as the data generator
                                 taskAO.set_data_generator(msg.data_generator())
 
                         if isinstance(msg, str) and msg == "STOP":

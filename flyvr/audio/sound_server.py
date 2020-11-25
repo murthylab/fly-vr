@@ -56,6 +56,8 @@ class SoundServer(threading.Thread):
 
         # We will update variables related to audio playback in flyvr's shared state data if provided
         self.flyvr_shared_state = flyvr_shared_state
+        assert self.flyvr_shared_state is not None
+
         self._log = logging.getLogger('flyvr.sound_server')
 
         # No data generator has been set yet
@@ -75,7 +77,7 @@ class SoundServer(threading.Thread):
         self.callback_timing_log = np.zeros((self.CALLBACK_TIMING_LOG_SIZE, 5))
         self.callback_timing_log_index = 0
 
-        self.samples_played = 0
+        self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN = 0
 
         super(SoundServer, self).__init__(daemon=True, name='SoundServer')
 
@@ -342,26 +344,23 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
-            if self.flyvr_shared_state is not None:
+            self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
+                                               np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                                                         self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                         chunk.producer_instance_n,
+                                                         chunk.chunk_n,
+                                                         chunk.producer_playlist_n,
+                                                         chunk.mixed_producer,
+                                                         chunk.mixed_start_offset], dtype=np.int64))
 
-                self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
-                                                   np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
-                                                             self.samples_played,
-                                                             chunk.producer_instance_n,
-                                                             chunk.chunk_n,
-                                                             chunk.producer_playlist_n,
-                                                             chunk.mixed_producer,
-                                                             chunk.mixed_start_offset], dtype=np.int64))
-
-                self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN = self.samples_played
-
-                if chunk_producers_differ(self._last_chunk, chunk):
-                    self.flyvr_shared_state.signal_new_playlist_item(chunk.producer_identifier, BACKEND_AUDIO,
-                                                                     chunk_producer_instance_n=chunk.producer_instance_n,
-                                                                     chunk_n=chunk.chunk_n,
-                                                                     chunk_producer_playlist_n=chunk.producer_instance_n,
-                                                                     chunk_mixed_producer=chunk.mixed_producer,
-                                                                     chunk_mixed_start_offset=chunk.mixed_start_offset)
+            if chunk_producers_differ(self._last_chunk, chunk):
+                self._log.debug('chunk from new producer: %r' % chunk)
+                self.flyvr_shared_state.signal_new_playlist_item(chunk.producer_identifier, BACKEND_AUDIO,
+                                                                 chunk_producer_instance_n=chunk.producer_instance_n,
+                                                                 chunk_n=chunk.chunk_n,
+                                                                 chunk_producer_playlist_n=chunk.producer_instance_n,
+                                                                 chunk_mixed_producer=chunk.mixed_producer,
+                                                                 chunk_mixed_start_offset=chunk.mixed_start_offset)
 
             if len(data) < len(outdata):
                 outdata.fill(0)
@@ -374,7 +373,7 @@ class SoundServer(threading.Thread):
                 else:
                     outdata[:] = data
 
-            self.samples_played = self.samples_played + frames
+            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
             self._last_chunk = chunk
 
         return callback

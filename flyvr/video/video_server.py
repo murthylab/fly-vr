@@ -825,7 +825,7 @@ class VideoServer(object):
         self._running = False
         self._q = queue.Queue()
 
-        self.logger.create("/video/daq_synchronization_info", shape=[1024, 2], maxshape=[None, 2],
+        self.logger.create("/video/synchronization_info", shape=[1024, 2], maxshape=[None, 2],
                            dtype=np.int64,
                            chunks=(1024, 2))
         for stimcls in STIMS:
