@@ -41,6 +41,14 @@ DAQ_NUM_INPUT_SAMPLES = 10000
 DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
 
 
+INPUT_SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
+                                     'daq_output_num_samples_written',
+                                     'sound_output_num_samples_written',
+                                     'video_output_num_frames',
+                                     'time_ns')
+INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS = len(INPUT_SYNCHRONIZATION_INFO_FIELDS)
+
+
 # noinspection PyPep8Naming
 class IOTask(daq.Task):
     """
@@ -135,33 +143,69 @@ class IOTask(daq.Task):
                                                   maxshape=[None, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
                                                   dtype=np.int64,
                                                   chunks=(2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS))
+            self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
+                                               int(rate),
+                                               attribute_name='sample_rate')
+            self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
+                                               int(self.num_samples_per_event),
+                                               attribute_name='sample_buffer_size')
 
             for cn, cname in enumerate(SampleChunk.SYNCHRONIZATION_INFO_FIELDS):
                 self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
-                                                   str('daq_output_num_samples_written' if cname == '_X' else cname),
+                                                   str(cname),
                                                    attribute_name='column_%d' % cn)
 
         elif cha_type == "input" and not digital:
             self.samples_dset_name = "/daq/input/samples"
-            self.samples_time_dset_name = "/daq//input/systemtime"
+            self.samples_sync_dset_name = "/daq/input/synchronization_info"
 
-            self.flyvr_shared_state.logger.create(self.samples_dset_name, shape=[512, self.num_channels],
+            self.flyvr_shared_state.logger.create(self.samples_dset_name,
+                                                  shape=[512, self.num_channels],
                                                   maxshape=[None, self.num_channels],
                                                   chunks=(512, self.num_channels),
                                                   dtype=np.float64, scaleoffset=8)
-            self.flyvr_shared_state.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
-                                                  maxshape=[None, 1], dtype=np.float64)
+            self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                               int(rate),
+                                               attribute_name='sample_rate')
+            self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                               int(self.num_samples_per_chan),
+                                               attribute_name='sample_buffer_size')
+
+            self.flyvr_shared_state.logger.create(self.samples_sync_dset_name,
+                                                  shape=[1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                                  chunks=(1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS),
+                                                  maxshape=[None, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                                  dtype=np.int64)
+            for cn, cname in enumerate(INPUT_SYNCHRONIZATION_INFO_FIELDS):
+                self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
+                                                   str(cname),
+                                                   attribute_name='column_%d' % cn)
 
         elif cha_type == "input" and digital:
             self.samples_dset_name = "/daq/input/digital/samples"
-            self.samples_time_dset_name = "/daq/input/digital/systemtime"
+            self.samples_sync_dset_name = "/daq/input/digital/synchronization_info"
 
-            self.flyvr_shared_state.logger.create(self.samples_dset_name, shape=[2048, self.num_channels],
+            self.flyvr_shared_state.logger.create(self.samples_dset_name,
+                                                  shape=[2048, self.num_channels],
                                                   maxshape=[None, self.num_channels],
                                                   chunks=(2048, self.num_channels),
                                                   dtype=np.uint8)
-            self.flyvr_shared_state.logger.create(self.samples_time_dset_name, shape=[1024, 1], chunks=(1024, 1),
-                                                  maxshape=[None, 1], dtype=np.float64)
+            self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                               int(rate),
+                                               attribute_name='sample_rate')
+            self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                               int(self.num_samples_per_chan),
+                                               attribute_name='sample_sample_size')
+
+            self.flyvr_shared_state.logger.create(self.samples_sync_dset_name,
+                                                  shape=[1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                                  chunks=(1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS),
+                                                  maxshape=[None, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
+                                                  dtype=np.float64)
+            for cn, cname in enumerate(INPUT_SYNCHRONIZATION_INFO_FIELDS):
+                self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
+                                                   str(cname),
+                                                   attribute_name='column_%d' % cn)
 
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels),
@@ -242,7 +286,7 @@ class IOTask(daq.Task):
 
     def EveryNCallback(self):
         with self._data_lock:
-            systemtime = time.clock()
+            tns = time.time_ns()
 
             if self.cha_type is "input":
                 if not self.digital:
@@ -272,6 +316,8 @@ class IOTask(daq.Task):
                     self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
                                                        np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                                  self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                                 self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                                 self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                                                  chunk.producer_instance_n,
                                                                  chunk.chunk_n,
                                                                  chunk.producer_playlist_n,
@@ -301,11 +347,17 @@ class IOTask(daq.Task):
             if self.data_recorders is not None:
                 for data_rec in self.data_recorders:
                     if self._data is not None:
-                        data_rec.send((self._data, systemtime))
+                        data_rec.send((self._data, tns))
 
             if self.cha_type == "input":
                 self.flyvr_shared_state.logger.log(self.samples_dset_name, self._data)
-                self.flyvr_shared_state.logger.log(self.samples_time_dset_name, np.array([systemtime]))
+
+                self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
+                                                   np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                                                             self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                             self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                             self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                                                             tns], dtype=np.int64))
 
             self._newdata_event.set()
 
