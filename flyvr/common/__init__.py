@@ -74,7 +74,7 @@ class SharedState(object):
 
     def wait_for_start(self, timeout=180):
         if self._options.wait:
-            self._log.info('waiting %ss for start' % timeout)
+            self._log.info('waiting %ss for start signal' % timeout)
             return self._evt_start.wait(timeout=timeout)
         else:
             return True
@@ -97,7 +97,11 @@ class SharedState(object):
                 break
 
             if (i % 10) == 0:
-                self._log.debug('ready backends: %r' % (backends, ))
+                not_ready = set(backends) - set(self._backends_ready)
+                self._log.debug('not ready backends: %r' % (not_ready, ))
+
+        not_ready = set(backends) - set(self._backends_ready)
+        self._log.warning('after %ss the following backends were not ready: %r' % (timeout, not_ready))
 
         return False
 

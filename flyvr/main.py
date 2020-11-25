@@ -116,23 +116,28 @@ def main_launcher():
         audio = None
         log.info('not starting video backend (playlist empty or keepalive_video not specified)')
 
-    log.info('waiting for %r to be ready' % (backend_wait, ))
-    flyvr_shared_state.wait_for_backends(*backend_wait)
+    log.info('waiting %ss for %r to be ready' % (60, backend_wait))
+    if flyvr_shared_state.wait_for_backends(*backend_wait, timeout=60):
 
-    if options.delay < 0:
-        log.info('waiting for manual start signal')
-        flyvr_shared_state.wait_for_start()
-    elif options.delay >= 0:
-        if options.delay > 0:
-            log.info('delaying startup %ss' % options.delay)
-            time.sleep(options.delay)
-        log.info('sending start signal')
-        flyvr_shared_state.signal_start()
+        if options.delay < 0:
+            log.info('waiting for manual start signal')
+            flyvr_shared_state.wait_for_start()
+        elif options.delay >= 0:
+            if options.delay > 0:
+                log.info('delaying startup %ss' % options.delay)
+                time.sleep(options.delay)
+            log.info('sending start signal')
+            flyvr_shared_state.signal_start()
 
-    while True:
-        input('\n---------------\nPress any key to finish\n---------------\n')
-        flyvr_shared_state.signal_stop().join(timeout=5)
-        break
+        while True:
+            input('\n---------------\nPress any key to finish\n---------------\n')
+            flyvr_shared_state.signal_stop().join(timeout=5)
+            break
+
+    else:
+        log.error('not all required backends became ready - please check logs for '
+                  'error messages')
+        flyvr_shared_state.signal_stop()
 
     log.info('stopped')
 
