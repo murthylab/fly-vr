@@ -635,12 +635,19 @@ class LoomingStimCircle(VideoStim):
     NAME = 'loomingcircle'
     NUM_VIDEO_FIELDS = 7
 
-    def __init__(self, size_min=0.05, size_max=0.8, rv=10, offset=(0, 0),
-                 bg_color=0, fg_color=-1, **kwargs):
+    def __init__(self, size_min=0.05, size_max=0.8, rv=1, offset=(0.2, -0.5),
+                 bg_color=-1, fg_color=1, **kwargs):
         super().__init__(size_min=float(size_min), size_max=float(size_max),
                          offset=[float(offset[0]), float(offset[1])],
                          rv=float(rv),
                          bg_color=float(bg_color), fg_color=float(fg_color), **kwargs)
+
+        # adam defined this per default in terms of seconds which means it crashes if a defult is not
+        # supplied. So check this post constuction so we can make a warning
+        if np.isinf(self._duration_frames) and (self._duration_seconds is None):
+            self._log.warning('this stimulus requires a duration - setting default to 3s')
+            self._duration_seconds = 3
+
         self.screen = None
 
     def initialize(self, win, fps, flyvr_shared_state):
