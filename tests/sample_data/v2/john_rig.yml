@@ -1,0 +1,31 @@
+configuration:
+  analog_in_channels:
+    0: 'Temperature Sensor'
+    1: 'Copy of AO0'
+    2: 'Audio-L'
+    3: 'Audio-R'
+  analog_out_channels:
+    0: 'Opto'
+  projector_disable: true
+  fictrac_config: 'C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/DSX_VR2P_IPIshort_2018/180719_103/180719_103_output.h5'
+  delay: 3
+playlist:
+  daq:
+    - _options: {random_mode: 'none', repeat: 2}
+    - sq20hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 20, max_value: 10.0, min_value: -10.0, amplitude: 2.0, phase: 0.0}
+    - sq40hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 40, max_value: 10.0, min_value: -10.0, amplitude: 4.0, phase: 0.0}
+    - sq60hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 60, max_value: 10.0, min_value: -10.0, amplitude: 6.0, phase: 0.0}
+    - sq80hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 80, max_value: 10.0, min_value: -10.0, amplitude: 8.0, phase: 0.0}
+  video:
+    - _options: {random_mode: 'random_walk_non_consecutive', repeat: 2, random_seed: 42}
+    - v_loom_stim: {name: 'looming', duration_seconds: 1.5}
+    - v_move_sq: {name: 'moving_square', duration_seconds: 1.5}
+    - v_grating: {name: 'grating', duration_seconds: 1.5}
+    - v_loom_stim2: {name: 'loomingcircle', duration_seconds: 1.5}
+  audio:
+    # seed of 44 makes it start with 800hz
+    - _options: {random_mode: 'shuffle', repeat: 2, random_seed: 44}
+    - sin200hz: {name: 'sin', sample_rate: 44100, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 200, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin400hz: {name: 'sin', sample_rate': 44100, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 400, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin600hz: {name: 'sin', sample_rate: 44100, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 600, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
+    - sin800hz: {name: 'sin', sample_rate: 44100, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 800, max_value: 10.0, min_value: -10.0, amplitude: 1.0, phase: 0.0}
