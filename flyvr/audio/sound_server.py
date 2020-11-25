@@ -254,10 +254,16 @@ class SoundServer(threading.Thread):
                                               maxshape=[None, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS],
                                               dtype=np.int64,
                                               chunks=(2048, SampleChunk.SYNCHRONIZATION_INFO_NUM_FIELDS))
+        self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
+                                           int(self._sample_rate),
+                                           attribute_name='sample_rate')
+        self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
+                                           int(self._frames_per_buffer),
+                                           attribute_name='sample_buffer_size')
 
         for cn, cname in enumerate(SampleChunk.SYNCHRONIZATION_INFO_FIELDS):
             self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
-                                               str('sound_output_num_samples_written' if cname == '_X' else cname),
+                                               str(cname),
                                                attribute_name='column_%d' % cn)
 
         # open stream using control
@@ -351,7 +357,9 @@ class SoundServer(threading.Thread):
 
             self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
                                                np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                                                         self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
                                                          self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                         self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                                          chunk.producer_instance_n,
                                                          chunk.chunk_n,
                                                          chunk.producer_playlist_n,

@@ -68,7 +68,7 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
                 continue
 
             data = msg[0]
-            timestamp = msg[1]
+            time_ns = msg[1]
 
             if data is not None:
 

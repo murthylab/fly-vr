@@ -11,8 +11,11 @@ class SampleChunk(object):
     A class that encapsulated numpy arrays containing sample data along with metadata information
     about where it was produced.
     """
-
-    SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num', '_X', 'producer_instance_n', 'chunk_n', 'producer_playlist_n',
+    SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
+                                   'daq_output_num_samples_written',
+                                   'sound_output_num_samples_written',
+                                   'video_output_num_frames',
+                                   'producer_instance_n', 'chunk_n', 'producer_playlist_n',
                                    'mixed_producer', 'mixed_start_offset')
     SYNCHRONIZATION_INFO_NUM_FIELDS = len(SYNCHRONIZATION_INFO_FIELDS)
 
