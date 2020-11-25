@@ -84,7 +84,6 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
     def __init__(self, type_, instance_identifier,
                  next_event_callback: Optional[CallbackFunction] = None):
 
-        self.flyvr_shared_state = None
         self.backend = None
 
         self.producer_instance_n = SignalProducer.instances_created
@@ -98,8 +97,7 @@ class SignalProducer(object, metaclass=abc.ABCMeta):
         if next_event_callback is not None:
             self._next_event_callbacks.append(next_event_callback)
 
-    def initialize(self, flyvr_shared_state, backend):
-        self.flyvr_shared_state = flyvr_shared_state
+    def initialize(self, backend):
         self.backend = backend
 
     def add_next_event_callback(self, func: CallbackFunction):

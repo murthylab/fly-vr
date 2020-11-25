@@ -810,8 +810,8 @@ class AudioStimPlaylist(SignalProducer):
         for s in self._stims:
             yield s
 
-    def initialize(self, flyvr_shared_state, backend):
-        super().initialize(flyvr_shared_state, backend)
+    def initialize(self, backend):
+        super().initialize(backend)
         self._log = logging.getLogger('flyvr.audio.AudioStimPlaylist(%s)' % backend)
 
     def describe(self):

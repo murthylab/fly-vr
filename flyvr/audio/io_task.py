@@ -24,7 +24,7 @@ from PyDAQmx.DAQmxConstants import (DAQmx_Val_RSE, DAQmx_Val_Volts, DAQmx_Val_Ri
 import numpy as np
 from ctypes import byref, c_ulong
 
-from flyvr.audio.signal_producer import chunker, SampleChunk, chunk_producers_differ
+from flyvr.audio.signal_producer import chunker, SampleChunk, chunk_producers_differ, SignalProducer
 from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist
 from flyvr.audio.util import get_paylist_object
 from flyvr.common import BACKEND_DAQ
@@ -48,7 +48,7 @@ class IOTask(daq.Task):
     """
 
     def __init__(self, dev_name="Dev1", cha_name=("ai0",), cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE,
-                 num_samples_per_chan=DAQ_SAMPLE_RATE, num_samples_per_event=None, digital=False, has_callback=True,
+                 num_samples_per_chan=None, num_samples_per_event=None, digital=False, has_callback=True,
                  shared_state=None, done_callback=None, use_RSE=True):
         # check inputs
         daq.Task.__init__(self)
@@ -204,12 +204,9 @@ class IOTask(daq.Task):
                 data_rec.finish()
                 data_rec.close()
 
-    def set_data_generator(self, data_generator):
-        """
-        Set the data generator for the audio stimulus directly.
-
-        :param data_generator: A generator function of audio data.
-        """
+    def set_signal_producer(self, stim: SignalProducer):
+        stim.initialize(BACKEND_DAQ)
+        data_generator = stim.data_generator()
         with self._data_lock:
             chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_event)
             self._data_generator = chunked_gen
@@ -385,7 +382,7 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
 
             if taskAO is not None:
                 # Setup the stimulus playlist as the data generator
-                taskAO.set_data_generator(daq_stim.data_generator())
+                taskAO.set_signal_producer(daq_stim)
 
                 # Connect AO start to AI start
                 taskAO.CfgDigEdgeStartTrig("ai/StartTrigger", DAQmx_Val_Rising)
@@ -418,7 +415,7 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
 
                         if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
                             if taskAO is not None:
-                                taskAO.set_data_generator(msg.data_generator())
+                                taskAO.set_signal_producer(msg)
 
                         if isinstance(msg, str) and msg == "STOP":
                             break

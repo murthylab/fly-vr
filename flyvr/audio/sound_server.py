@@ -175,15 +175,15 @@ class SoundServer(threading.Thread):
             if stim.sample_rate != self._sample_rate:
                 raise ValueError('AudioStim not at server samplerate: %s' % self._sample_rate)
             self._log.info('playing AudioStim object: %r' % stim)
-            stim.initialize(self.flyvr_shared_state, BACKEND_AUDIO)
+            stim.initialize(BACKEND_AUDIO)
             self.data_generator = stim.data_generator()
         elif isinstance(stim, MixedSignal):
             self._log.info('playing MixedSignal object: %r' % stim)
-            stim.initialize(self.flyvr_shared_state, BACKEND_AUDIO)
+            stim.initialize(BACKEND_AUDIO)
             self.data_generator = stim.data_generator()
         elif isinstance(stim, AudioStimPlaylist):
             self._log.info('playing AudioStimPlaylist object: %r' % stim)
-            stim.initialize(self.flyvr_shared_state, BACKEND_AUDIO)
+            stim.initialize(BACKEND_AUDIO)
             self.data_generator = stim.data_generator()
             self._stim_playlist = stim
         elif stim is None:
