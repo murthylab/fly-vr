@@ -87,16 +87,21 @@ class PhidgetIO(object):
         if self._tp_start is None:
             return
 
-        # pulse both start and next hight
-        self._tp_start.setDutyCycle(1)
-        if self._stack > 0:
-            self._tp_next.setDutyCycle(1)
+        def _pulse(*_pins):
+            for _pin in _pins:
+                _pin.setDutyCycle(1)  # high
+            time.sleep(0.001)
+            for _pin in _pins:
+                _pin.setDutyCycle(0)  # low
 
-        time.sleep(0.001)
-
-        self._tp_start.setDutyCycle(0)
-        if self._stack > 0:
-            self._tp_next.setDutyCycle(0)
+        if self._stack == 0:
+            # first time through, just start recording
+            # only pulse start high
+            _pulse(self._tp_start)
+        else:
+            # next stack
+            # pulse next and then start high
+            _pulse(self._tp_next, self._tp_start)
 
         self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
