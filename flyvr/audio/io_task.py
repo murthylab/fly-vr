@@ -400,10 +400,11 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
     is_analog_out = (daq_stim is not None) and len(analog_out_channels) == 1
 
     sr = int(options.samplerate_daq)
-    for s in daq_stim:
-        if s.sample_rate != sr:
-            raise ValueError('stimulus %r sample rate %s does not match DAQ sample rate %s' % (
-                s, s.sample_rate, sr))
+    if daq_stim is not None:
+        for s in daq_stim:
+            if s.sample_rate != sr:
+                raise ValueError('stimulus %r sample rate %s does not match DAQ sample rate %s' % (
+                    s, s.sample_rate, sr))
 
     if sr != DAQ_SAMPLE_RATE_DEFAULT:
         log.warning('changing DAQ sample rate from default %s to %s' % (DAQ_SAMPLE_RATE_DEFAULT, sr))
