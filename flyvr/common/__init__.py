@@ -36,7 +36,7 @@ class SharedState(object):
     will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
     """
 
-    def __init__(self, options, logger, where=''):
+    def __init__(self, options, logger, where='', _start_rx_thread=True):
         self._options = options
         self._logger = logger
 
@@ -55,9 +55,11 @@ class SharedState(object):
         self._backends_ready = set()
         self._evt_start = threading.Event()
         self._evt_stop = threading.Event()
+
         self._rx = Reciever(host=RELAY_HOST, port=RELAY_RECIEVE_PORT, channel=b'')
-        self._t_rx = threading.Thread(target=self._ipc_rx, daemon=True)
-        self._t_rx.start()
+        if _start_rx_thread:
+            self._t_rx = threading.Thread(target=self._ipc_rx, daemon=True)
+            self._t_rx.start()
 
         self._tx = Sender.new_for_relay(host=RELAY_HOST, port=RELAY_SEND_PORT, channel=b'')
 

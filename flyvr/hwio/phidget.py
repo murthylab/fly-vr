@@ -110,33 +110,49 @@ class PhidgetIO(object):
         self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
 
+    def stop_scanimage(self):
+        if self._tp_stop is None:
+            return
+
+        self._pulse(self._tp_stop, high_time=0.1)
+        self._log.info('send scanimage stop signal')
+
     def run(self, options):
 
         flyvr_shared_state = SharedState(options=options,
                                          logger=None,
-                                         where=BACKEND_HWIO)
+                                         where=BACKEND_HWIO,
+                                         _start_rx_thread=False)
 
-        # fixme: only if all the things are connected
+        # todo: only if all the things are connected? at least scanimage?
         _ = flyvr_shared_state.signal_ready(BACKEND_HWIO)
 
         with open(options.record_file.replace('.h5', '.toc.yml'), 'wt') as f:
 
-            # fixme: we need to  also cleanly exit
             while True:
                 msg = self._rx.get_next_element()
-                if msg and (CommonMessages.EXPERIMENT_PLAYLIST_ITEM in msg):
+                if msg:
+                    if CommonMessages.EXPERIMENT_PLAYLIST_ITEM in msg:
 
-                    # a backend is playing a new playlist item
-                    self._flash_led()
+                        # a backend is playing a new playlist item
+                        self._flash_led()
 
-                    if self._tp_enable:
-                        self.next_image()
+                        if self._tp_enable:
+                            self.next_image()
 
-                    # stream yaml records (list of dics) to the file
-                    f.write('- ')
-                    f.write(json.dumps(msg))
-                    f.write('\n')
-                    f.flush()
+                        # stream yaml records (list of dics) to the file
+                        f.write('- ')
+                        f.write(json.dumps(msg))
+                        f.write('\n')
+                        f.flush()
+
+                    if CommonMessages.EXPERIMENT_STOP in msg:
+                        break
+
+        self._log.info('stopped')
+
+        self.stop_scanimage()
+        self.close()
 
 
 def run_phidget_io(options):
