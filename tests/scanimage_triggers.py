@@ -31,7 +31,6 @@ def test_1(high_time):
 	print('sent start waiting 5s (stack 0 = warmup)')
 	time.sleep(5)
 
-
 	# take ~25 frames per stack (~3s @ 8fps), take 3 stacks
 	for stack in range(3):
 		print("stack ", stack+1)  # add one because we already started one with the start of acqusition
@@ -67,7 +66,6 @@ def test_2(high_time):
 	# wait 5s for warmup
 	print('sent start waiting 5s (stack 0 = warmup)')
 	time.sleep(5)
-
 
 	# take ~25 frames per stack (~3s @ 8fps), take 3 stacks
 	for stack in range(3):
@@ -112,7 +110,6 @@ def test_3(high_time):
 	print('sent start waiting 5s (stack 0 = warmup)')
 	time.sleep(5)
 
-
 	# take ~25 frames per stack (~3s @ 8fps), take 3 stacks
 	for stack in range(3):
 		print("stack ", stack+1)  # add one because we already started one with the start of acqusition
@@ -133,9 +130,6 @@ def test_3(high_time):
 	time.sleep(0.5)
 	print('closing')
 	p.close()
-
-
-
 
 
 if __name__ == "__main__":

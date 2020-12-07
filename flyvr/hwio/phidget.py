@@ -99,15 +99,13 @@ class PhidgetIO(object):
         if self._stack == 0:
             # first time through, just start recording
             # only pulse start high
-            self._pulse(self._tp_start)
+            self._pulse(self._tp_start, high_time=0.1)
         else:
             # next stack
             # pulse next and then start high
-
-            #_pulse(self._tp_next, self._tp_start)
-
-            self._pulse(self._tp_next)
-            self._pulse(self._tp_start)
+            self._pulse(self._tp_next, high_time=0.1)
+            time.sleep(0.15)
+            self._pulse(self._tp_start, high_time=0.1)
 
         self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
