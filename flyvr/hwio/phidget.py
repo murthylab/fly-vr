@@ -83,29 +83,31 @@ class PhidgetIO(object):
         self._led ^= 1
         self._tp_led.setDutyCycle(self._led)
 
+    @staticmethod
+    def _pulse(*_pins, **kwargs):
+        t = kwargs.pop('high_time', 0.001)
+        for _pin in _pins:
+            _pin.setDutyCycle(1)  # high
+        time.sleep(t)
+        for _pin in _pins:
+            _pin.setDutyCycle(0)  # low
+
     def next_image(self):
         if self._tp_start is None:
             return
 
-        def _pulse(*_pins):
-            for _pin in _pins:
-                _pin.setDutyCycle(1)  # high
-            time.sleep(0.001)
-            for _pin in _pins:
-                _pin.setDutyCycle(0)  # low
-
         if self._stack == 0:
             # first time through, just start recording
             # only pulse start high
-            _pulse(self._tp_start)
+            self._pulse(self._tp_start)
         else:
             # next stack
             # pulse next and then start high
 
             #_pulse(self._tp_next, self._tp_start)
 
-            _pulse(self._tp_next)
-            _pulse(self._tp_start)
+            self._pulse(self._tp_next)
+            self._pulse(self._tp_start)
 
         self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
