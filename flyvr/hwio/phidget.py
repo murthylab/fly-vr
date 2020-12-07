@@ -101,7 +101,11 @@ class PhidgetIO(object):
         else:
             # next stack
             # pulse next and then start high
-            _pulse(self._tp_next, self._tp_start)
+
+            #_pulse(self._tp_next, self._tp_start)
+
+            _pulse(self._tp_next)
+            _pulse(self._tp_start)
 
         self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
