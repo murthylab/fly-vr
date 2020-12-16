@@ -88,6 +88,15 @@ def build_argparser(savefilename=None):
                         type=int,
                         help="The digital channel to send remote next file signal for 2-photon imaging.",
                         default=5)
+    parser.add_argument("--scanimage_next_start_delay",
+                        type=int,
+                        help="The delay [ms] between next and start pulses when signaling the 2-photon remote "
+                             "(<0 disables sending a start after a next).",
+                        default=300)
+    parser.add_argument("--remote_2P_next_disable", action="store_true",
+                        help="Disable remote next (+start) signaling every stimulus item. "
+                             "Just signal start and stop at the beginning and end of an experiment.",
+                        default=False)
     parser.add_argument('--keepalive_video', action='store_true',
                         help="Keep the video process running even if they initially provided playlist contains "
                              "no video items (such as if you want to later play dynamic video items not declared "

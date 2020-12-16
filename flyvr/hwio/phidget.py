@@ -13,7 +13,8 @@ DEFAULT_REMOTE = '127.0.0.1', 5661
 
 class PhidgetIO(object):
 
-    def __init__(self, tp_start, tp_stop, tp_next, tp_enable, debug_led=None, remote_details=None):
+    def __init__(self, tp_start, tp_stop, tp_next, tp_enable, signal_next_enable, start_after_next_delay,
+                 debug_led=None, remote_details=None):
         self._log = logging.getLogger('flyvr.hwio.PhidgetIO')
 
         if remote_details:
@@ -22,6 +23,9 @@ class PhidgetIO(object):
             self._log.info('connecting to remote phidget: %r' % (remote_details, ))
 
         self._stack = 0
+
+        self._signal_next_enable = signal_next_enable
+        self._start_after_next_delay = start_after_next_delay / 1000.
 
         self._tp_enable = tp_enable
         self._tp_start = self._tp_stop = self._tp_next = None
@@ -42,6 +46,8 @@ class PhidgetIO(object):
             self._tp_next.setIsRemote(True if remote_details else False)
 
             self._log.info('2P scanimage connections: start=%s stop=%s next=%s' % (tp_start, tp_stop, tp_next))
+            self._log.info('2P scanimage configuration: signal_next_enable:%s start_next_delay:%s ms' % (
+                self._signal_next_enable, self._start_after_next_delay))
         else:
             self._log.info('2P scanimage disabled')
 
@@ -101,12 +107,15 @@ class PhidgetIO(object):
             # only pulse start high
             self._pulse(self._tp_start, high_time=0.1)
             self._log.debug('pulse start: high_time=0.1')
-        else:
+        elif self._signal_next_enable:
             # next stack
-            # pulse next and then start high
+            # pulse next
             self._pulse(self._tp_next, high_time=0.1)
-            time.sleep(0.3)
-            self._pulse(self._tp_start, high_time=0.1)
+
+            # pulse start
+            if self._start_after_next_delay > 0:
+                time.sleep(self._start_after_next_delay)
+                self._pulse(self._tp_start, high_time=0.1)
 
             self._log.debug('pulse next: high_time=0.1, wait 0.3s, pulse start 0.1')
 
@@ -167,6 +176,8 @@ def run_phidget_io(options):
                    tp_stop=options.remote_stop_2P_channel,
                    tp_next=options.remote_next_2P_channel,
                    tp_enable=not options.remote_2P_disable,
+                   signal_next_enable=not options.remote_2P_next_disable,
+                   start_after_next_delay=options.scanimage_next_start_delay,
                    debug_led=getattr(options, 'debug_led', 2),
                    remote_details=DEFAULT_REMOTE if getattr(options, 'network', False) else None)
     io.run(options)
