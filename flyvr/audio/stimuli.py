@@ -849,8 +849,8 @@ class AudioStimPlaylist(SignalProducer):
             stims.append({id_: defn})
             stim_ids.append(id_)
 
+        paused = option_item_defn.get(Randomizer.IN_PLAYLIST_IDENTIFIER, {}).pop('paused', None)
         random = Randomizer.new_from_playlist_option_item(option_item_defn, *stim_ids, repeat=default_repeat)
-        paused = option_item_defn.pop('paused', None)
 
         return cls.fromitems(items=stims,
                              random=random,
