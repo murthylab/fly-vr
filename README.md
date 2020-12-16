@@ -293,6 +293,14 @@ Note 2: playlist and experiment configuration can be stored in separate configur
         be supplied on the command line via the `-p` or `--playlist_file` and `-e` or `--experiment_file`
         arguments
 
+The following configuration can only be defined in the `configuration` section of the yaml file and
+can not be supplied on the command line
+ * `analog_in_channels`  
+   a mapping/dictionary of DAQ channel number to description, e.g. `{2: 'temperature'}` defines an analog
+   input on `AI2` called 'temperature'
+ * `analog_out_channels`  
+   as above, but can only contain one channel. The channel to which the optogenetic stimulus is driven from 
+
 ### default values
 
 The default values of all configuration parameters can be displayed by running any application with
