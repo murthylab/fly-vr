@@ -74,9 +74,13 @@ class FicTracDriver(object):
 
         # fixme: this should be threaded and context manager to close
         log_server = DatasetLogServer()
+
         flyvr_shared_state = SharedState(options=options,
                                          logger=log_server.start_logging_server(options.record_file),
                                          where=BACKEND_FICTRAC)
+        if self.experiment:
+            # noinspection PyProtectedMember
+            self.experiment._set_shared_state(flyvr_shared_state)
 
         self.fictrac_signals = new_mmap_signals_buffer()
 

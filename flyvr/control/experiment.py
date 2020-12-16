@@ -6,11 +6,13 @@ import operator
 import collections
 import importlib.util
 
+from typing import Optional
+
 import yaml
 import numpy as np
 
 from flyvr.common import BACKEND_VIDEO as _BACKEND_VIDEO, BACKEND_DAQ as _BACKEND_DAQ,\
-    BACKEND_AUDIO as _BACKEND_AUDIO, Randomizer
+    BACKEND_AUDIO as _BACKEND_AUDIO, Randomizer, SharedState
 from flyvr.common.ipc import PlaylistSender
 
 
@@ -95,6 +97,8 @@ class Experiment(object):
         self._playlist = {}
         self._ipc = PlaylistSender()
 
+        self._shared_state = None  # type: Optional[SharedState]
+
         self.log = logging.getLogger('flyvr.experiment.%s' % self.__class__.__name__)
 
     def _log_describe(self):
@@ -107,6 +111,9 @@ class Experiment(object):
         self._t0 = time.time()
         self._ipc.process(command='start', value=uuid)
         return uuid
+
+    def _set_shared_state(self, shared_state: Optional[SharedState]):
+        self._shared_state = shared_state
 
     def _set_playlist(self, playlist):
         def _get_playlist_ids(_stim_playlist):
@@ -126,17 +133,24 @@ class Experiment(object):
         for k in (_BACKEND_VIDEO, _BACKEND_VIDEO, _BACKEND_DAQ):
             self._playlist[k] = _get_playlist_ids(playlist.get(k, []))
 
+    def is_backend_ready(self, backend):
+        if self._shared_state:
+            return self._shared_state.is_backend_ready(backend)
+
+    def is_started(self):
+        if self._shared_state:
+            return self._shared_state.is_started()
+
+    def is_stopped(self):
+        if self._shared_state:
+            return self._shared_state.is_stopped()
+
     @property
     def configured_playlist_items(self):
         """
         returns the configured playlist item identifiers for every backend
         """
         return dict(self._playlist)
-
-    def start_and_wait_for_all_processes(self, state):
-        # todo: loop over shared mem ready vals waiting for them to be set to the uuid
-        # todo: in other process (audio, daq, video) wait for ipc start command over IPC and set shmem in response
-        uuid = self.start()
 
     def play_playlist_item(self, backend, identifier):
         assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
@@ -281,6 +295,9 @@ def main_experiment():
 
     if not options.experiment:
         parser.error("No experiment specified")
+
+    # noinspection PyProtectedMember
+    options.experiment._set_shared_state(SharedState(options=options, logger=None))
 
     # noinspection PyProtectedMember
     options.experiment._log_describe()

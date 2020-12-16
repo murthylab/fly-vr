@@ -131,6 +131,10 @@ class FicTracDriverReplay(object):
         flyvr_shared_state = SharedState(options=options,
                                          logger=None,
                                          where=BACKEND_FICTRAC)
+        if options.experiment:
+            # noinspection PyProtectedMember
+            options.experiment._set_shared_state(flyvr_shared_state)
+
         replay = FicTracDriverReplay.StateReplayFictrac(flyvr_shared_state,
                                                         options.experiment,
                                                         self._h5_path)

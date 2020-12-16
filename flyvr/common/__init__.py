@@ -81,8 +81,14 @@ class SharedState(object):
         else:
             return True
 
+    def is_started(self):
+        return self._evt_start.is_set()
+
     def is_stopped(self):
         return self._evt_stop.is_set()
+
+    def is_backend_ready(self, backend):
+        return backend in self._backends_ready
 
     def wait_for_backends(self, *backends, timeout=60):
         self._log.info('waiting %ss for %r backends' % (timeout, backends))
