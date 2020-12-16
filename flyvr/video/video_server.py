@@ -830,7 +830,6 @@ STIMS = (NoStim, GratingStim, MovingSquareStim, LoomingStim, MayaModel, OptModel
 def stimulus_factory(name, **params):
     for s in STIMS:
         if name == s.NAME:
-            print(name, params)
             return s(**params)
     raise ValueError("VideoStimulus '%s' not found" % name)
 
