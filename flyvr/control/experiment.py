@@ -130,7 +130,7 @@ class Experiment(object):
 
             return _ids
 
-        for k in (_BACKEND_VIDEO, _BACKEND_VIDEO, _BACKEND_DAQ):
+        for k in (_BACKEND_AUDIO, _BACKEND_VIDEO, _BACKEND_DAQ):
             self._playlist[k] = _get_playlist_ids(playlist.get(k, []))
 
     def is_backend_ready(self, backend):
