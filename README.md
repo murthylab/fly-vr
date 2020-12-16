@@ -22,11 +22,14 @@ usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
              [--keepalive_video] [--keepalive_audio] [-l RECORD_FILE]
              [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT] [--pgr_cam_disable]
              [--wait] [--delay DELAY] [--projector_disable]
+             [--samplerate_daq SAMPLERATE_DAQ] [--print-defaults]
+
 Args that start with '--' (eg. --attenuation_file) can also be set in a config
 file (specified via -c). The config file uses YAML syntax and must represent a
 YAML 'mapping' (for details, see http://learn.getgrav.org/advanced/yaml). If
 an arg is specified in more than one place, then commandline values override
 config file values which override defaults.
+
 optional arguments:
   -h, --help            show this help message and exit
   -c CONFIG_FILE, --config CONFIG_FILE
@@ -77,6 +80,9 @@ optional arguments:
   --delay DELAY         Delay main startup by this many seconds. Negative
                         number means wait forever.
   --projector_disable   Do not setup projector in video backend.
+  --samplerate_daq SAMPLERATE_DAQ
+                        DAQ sample rate (advanced option, do not change)
+  --print-defaults      Print default config values
 ```
 
 TLDR;

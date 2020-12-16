@@ -116,6 +116,7 @@ def build_argparser(savefilename=None):
     parser.add_argument('--projector_disable', action='store_true', help='Do not setup projector in video backend.')
     parser.add_argument('--samplerate_daq', default=10000, type=int,
                         help='DAQ sample rate (advanced option, do not change)')
+    parser.add_argument('--print-defaults', help='Print default config values', action='store_true')
 
     return parser
 
@@ -178,6 +179,12 @@ def parse_options(options, parser):
 
     else:
         _experiment_obj = _build_experiment_inline(_all_conf)
+
+    if options.print_defaults:
+        _opts = vars(options)
+        _opts.pop('record_file', None)
+        print(yaml.safe_dump(_opts), end='')
+        parser.exit(0)
 
     options.playlist = _playlist
     options.experiment = _experiment_obj
