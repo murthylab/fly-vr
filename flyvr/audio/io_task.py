@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
 import time
+import queue
 import logging
 import threading
 
@@ -25,7 +27,7 @@ import numpy as np
 from ctypes import byref, c_ulong
 
 from flyvr.audio.signal_producer import chunker, SampleChunk, chunk_producers_differ, SignalProducer
-from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist
+from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist, stimulus_factory
 from flyvr.audio.util import get_paylist_object
 from flyvr.common import BACKEND_DAQ
 from flyvr.common.concurrent_task import ConcurrentTask
@@ -99,6 +101,8 @@ class IOTask(daq.Task):
 
         clock_source = None  # use internal clock
         self.callback = None
+
+        self._signal_producer = None
 
         self._data_generator = None
         self._data_recorders = None
@@ -249,8 +253,29 @@ class IOTask(daq.Task):
                 data_rec.finish()
                 data_rec.close()
 
+    def play_signal_producer_item(self, item):
+        if isinstance(self._signal_producer, AudioStimPlaylist):
+            try:
+                data_generator = self._signal_producer.play_item(item)
+                self._log.info('playing playlist item identifier: %s' % item)
+
+                with self._data_lock:
+                    chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_event)
+                    self._data_generator = chunked_gen
+
+            except ValueError as _exc:
+                self._log.warning('error playing playlist item: %s' % _exc)
+
+    def play_pause(self, pause):
+        if isinstance(self._signal_producer, AudioStimPlaylist):
+            self._log.info('changing status to paused=%s' % pause)
+            self._signal_producer.play_pause(pause=pause)
+
     def set_signal_producer(self, stim: SignalProducer):
         stim.initialize(BACKEND_DAQ)
+        self._signal_producer = stim
+        self._log.info('playing AudioStim object: %r' % stim)
+
         data_generator = stim.data_generator()
         with self._data_lock:
             chunked_gen = chunker(data_generator, chunk_size=self.num_samples_per_event)
@@ -373,7 +398,7 @@ class IOTask(daq.Task):
 
 
 # noinspection PyPep8Naming
-def io_task_loop(message_pipe, flyvr_shared_state, options):
+def io_task_loop(msg_queue: queue.Queue, flyvr_shared_state, options):
 
     log = logging.getLogger('flyvr.daq')
     log.info('starting DAQ process')
@@ -393,9 +418,12 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
                                      attenuator=None)
 
     if daq_stim is not None:
-        if daq_stim.num_channels != 1:
-            raise NotImplementedError('only a single DAQ output channel is supported '
-                                      '(yet the playlist has 2 channels of data)')
+        try:
+            if daq_stim.num_channels != 1:
+                raise NotImplementedError('only a single DAQ output channel is supported '
+                                          '(yet the playlist has 2 channels of data)')
+        except AttributeError:
+            log.warning('assuming num_channels=1 from paused playlist')
 
     is_analog_out = (daq_stim is not None) and len(analog_out_channels) == 1
 
@@ -470,22 +498,19 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
             taskAI.StartTask()
 
             while running:
-                # fixme: should replace this with a queue like the other backends and plumb
-                #  in the IPC messages
-                # fixme: just pop from a queue here
-                if message_pipe.poll(0.1):
-                    # noinspection PyBroadException
-                    try:
-                        msg = message_pipe.recv()
+                try:
+                    msg = msg_queue.get(timeout=0.1)
+                    if taskAO is not None:
+                        if isinstance(msg, AudioStim):
+                            taskAO.set_signal_producer(msg)
+                        elif isinstance(msg, str):
+                            if msg in {'play', 'pause'}:
+                                taskAO.play_pause(pause=msg == 'pause')
+                            else:
+                                taskAO.play_signal_producer_item(msg)
 
-                        if isinstance(msg, AudioStim) | isinstance(msg, AudioStimPlaylist):
-                            if taskAO is not None:
-                                taskAO.set_signal_producer(msg)
-
-                        if isinstance(msg, str) and msg == "STOP":
-                            break
-                    except Exception:
-                        pass
+                except queue.Empty:
+                    pass
 
                 if flyvr_shared_state.is_stopped():
                     running = False
@@ -509,7 +534,7 @@ def io_task_loop(message_pipe, flyvr_shared_state, options):
         flyvr_shared_state.runtime_error(1)
 
 
-def _ipc_main(q):
+def _ipc_main(q, basedirs):
     pr = PlaylistReciever()
     log = logging.getLogger('flyvr.daq.ipc_main')
 
@@ -520,7 +545,10 @@ def _ipc_main(q):
         if elem:
             # noinspection PyBroadException
             try:
-                if 'daq_item' in elem:
+                if 'daq' in elem:
+                    stim = stimulus_factory(**elem['daq'], basedirs=basedirs)
+                    q.put(stim)
+                elif 'daq_item' in elem:
                     q.put(elem['daq_item']['identifier'])
                 elif 'daq_action' in elem:
                     q.put(elem['daq_action'])
@@ -536,15 +564,20 @@ def run_io(options):
 
     setup_logging(options)
 
-    class _MockPipe:
-        # noinspection PyUnusedLocal,PyMethodMayBeStatic
-        def poll(self, *args):
-            return False
+    q = queue.Queue()
+    basedirs = [os.getcwd()]
+    if getattr(options, '_config_file_path'):
+        # noinspection PyProtectedMember
+        basedirs.insert(0, os.path.dirname(options._config_file_path))
+
+    ipc = threading.Thread(daemon=True, name='DAQIpcThread',
+                           target=_ipc_main, args=(q, basedirs))
+    ipc.start()
 
     with DatasetLogServerThreaded() as log_server:
         logger = log_server.start_logging_server(options.record_file.replace('.h5', '.daq.h5'))
         state = SharedState(options=options, logger=logger, where=BACKEND_DAQ)
-        io_task_loop(_MockPipe(), state, options)
+        io_task_loop(q, state, options)
 
 
 def main_io():
