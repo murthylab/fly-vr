@@ -59,11 +59,14 @@ def build_argparser(savefilename=None):
     parser = configargparse.ArgumentParser(config_file_parser_class=YamlConfigParser,
                                            ignore_unknown_config_file_keys=True,
                                            args_for_setting_config_path=['-c', '--config'])
-    parser.add_argument('-v', help='Verbose output.', default=False, dest='verbose', action='store_true')
+    parser.add_argument('-v', '--verbose', help='Verbose output.', default=False, dest='verbose', action='store_true')
     parser.add_argument("--attenuation_file", dest="attenuation_file",
                         help="A file specifying the attenuation function.")
-    parser.add_argument("-e", "--experiment_file", dest="experiment_file", action=FixNoneParser,
+    parser.add_argument("-e", "--experiment_file", action=FixNoneParser,
                         help="A file defining the experiment (can be a python file or a .yaml).")
+    parser.add_argument("-p", "--playlist_file", action=FixNoneParser,
+                        help="A file defining the playlist, replaces any playlist defined in the main configuration "
+                             "file")
     parser.add_argument("--screen_calibration", action=FixNoneParser,
                         help="Where to find the (pre-computed) screen calibration file.")
     parser.add_argument("--use_RSE", action='store_true',
@@ -151,6 +154,29 @@ def parse_options(options, parser):
         _playlist = _all_conf['playlist']
     except KeyError:
         _playlist = {}
+
+    if options.playlist_file:
+        from flyvr.common import BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO
+
+        # noinspection PyBroadException
+        try:
+            _used_extra_playlist = False
+
+            with open(options.playlist_file) as f:
+                _extra_playlist_conf = yaml.safe_load(f)
+
+            if 'playlist' in _extra_playlist_conf:
+                _playlist = _extra_playlist_conf['playlist']
+                _used_extra_playlist = True
+            elif any(be in _extra_playlist_conf for be in (BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO)):
+                _playlist = _extra_playlist_conf
+                _used_extra_playlist = True
+
+            if _used_extra_playlist:
+                _config_file_path = os.path.abspath(options.playlist_file)
+
+        except Exception:
+            pass
 
     _experiment_obj = None
     _experiment = {}
