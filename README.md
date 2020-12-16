@@ -212,7 +212,7 @@ to configure a non-connected lightcrafter, you can pass `--projector_disable`.
 * Run the tests  
   `python -m pytest`
 
-# flyvr-architecture
+# FlyVR Architecture
 
 The flyvr is a multi-process application for multi-sensory virtual reality. The different processes are separated largely
 by the sensory modality they target, for example there is a single process dedicated to video stimulus, one for
@@ -275,6 +275,33 @@ or observing experiments in progress
   * `flyvr-ipc-send.exe "{\"video_action\": \"play\"}"`
 * `flyvr-ipc-relay`  
   (advanced only) internal message relay bus for start/stop/next-playlist-item messages
+
+# Configuration
+
+Configuration for FlyVR is done via a YAML format configuration file that is passed on the command
+line via the `--config` or `-c` argument. As explained in [design](DESIGN.md), a FlyVR experiment
+contains two (three really, including a closed loop experiment definition) types of configuration
+information:
+ * FlyVR configuration (under the `configuration` section in the yaml file)
+ * Stimulus playlists (under the `playlist` section)
+ * An optional closed-loop experiment definition (under the `experiment` section)
+
+Note 1: most configuration parameters can be supplied also on the command line, and these
+        override values specified in the configuration section
+
+Note 2: playlist and experiment configuration can be stored in separate configuration files and
+        be supplied on the command line via the `-p` or `--playlist_file` and `-e` or `--experiment_file`
+        arguments
+
+### default values
+
+The default values of all configuration parameters can be displayed by running any application with
+`--print-defaults`.
+
+Note: If you want to know the final value of all configuration variables as would have been used
+in a FlyVR experiment, you can pass `--print-defaults --verbose`. This will print the combined configuration,
+playlist, and closed-loop experiment (if defined in the yaml meta-language).
+
 
 # Developing
 

@@ -193,6 +193,7 @@ def parse_options(options, parser):
             return Experiment.from_items(state_item_defns=__experiment.get('state') or {},
                                          timed_item_defns=__experiment.get('time') or {})
 
+    _experiment_yaml = None
     if options.experiment_file:
 
         _, ext = os.path.splitext(options.experiment_file)
@@ -203,17 +204,29 @@ def parse_options(options, parser):
                 dat = yaml.safe_load(f)
             _experiment_obj = _build_experiment_inline(dat)
 
+            if _experiment_obj is not None:
+                _experiment_yaml = dat
+
     else:
         _experiment_obj = _build_experiment_inline(_all_conf)
+
+    options.playlist = _playlist
+    options.experiment = _experiment_obj
 
     if options.print_defaults:
         _opts = vars(options)
         _opts.pop('record_file', None)
+        _opts.pop('config_file', None)
+
+        _opts.pop('experiment', None)  # not representable as is, it's an object
+        if options.verbose:
+            if _experiment_yaml is not None:
+                _opts['experiment'] = _experiment_yaml
+        else:
+            _opts.pop('playlist', None)
+
         print(yaml.safe_dump(_opts), end='')
         parser.exit(0)
-
-    options.playlist = _playlist
-    options.experiment = _experiment_obj
 
     options._config_file_path = _config_file_path
 
