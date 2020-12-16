@@ -1,0 +1,7 @@
+playlist:
+  daq:
+    - _options: {random_mode: 'none', repeat: 2, paused: true}
+    - sq20hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 20, max_value: 10.0, min_value: -10.0, amplitude: 2.0, phase: 0.0}
+    - sq40hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 40, max_value: 10.0, min_value: -10.0, amplitude: 4.0, phase: 0.0}
+    - sq60hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 60, max_value: 10.0, min_value: -10.0, amplitude: 6.0, phase: 0.0}
+    - sq80hz: {name: 'square', sample_rate: 10000, duration: 1000, pre_silence: 0, post_silence: 500, attenuator: null, frequency: 80, max_value: 10.0, min_value: -10.0, amplitude: 8.0, phase: 0.0}
