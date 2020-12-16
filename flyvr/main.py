@@ -36,7 +36,6 @@ def _get_fictrac_driver(options, log):
                 return None
 
             drv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                experiment=experiment,
                                 pgr_enable=not options.pgr_cam_disable)
 
             log.info('starting fictrac%s driver with config %s' % (

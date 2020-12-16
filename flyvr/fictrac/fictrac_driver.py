@@ -7,7 +7,7 @@ import logging
 import numpy as np
 
 from flyvr.common import SharedState, BACKEND_FICTRAC
-from flyvr.common.build_arg_parser import setup_logging
+from flyvr.common.build_arg_parser import setup_logging, setup_experiment
 from flyvr.common.logger import DatasetLogServer
 from flyvr.common.tools import which
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer, \
@@ -20,7 +20,7 @@ class FicTracDriver(object):
     calls a control function once for each time the tracking state of the insect is updated.
     """
 
-    def __init__(self, config_file, console_ouput_file, pgr_enable=False, experiment=None):
+    def __init__(self, config_file, console_ouput_file, pgr_enable=False):
         """
         Create the FicTrac driver object. This function will perform a check to see if the FicTrac program is present
         on the path. If it is not, it will throw an exception.
@@ -35,7 +35,7 @@ class FicTracDriver(object):
         self.config_file = config_file
         self.console_output_file = console_ouput_file
         self.pgr_enable = pgr_enable
-        self.experiment = experiment
+        self.experiment = None
 
         self.fictrac_bin = 'FicTrac'
         if self.pgr_enable:
@@ -66,6 +66,11 @@ class FicTracDriver(object):
         :return:
         """
         setup_logging(options)
+
+        setup_experiment(options)
+        if options.experiment:
+            self._log.info('initialized experiment %r' % options.experiment)
+        self.experiment = options.experiment
 
         # fixme: this should be threaded and context manager to close
         log_server = DatasetLogServer()

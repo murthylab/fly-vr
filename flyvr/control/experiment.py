@@ -244,12 +244,14 @@ def do_loop(exp, delay, force=False):
 
 
 def main_experiment():
-    from flyvr.common.build_arg_parser import build_argparser, parse_options
+    from flyvr.common.build_arg_parser import build_argparser, parse_options, setup_experiment
 
     parser = build_argparser()
     parser.add_argument('--force', action='store_true', help='force/fake iterate at 200fps even if no tracking data '
                         'is present (for testing)')
+
     options = parse_options(parser.parse_args(), parser)
+    setup_experiment(options)
 
     if not options.experiment:
         parser.error("No experiment specified")

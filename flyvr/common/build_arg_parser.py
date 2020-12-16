@@ -137,9 +137,51 @@ def build_argparser(savefilename=None):
     return parser
 
 
-def parse_options(options, parser):
+def setup_experiment(options):
     from flyvr.control.experiment import Experiment
 
+    if options.config_file:
+        with open(options.config_file) as f:
+            _all_conf = yaml.safe_load(f)
+    else:
+        _all_conf = {}
+
+    _experiment_obj = None
+    _experiment = {}
+
+    def _build_experiment_inline(_conf):
+        __experiment = {}
+        for _exp_what in ('state', 'time'):
+            try:
+                __experiment[_exp_what] = _conf[_exp_what]
+            except KeyError:
+                pass
+
+        if __experiment:
+            return Experiment.from_items(state_item_defns=__experiment.get('state') or {},
+                                         timed_item_defns=__experiment.get('time') or {})
+
+    _experiment_yaml = None
+    if options.experiment_file:
+
+        _, ext = os.path.splitext(options.experiment_file)
+        if ext == '.py':
+            _experiment_obj = Experiment.new_from_python_file(options.experiment_file)
+        elif ext in ('.yaml', '.yml'):
+            with open(options.experiment_file) as f:
+                dat = yaml.safe_load(f)
+            _experiment_obj = _build_experiment_inline(dat)
+
+            if _experiment_obj is not None:
+                _experiment_yaml = dat
+
+    else:
+        _experiment_obj = _build_experiment_inline(_all_conf)
+
+    options.experiment = _experiment_obj
+
+
+def parse_options(options, parser):
     required = "".split()
 
     # Check for required arguments
@@ -191,40 +233,8 @@ def parse_options(options, parser):
         except Exception:
             pass
 
-    _experiment_obj = None
-    _experiment = {}
-
-    def _build_experiment_inline(_conf):
-        __experiment = {}
-        for _exp_what in ('state', 'time'):
-            try:
-                __experiment[_exp_what] = _conf[_exp_what]
-            except KeyError:
-                pass
-
-        if __experiment:
-            return Experiment.from_items(state_item_defns=__experiment.get('state') or {},
-                                         timed_item_defns=__experiment.get('time') or {})
-
-    _experiment_yaml = None
-    if options.experiment_file:
-
-        _, ext = os.path.splitext(options.experiment_file)
-        if ext == '.py':
-            _experiment_obj = Experiment.new_from_python_file(options.experiment_file)
-        elif ext in ('.yaml', '.yml'):
-            with open(options.experiment_file) as f:
-                dat = yaml.safe_load(f)
-            _experiment_obj = _build_experiment_inline(dat)
-
-            if _experiment_obj is not None:
-                _experiment_yaml = dat
-
-    else:
-        _experiment_obj = _build_experiment_inline(_all_conf)
-
     options.playlist = _playlist
-    options.experiment = _experiment_obj
+    options.experiment = None
 
     if options.print_defaults:
         _opts = vars(options)
@@ -233,8 +243,11 @@ def parse_options(options, parser):
 
         _opts.pop('experiment', None)  # not representable as is, it's an object
         if options.verbose:
-            if _experiment_yaml is not None:
-                _opts['experiment'] = _experiment_yaml
+            if options.experiment_file:
+                _, ext = os.path.splitext(options.experiment_file)
+                if ext in ('.yaml', '.yml'):
+                    with open(options.experiment_file) as f:
+                        _opts['experiment'] = yaml.safe_load(f)
         else:
             _opts.pop('playlist', None)
 

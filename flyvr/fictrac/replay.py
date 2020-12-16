@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 
 from flyvr.common import SharedState, BACKEND_FICTRAC
-from flyvr.common.build_arg_parser import setup_logging
+from flyvr.common.build_arg_parser import setup_logging, setup_experiment
 from flyvr.common.mmtimer import MMTimer
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer
 
@@ -95,8 +95,9 @@ class FicTracDriverReplay(object):
 
     class StateReplayFictrac(ReplayFictrac):
 
-        def __init__(self, flyvr_shared_state, *args, **kwargs):
+        def __init__(self, flyvr_shared_state, experiment, *args, **kwargs):
             self._flyvr_shared_state = flyvr_shared_state
+            self._experiment = experiment
             super().__init__(*args, **kwargs)
 
         def _send_row(self, idx):
@@ -104,7 +105,14 @@ class FicTracDriverReplay(object):
                 _ = self._flyvr_shared_state.signal_ready(BACKEND_FICTRAC)
             if self._flyvr_shared_state.is_stopped():
                 return None
-            return super()._send_row(idx)
+            # this updates self._flyvr_shared_state
+            out = super()._send_row(idx)
+
+            if self._experiment is not None:
+                # noinspection PyProtectedMember
+                self._experiment.process_state(self._fictrac_state)
+
+            return out
 
     def __init__(self, config_file, *args, **kwargs):
         if not os.path.splitext(config_file)[1] == '.h5':
@@ -113,12 +121,22 @@ class FicTracDriverReplay(object):
 
     def run(self, options):
         setup_logging(options)
+
+        log = logging.getLogger('flyvr.fictrac.FicTracDriverReplay')
+
+        setup_experiment(options)
+        if options.experiment:
+            log.info('initialized experiment %r' % options.experiment)
+
         flyvr_shared_state = SharedState(options=options,
                                          logger=None,
                                          where=BACKEND_FICTRAC)
-        replay = FicTracDriverReplay.StateReplayFictrac(flyvr_shared_state, self._h5_path)
+        replay = FicTracDriverReplay.StateReplayFictrac(flyvr_shared_state,
+                                                        options.experiment,
+                                                        self._h5_path)
         replay.replay()  # blocks
-        replay._log.info('stopped')
+
+        log.info('stopped')
 
 
 def main_replay():
