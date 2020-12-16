@@ -10,7 +10,7 @@ import yaml
 import numpy as np
 
 from flyvr.common import BACKEND_VIDEO as _BACKEND_VIDEO, BACKEND_DAQ as _BACKEND_DAQ,\
-    BACKEND_AUDIO as _BACKEND_AUDIO
+    BACKEND_AUDIO as _BACKEND_AUDIO, Randomizer
 from flyvr.common.ipc import PlaylistSender
 
 
@@ -92,6 +92,7 @@ class Experiment(object):
         self._timed = timed
         self._t0 = time.time()
 
+        self._playlist = {}
         self._ipc = PlaylistSender()
 
         self.log = logging.getLogger('flyvr.experiment.%s' % self.__class__.__name__)
@@ -106,6 +107,31 @@ class Experiment(object):
         self._t0 = time.time()
         self._ipc.process(command='start', value=uuid)
         return uuid
+
+    def _set_playlist(self, playlist):
+        def _get_playlist_ids(_stim_playlist):
+            _ids = []
+
+            for item_def in _stim_playlist:
+                assert len(item_def) == 1
+                _id = tuple(item_def.keys())[0]
+
+                if _id == Randomizer.IN_PLAYLIST_IDENTIFIER:
+                    continue
+
+                _ids.append(_id)
+
+            return _ids
+
+        for k in (_BACKEND_VIDEO, _BACKEND_VIDEO, _BACKEND_DAQ):
+            self._playlist[k] = _get_playlist_ids(playlist.get(k, []))
+
+    @property
+    def configured_playlist_items(self):
+        """
+        returns the configured playlist item identifiers for every backend
+        """
+        return dict(self._playlist)
 
     def start_and_wait_for_all_processes(self, state):
         # todo: loop over shared mem ready vals waiting for them to be set to the uuid

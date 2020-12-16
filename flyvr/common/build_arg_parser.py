@@ -180,6 +180,10 @@ def setup_experiment(options):
 
     options.experiment = _experiment_obj
 
+    if options.experiment:
+        # noinspection PyProtectedMember
+        options.experiment._set_playlist(options.playlist)
+
 
 def parse_options(options, parser):
     required = "".split()
