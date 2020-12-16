@@ -97,6 +97,10 @@ def build_argparser(savefilename=None):
                         help="Disable remote next (+start) signaling every stimulus item. "
                              "Just signal start and stop at the beginning and end of an experiment.",
                         default=False)
+    parser.add_argument("--phidget_network",
+                        action='store_true',
+                        help='connect to phidget over network protocol (required for some motor-on-ball CL tests)',
+                        default=False)
     parser.add_argument('--keepalive_video', action='store_true',
                         help="Keep the video process running even if they initially provided playlist contains "
                              "no video items (such as if you want to later play dynamic video items not declared "

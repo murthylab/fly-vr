@@ -179,7 +179,7 @@ def run_phidget_io(options):
                    signal_next_enable=not options.remote_2P_next_disable,
                    start_after_next_delay=options.scanimage_next_start_delay,
                    debug_led=getattr(options, 'debug_led', 2),
-                   remote_details=DEFAULT_REMOTE if getattr(options, 'network', False) else None)
+                   remote_details=DEFAULT_REMOTE if options.phidget_network else None)
     io.run(options)
 
 
@@ -194,10 +194,6 @@ def main_phidget():
                         type=int,
                         help="flash this LED upon IPC messages (should not be 3,4,5)",
                         default=None)
-    parser.add_argument("--network",
-                        action='store_true',
-                        help='connect to phidget over network protocol',
-                        default=False)
 
     options = parse_options(parser.parse_args(), parser)
 
