@@ -218,9 +218,9 @@ The flyvr is a multi-process application for multi-sensory virtual reality. The 
 by the sensory modality they target, for example there is a single process dedicated to video stimulus, one for
 audio stimulus, etc. The *primary* separate processes are (more explanations follow)
 
-* flyvr  
+* `flyvr`  
   main application launcher, launches all other processes internally. usually all that is needed to be run
-* flyvr-audio  
+* `flyvr-audio`  
   process which reads the audio playlist and plays audio signals via the soundcard. can also
   list available sound cards (`flyvr-audio --list-devices`).
   * you can also plot the audio playlist using `--plot` which will plot the audio timeseries  
@@ -239,17 +239,17 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
       relative to the playlist/config file
     * all converted playlists will be placed into an 'audio' playlist - this should be adapted to daq if the
       playlist is actually for the DAQ opto outputs
-* flyvr-video  
+* `flyvr-video`  
   process which reads video playlist and displays video stimulus on an attached lightcrafter projector (if connected)
   (pass `--projector_disable` if you dont have a projector connected)
-* flyvr-daq  
+* `flyvr-daq`  
   process which drives the NI DAQ for the purposes of
   * outputing the opto stimulus
   * recording the analog inputs
-* flyvr-fictrac  
+* `flyvr-fictrac`  
   process which launches the fictrac binary
   * `flyvr-fictrac -f FicTracPGR_ConfigMaster.txt -m log.txt`
-* flyvr-hwio  
+* `flyvr-hwio`  
   device which drives the scanimage signaling and is available for future expansion for other stimulus (odor, etc).
   It also has a few additional options to aid visual debugging
   * `flyvr-hwio -debug_led 5`
@@ -258,22 +258,22 @@ audio stimulus, etc. The *primary* separate processes are (more explanations fol
 
 Similarly, the following secondary utilities are available also as separate processes to aid debugging, development, testing
 or observing experiments in progress
-* flyvr-fictrac-replay  
+* `flyvr-fictrac-replay`  
   can replay a previously saved fictrac `.h5` file in order to test, for example, experiment logic or 
-* flyvr-experiment  
+* `flyvr-experiment`  
   allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. 
   often used in conjunction with `flyvr-fictrac-replay`
-* flyvr-print-state  
+* `flyvr-print-state`  
   prints the current flyvr state to the console
-* flyvr-fictrac-plot  
+* `flyvr-fictrac-plot`  
   shows an animated plot of the fictrac state (ball speed, direction, etc)
-* flyvr-ipc-send  
+* `flyvr-ipc-send`  
   in internal utility for sending IPC messages to control other primary processes,
   e.g. (the complex escaping is necessary here in windows shell)
   * `flyvr-ipc-send.exe "{\"video_item\": {\"identifier\": \"v_loom_stim\"}}"`
   * `flyvr-ipc-send.exe "{\"audio_legacy\": \"sin\t10\t1\t0\t0\t0\t1\t650\"}"`
   * `flyvr-ipc-send.exe "{\"video_action\": \"play\"}"`
-* flyvr-ipc-relay  
+* `flyvr-ipc-relay`  
   (advanced only) internal message relay bus for start/stop/next-playlist-item messages
 
 # Developing
