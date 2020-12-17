@@ -761,9 +761,14 @@ def legacy_factory(lines, basedirs, attenuator=None):
         intensities = _parse_list(intensity)
 
         chans = []
-        for chan_idx, chan_name in enumerate(stimFileName.split(';')):
+        for chan_idx, _chan_name in enumerate(stimFileName.split(';')):
+            _cnl = _chan_name.lower().strip()
+            if _cnl in {'optooff', 'optoon', 'square', 'sin', ''}:
+                chan_name = _chan_name.lower()
+            else:
+                chan_name = _chan_name
 
-            chan = _legacy_factory(chan_name=chan_name.lower(),
+            chan = _legacy_factory(chan_name=chan_name,
                                    rate=int(rate),
                                    silencePre=int(silencePre),
                                    silencePost=int(silencePost),

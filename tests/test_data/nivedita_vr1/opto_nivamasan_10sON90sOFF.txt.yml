@@ -3,7 +3,7 @@ playlist:
   audio:
   - MATFileStim-a93f0de49a5c44ccae00a03c4b398b58:
       attenuator: null
-      filename: silentstim_tdur4s
+      filename: silentStim_TDUR4s
       frequency: -1.0
       intensity: 0.0
       max_value: 10.0
@@ -14,7 +14,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-6fc9b557d0f04a1bb1d6e93e62423da2:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -25,7 +25,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-bda2036a1c924242ab6d78a93d4c01e2:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -36,7 +36,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-f69e66e6cba24ed28f9506050bf5d93f:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -47,7 +47,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-f145b22e455b44ffae68e67d69bb5f09:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -58,7 +58,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-5e5204dbe9784edd9859e7bc277c58d3:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -69,7 +69,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-872b488e2587425da36c345956521b00:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -80,7 +80,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-3973492411014426b70cab46711f0dc5:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -91,7 +91,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-3550e07630b64b27b402a15600aa5072:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -102,7 +102,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-2628b5986d2b404c8810f49660e1b3c4:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -113,7 +113,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-9ee8dcd380a04b31b4df912ebd39f4a6:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -124,7 +124,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-b9c76d6035df430c9ff2bd20ae5dfc8b:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -135,7 +135,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-0d140d6fa25d4d818b55c64243dd5c96:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -146,7 +146,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-745fddf21fc44a53a8742f0433b7d8be:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -157,7 +157,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-d296cd7c212542b2bd7d47e29eec0915:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -168,7 +168,7 @@ playlist:
       sample_rate: 10000
   - MATFileStim-dc0dab4af8c846e0b9bcb99a6ad44d41:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
