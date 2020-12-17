@@ -42,6 +42,9 @@ class SharedState(object):
 
         self._log = logging.getLogger('flyvr.common.SharedState%s' % (("(in='" + where + "')") if where else ''), )
 
+        if sys.platform == 'linux':
+            raise NotImplementedError('anonymous tagname based shared memory not supported on linux')
+
         # noinspection PyTypeChecker
         buf = mmap.mmap(-1,
                         ctypes.sizeof(SHMEMFlyVRState),
