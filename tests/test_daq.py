@@ -1,6 +1,5 @@
 import pytest
 
-from flyvr.audio.io_task import IOTask, DAQ_NUM_OUTPUT_SAMPLES, DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT
 from flyvr.common import SharedState
 from flyvr.common.logger import DatasetLogServer
 from flyvr.audio.signal_producer import SampleChunk
@@ -11,6 +10,8 @@ def test_io_a_output(tmpdir):
     import time
 
     import h5py
+
+    from flyvr.audio.io_task import IOTask, DAQ_NUM_OUTPUT_SAMPLES, DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT
 
     with DatasetLogServer() as log_server:
 

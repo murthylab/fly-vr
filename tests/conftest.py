@@ -11,7 +11,11 @@ def _has_soundcard():
 
 def _has_daq(name=''):
     import ctypes
-    import PyDAQmx as daq
+    try:
+        import PyDAQmx as daq
+    except NotImplementedError:
+        # we are running on linux...
+        return False
 
     buff = ctypes.create_string_buffer(1024)
     # noinspection PyUnresolvedReferences
