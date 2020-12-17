@@ -38,7 +38,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-9-2:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -49,7 +49,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-8-2:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -60,7 +60,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-7-2:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -71,7 +71,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-9-3:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -82,7 +82,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-8-3:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -93,7 +93,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-7-3:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -104,7 +104,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-9-4:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -115,7 +115,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-8-4:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -126,7 +126,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-7-4:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
@@ -137,7 +137,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-9-5:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 9.0
       max_value: 10.0
@@ -148,7 +148,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-8-5:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 8.0
       max_value: 10.0
@@ -159,7 +159,7 @@ playlist:
       sample_rate: 10000
   - Opto1090-7-5:
       attenuator: null
-      filename: 190712_opto_10son_90soff
+      filename: 190712_opto_10sON_90sOFF
       frequency: -1.0
       intensity: 7.0
       max_value: 10.0
