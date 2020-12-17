@@ -145,6 +145,8 @@ need to use conda specific commands to create and activate the conda environment
     `"C:\Users\XXX\AppData\Local\Programs\Python\Python37\python.exe"`
 * Activate the virtual environment  
   `venv\Scrips\activate.bat`
+* ensure python packaging and built utilities are up to date  
+  `python -m pip install -U pip setuptools wheel`
 * install dependencies  
   `python -m pip install -r requirements.txt`
 * Install flyvr
