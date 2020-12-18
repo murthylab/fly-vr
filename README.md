@@ -100,12 +100,6 @@ When you have finished the playlist and experiment development and wish to run o
 * copy the contents of your tested 'myvideo.yml' playlists into 'my_upstairs_video_experiment.yml' 
 * `flyvr --config my_upstairs_audio_experiment.yml`
 
-## Usage of Individual Utilities
-
-* `$ flyvr-fictrac-plot`  
-  show a realtime plot of fictrac state
-* `$ flyvr-fictrac-replay`  
-  replay fictrac data from a previously recorded experiment record_file
 
 # Installation
 
