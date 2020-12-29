@@ -228,6 +228,83 @@ to be included in the configuration file for the rig used
   item is played on any backend, thus the simultaneous starting of two stimuli on both backends
   will generate two stacks.
 
+
+#### An example closed-loop randomized audio+optogenetic experiment
+
+This example uses the same stimuli as the last experiment but instead of randomly
+switching corresponding-pairs of audio+daq playlist items every number of seconds,
+in this experiment we instead play a random audio and optogenetic stimulus every time
+the fly (ball) speed exceeds a threshold value.
+
+You should note that this experiment uses the same [playlist](playlists/audio_daq_paused.yml)
+as [the previous](#a-dynamic-paired-random-audiooptogenetic-experiment), but a different
+[experiment](experiments/cl_random_audio_daq.py).
+
+#### Testing Closed Loop Experiments
+
+Extending on the previous experiment where the fly (ball) speed was used to trigger a closed
+loop response, it is possible to use a stepper motor which rotates the ball to test the
+experiment logic and aspects of the system latency or synchronicity.
+
+Pre-requisites: 
+1) a stepper motor should be attached to the ball and connected to a phidgets
+   stepper motor controller
+2) the stepper motor controller is connected to port 0 on the phidget
+3) FicTrac is calibrated
+4) The _Phidgets Network Server_ is enabled ([instructions here](https://www.phidgets.com/docs/Phidget_Control_Panel#Network_Server_Tab))  
+   In 'normal' operation (which is lowest latency) the Phidget device is opened
+   and controlled only by FlyVR (because it is used to signal scanimage).
+   However, in this case, we need to also use the Phidget device to control the
+   stepper motor.
+
+First test the Phidget, stepper motor, and network server configration you should run
+the ball controller alone (without FlyVR running). You can do this by
+`$ python tests\ball_control_phidget\ball_control.py` which will randomly spin the ball
+at two speeds in either direction (or stop it). If the ball reliably spins in both directions
+and does not get stuck, then you can proceed to test the speed trigger.
+
+The sample [experiment](experiments/cl_random_audio_daq.py) triggers when an empirically
+determined speed threshold is exceeded. This value `SPEED_THRESHOLD` might need to be changed
+to correspond to a true fly, or likely also to your ball+stepper mounting. To simply play
+with the value, you can run only FicTrac and a very
+[similar experiment](experiments/print_ball_speed.py) which just prints
+when the threshold is exceeded. To do this perform the following
+
+1. Launch FicTrac  
+   `$ flyvr-fictrac -f FicTracPGR_ConfigMaster.txt -m log.txt`  
+   where `-f FicTracPGR_ConfigMaster.txt` is the same value you would use in
+   a 'real' FlyVR experiment configuration yaml
+2. Launch the 'experiment'  
+   `$ flyvr-experiment.exe -e experiments\print_ball_speed.py`  
+   which will print every time the `SPEED_THRESHOLD` is exceeded. you can/should
+   simply modify this experiment to determine your `SPEED_THRESHOLD` and `FILTER_LEN`
+   values
+3. Set the ball to different speeds  
+   `$ python tests\ball_control_phidget\ball_control.py 123`  
+   where 123 can be replaced with other values (max 3000) to spin the ball faster
+
+Once you have determine the values you wish to use, you can launch the CL experiment, and
+instead of needing a real fly, you can manually spin the ball using `ball_control.py` to
+trigger the closed loop condition.
+
+**Important**: Because the phidget is being operated in Network mode by the ball controller,
+an additional configuration option must be added to your FlyVR config for this test or provided
+on the command line `--phidget_network`
+
+Finally, to launch and test your closed loop experiment you can do
+1. Launch FlyVR  
+   `flyvr.exe --phidget_network -c your_rig.yml -p playlists/audio_daq_paused.yml -e experiments/cl_random_audio_daq.py`  
+   as always, `your_reg.yml` should contain the necessary configuration options specific to
+   your hardware
+2. Manually trigger the CL condition to spinning the ball  
+   `$ python tests\ball_control_phidget\ball_control.py 123`  
+   where `123` was the empirically determined value which exceeds the `SPEED_THRESHOLD` you
+   determined earlier.
+   
+Note and Future Extensions: A new experiment that controlled the ball itself also from
+within the experiment (using the same API as in `ball_control.py`) could be written, which
+would eliminate the need to launch the `ball_control.py` in a separate terminal.
+
 ## Stimuli Randomization and Repeat
 
 Random and repeat modes are specified in the playlist for each backend, within a special 'playlist item'
