@@ -189,6 +189,45 @@ experiment = _MyExperiment()
 Exploiting the ability to define the experiment logic in python, flyvr is now
 launched `flyvr.exe -c playlist.yaml -e experiment.py`
 
+## Testing a FlyVR Rig Using OL/CL Experiments
+
+Following on from the
+[non-OL timed video and audio experiment above](#a-more-complicated-open-loop-video-and-audio-experiment),
+here are some suggested validation experiments to test FlyVR rigs and to further
+exemplify concepts key to FlyVR.
+
+#### A dynamic paired-random audio+optogenetic experiment
+
+Imagine you have an experiment where you have several audio and optogenetic
+stimuli defined and you want to randomly show only certain combinations of
+audio and optogenetic at the same time. For example, if the daq playlist as items with
+identifiers 'd1', 'd2', 'd3', and 'd4', and the audio playlist has items
+with identifiers 'a1', 'a2', and 'a3', then we want to randomly choose to play
+play simultaneously only (`d1' and 'a1'), ('d2' and 'a2'), or
+('d3' and 'a3') and _not_ ('d2' and 'a1') for example.
+
+This example is provided in the form of a [playlist](playlists/audio_daq_paused.yml) and
+an [experiment](experiments/paired_random_audio_daq.py) for your study.
+
+Please note the following configuration choices made in the playlist and suggested
+to be included in the configuration file for the rig used
+
+* both playlists are configured with `_options` `{random_mode: 'none', paused: true}`
+  which indicates that when FlyVR has finished starting, nothing should independently
+  start playing on each backend
+* the experiment uses the `self.configured_playlist_items` attribute which lists the
+  identifiers of all playlists items for all backends. This means in this hypothetical
+  experiment the list of playlist items does not need to be duplicated in the
+  experiment
+* the experiment makes use of `self.is_started()` and
+  `self.is_backend_ready(...)` to wait until FlyVR is started and and all backends are
+  ready before starting the first pair of stimuli playing
+* note that if you are using scanimage to also record 2P images then you should set
+  `remote_2P_next_disable` and simply record one stack for the entire experiment. This
+  is because FlyVR otherwise generates a new scaminage next-signal every time a new playlist
+  item is played on any backend, thus the simultaneous starting of two stimuli on both backends
+  will generate two stacks.
+
 ## Stimuli Randomization and Repeat
 
 Random and repeat modes are specified in the playlist for each backend, within a special 'playlist item'
