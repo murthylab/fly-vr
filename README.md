@@ -330,6 +330,10 @@ can not be supplied on the command line
  * `analog_out_channels`  
    as above, but can only contain one channel. The channel to which the optogenetic stimulus is driven from 
 
+After every experiment, the total configuration is saved in a `YYYYMMDD_HHMM.config.yml` file alongside the
+other output files. The is an 'all-in-one' configuration where both the configuration *and* any additional
+`-p playlist.yml` or `-e experiment.yml` information is included in the one file. 
+
 ### default values
 
 The default values of all configuration parameters can be displayed by running any application with
