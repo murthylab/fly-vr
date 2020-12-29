@@ -1,7 +1,9 @@
 import time
 import logging
 
-from flyvr.common.build_arg_parser import parse_arguments
+import yaml
+
+from flyvr.common.build_arg_parser import parse_arguments, get_printable_options_dict
 
 from flyvr.video.video_server import run_video_server
 from flyvr.audio.sound_server import run_sound_server
@@ -63,10 +65,13 @@ def main_fictrac():
 
 def main_launcher():
     options = parse_arguments()
-
-    # flip the default vs the individual launchers - we do need to wait for
-    # all of the backends
+    # flip the default vs the individual launchers - wait for all of the backends
     options.wait = True
+
+    # save the total state
+    _opts = get_printable_options_dict(options)
+    with open(options.record_file.replace('.h5', '.config.yml'), 'wt') as f:
+        yaml.safe_dump(_opts, f)
 
     log = logging.getLogger('flyvr.main')
 
