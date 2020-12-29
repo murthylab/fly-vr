@@ -185,6 +185,24 @@ def setup_experiment(options):
         options.experiment._set_playlist(options.playlist)
 
 
+def get_printable_options_dict(options):
+    _opts = vars(options)
+    _opts.pop('record_file', None)
+    _opts.pop('config_file', None)
+
+    _opts.pop('experiment', None)  # not representable as is, it's an object
+    if options.verbose:
+        if options.experiment_file:
+            _, ext = os.path.splitext(options.experiment_file)
+            if ext in ('.yaml', '.yml'):
+                with open(options.experiment_file) as f:
+                    _opts['experiment'] = yaml.safe_load(f)
+    else:
+        _opts.pop('playlist', None)
+
+    return _opts
+
+
 def parse_options(options, parser):
     required = "".split()
 
@@ -241,20 +259,7 @@ def parse_options(options, parser):
     options.experiment = None
 
     if options.print_defaults:
-        _opts = vars(options)
-        _opts.pop('record_file', None)
-        _opts.pop('config_file', None)
-
-        _opts.pop('experiment', None)  # not representable as is, it's an object
-        if options.verbose:
-            if options.experiment_file:
-                _, ext = os.path.splitext(options.experiment_file)
-                if ext in ('.yaml', '.yml'):
-                    with open(options.experiment_file) as f:
-                        _opts['experiment'] = yaml.safe_load(f)
-        else:
-            _opts.pop('playlist', None)
-
+        _opts = get_printable_options_dict(options)
         print(yaml.safe_dump(_opts), end='')
         parser.exit(0)
 
