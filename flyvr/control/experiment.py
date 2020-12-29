@@ -148,7 +148,8 @@ class Experiment(object):
     @property
     def configured_playlist_items(self):
         """
-        returns the configured playlist item identifiers for every backend
+        returns a list of the configured playlist item identifiers for every backend. the list is in
+        the same order as defined in the playlist yaml.
         """
         return dict(self._playlist)
 
