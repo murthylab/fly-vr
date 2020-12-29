@@ -103,10 +103,27 @@ optional arguments:
 
 TLDR;
 
+ * FlyVR reads its configuration from the command line and one or more files
+   * `-c config.yml`  
+     is the main configuration and *can* contain *both* the rig-specific configuration
+     *and* the experiment playlist
+      * Example rig configurations can be found in the `configs` directory.
+   * `-p playlist.yml`  
+     contains *only* the definition of the stimulus playlist. Any other configuration
+     is ignored.
+      * Sample playlists can be found in the `playlists` directory
+ * By allowing separating the playlist and rig-specific configuration (such as how the
+   DAQ is wired) one can use the same playlists on multiple rigs.
+ * It is however not necessary to have *both* a `config.yml` and a `playlist.yml` - they
+   can be combined into `config.yml` if desired
+ * More information on the configuration possibilities can be found in the
+   [configuration](#configuration) section
+
 If you are developing a stimulus playlist (video example, substitute for audio as appropriate)
 
  * copy an example playlist e.g. copy 'playlists/video1.yml' to 'myvideo.yml'
  * exit, test and experiment on the playlist using the single launcher `flyvr-video.exe --config myvideo.yml`
+
 When you have finished the playlist and experiment development and wish to run on a rig
 
 * create a rig-specific config file (see templates in configs/) with the electrical connections
