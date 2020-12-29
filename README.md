@@ -14,32 +14,38 @@ Murthy Lab @ the Princeton Neuroscience Institute.
 # Usage
 ```
 usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
-             [-e EXPERIMENT_FILE] [--screen_calibration SCREEN_CALIBRATION]
-             [--use_RSE] [--remote_2P_disable]
+             [-e EXPERIMENT_FILE] [-p PLAYLIST_FILE]
+             [--screen_calibration SCREEN_CALIBRATION] [--use_RSE]
+             [--remote_2P_disable]
              [--remote_start_2P_channel REMOTE_START_2P_CHANNEL]
              [--remote_stop_2P_channel REMOTE_STOP_2P_CHANNEL]
              [--remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL]
+             [--scanimage_next_start_delay SCANIMAGE_NEXT_START_DELAY]
+             [--remote_2P_next_disable] [--phidget_network]
              [--keepalive_video] [--keepalive_audio] [-l RECORD_FILE]
              [-f FICTRAC_CONFIG] [-m FICTRAC_CONSOLE_OUT] [--pgr_cam_disable]
              [--wait] [--delay DELAY] [--projector_disable]
              [--samplerate_daq SAMPLERATE_DAQ] [--print-defaults]
 
-Args that start with '--' (eg. --attenuation_file) can also be set in a config
-file (specified via -c). The config file uses YAML syntax and must represent a
-YAML 'mapping' (for details, see http://learn.getgrav.org/advanced/yaml). If
-an arg is specified in more than one place, then commandline values override
-config file values which override defaults.
+Args that start with '--' (eg. -v) can also be set in a config file (specified
+via -c). The config file uses YAML syntax and must represent a YAML 'mapping'
+(for details, see http://learn.getgrav.org/advanced/yaml). If an arg is
+specified in more than one place, then commandline values override config file
+values which override defaults.
 
 optional arguments:
   -h, --help            show this help message and exit
   -c CONFIG_FILE, --config CONFIG_FILE
                         config file path
-  -v                    Verbose output.
+  -v, --verbose         Verbose output.
   --attenuation_file ATTENUATION_FILE
                         A file specifying the attenuation function.
   -e EXPERIMENT_FILE, --experiment_file EXPERIMENT_FILE
                         A file defining the experiment (can be a python file
                         or a .yaml).
+  -p PLAYLIST_FILE, --playlist_file PLAYLIST_FILE
+                        A file defining the playlist, replaces any playlist
+                        defined in the main configuration file
   --screen_calibration SCREEN_CALIBRATION
                         Where to find the (pre-computed) screen calibration
                         file.
@@ -57,6 +63,16 @@ optional arguments:
   --remote_next_2P_channel REMOTE_NEXT_2P_CHANNEL
                         The digital channel to send remote next file signal
                         for 2-photon imaging.
+  --scanimage_next_start_delay SCANIMAGE_NEXT_START_DELAY
+                        The delay [ms] between next and start pulses when
+                        signaling the 2-photon remote (<0 disables sending a
+                        start after a next).
+  --remote_2P_next_disable
+                        Disable remote next (+start) signaling every stimulus
+                        item. Just signal start and stop at the beginning and
+                        end of an experiment.
+  --phidget_network     connect to phidget over network protocol (required for
+                        some motor-on-ball CL tests)
   --keepalive_video     Keep the video process running even if they initially
                         provided playlist contains no video items (such as if
                         you want to later play dynamic video items not
