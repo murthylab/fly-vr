@@ -13,8 +13,8 @@ to understand.
 
 At a high level a virtual reality is the ability to deliver stimuli to an observer and measure its response. Audio
 stimuli are delivered to the fly using a speaker. Visual stimuli are shown on a projection screen, and optogenetic
-stimuli are delivered by laser activation. The response is the behaviour of the fly (its walking movement on a
-tracked sphere) and its neural activity (measured using an external 2P microscope).
+stimuli are delivered by laser activation (using a DAQ). The response is the behaviour of the fly (its walking movement
+on a tracked sphere) and its neural activity (measured using an external 2P microscope).
 
 Open-loop experiments are broadly; the delivery of stimuli independent of the measured response of the fly.
 Closed-loop experiments are broadly; the delivery of stimuli dependent upon, or in response to, behaviour of the
@@ -22,7 +22,7 @@ fly.
 
 ### playlists and stimulus items
 
-Playlists are separated into the different stimulus modalities; audio, video, and optogenetics. Each playlist
+Playlists are separated into the different stimulus modalities; audio, video, and daq (optogenetics). Each playlist
 defines the stimuli to be given on that modality. For example, audio playlists include a list of audio
 stimulus items (such as simple tones, or complicated melodies defined in matlab/numpy), video playlists include
 types of visual stimuli (looming, gratings, etc), and optogenetic stimuli are different excitation pulsetrains.
@@ -66,8 +66,8 @@ In this experiment we will simply play two audio signals to the fly continuously
 ```yaml
 playlist:
   audio:
-    - sin800hz: {name: 'sin', duration: 1000, frequency: 800}
-    - sin400hz: {name: 'sin', duration: 1000, frequency: 400}
+    - sin800hz: {name: 'sin', duration: 1000, frequency: 800, amplitude: 1.0}
+    - sin400hz: {name: 'sin', duration: 1000, frequency: 400, amplitude: 1.0}
 ```
 
 A Flyvr experiment can then be launched using `flyvr.exe -c playlists/audio1.yml`, or for testing only the
@@ -75,7 +75,7 @@ audio on your soundcard  `flyvr-audio.exe -c playlists/audio1.yml`
 
 #### A simple video only VR experiment.
 
-As above, but showing only two simple visual stimuli. ([full config file](playlists/audio1.yml))
+As above, but showing only two simple visual stimuli. ([full config file](playlists/video1.yml))
 
 ```yaml
 playlist:
@@ -96,8 +96,8 @@ of stimulus items on different backends.
 ```yaml
 playlist:
   audio:
-    - sin800hz: {name: 'sin', duration: 1000, frequency: 800}
-    - sin400hz: {name: 'sin', duration: 1000, frequency: 400}
+    - sin800hz: {name: 'sin', duration: 1000, frequency: 800, amplitude: 1.0}
+    - sin400hz: {name: 'sin', duration: 1000, frequency: 400, amplitude: 1.0}
   video:
     - v_loom_stim: {name: 'looming'}
     - v_move_sq: {name: 'moving_square'}
@@ -115,8 +115,8 @@ a 'timed' experiment. The experiment `.yaml` supports this concept via the synta
 ```yaml
 playlist:
   audio:
-    - sin800hz: {name: 'sin', duration: 1000, frequency: 800}
-    - sin400hz: {name: 'sin', duration: 1000, frequency: 400}
+    - sin800hz: {name: 'sin', duration: 1000, frequency: 800, amplitude: 1.0}
+    - sin400hz: {name: 'sin', duration: 1000, frequency: 400, amplitude: 1.0}
   video:
     - v_loom_stim: {name: 'looming'}
     - v_move_sq: {name: 'moving_square'}
@@ -138,7 +138,7 @@ This says
 * after 40000ms play the previously defined audio stimulus item 'sin400hz' and video stimulus item 'v_move_sq'  
   (both start playing at the same time)
 
-This can be launched using `flyvr.exe -c experiments/timed_audio_video.yml`
+This can be launched using `flyvr.exe -c experiments/timed_switch_audio1_video1.yml`
 
 #### A more complicated open-loop video and audio experiment
 
@@ -152,8 +152,8 @@ audio and video stimuli.
 ```yaml
 playlist:
   audio:
-    - sin800hz: {name: 'sin', duration: 1000, frequency: 800}
-    - sin400hz: {name: 'sin', duration: 1000, frequency: 400}
+    - sin800hz: {name: 'sin', duration: 1000, frequency: 800, amplitude: 1.0}
+    - sin400hz: {name: 'sin', duration: 1000, frequency: 400, amplitude: 1.0}
   video:
     - v_loom_stim: {name: 'looming'}
     - v_move_sq: {name: 'moving_square'}

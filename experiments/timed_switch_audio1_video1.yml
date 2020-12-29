@@ -1,0 +1,16 @@
+playlist:
+  audio:
+    - sin800hz: {name: 'sin', duration: 1000, frequency: 800, amplitude: 1.0}
+    - sin400hz: {name: 'sin', duration: 1000, frequency: 400, amplitude: 1.0}
+  video:
+    - v_loom_stim: {name: 'looming'}
+    - v_move_sq: {name: 'moving_square'}
+time:
+  10000:
+    do:
+      - playlist_item: {backend: 'audio', identifier: 'sin800hz'}
+      - playlist_item: {backend: 'video', identifier: 'v_loom_stim'}
+  40000:
+    do:
+      - playlist_item: {backend: 'audio', identifier: 'sin400hz'}
+      - playlist_item: {backend: 'video', identifier: 'v_move_sq'}
