@@ -57,7 +57,11 @@ I will now build from a simple audio-only open-loop experiment, to a more compli
 loop experiment. Note:
 
 1. abridged config files are shown below, the full file is linked
-2. flyvr also needs some device/assay specific configuration which is not provided
+2. in real operation flyvr also needs some device/assay specific configuration which is not provided, however
+   most of the examples can be run against a previously recorded FicTrac tracking session aka
+   a 'replay experiment'. If you do not have a DAQ you can simulate one and otherwise follow along
+   below in most cases. See the [developing section in the README](README.md#Developing) for more
+   information
 
 #### A simple open-loop audio experiment
 

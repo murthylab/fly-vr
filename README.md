@@ -352,6 +352,11 @@ playlist, and closed-loop experiment (if defined in the yaml meta-language).
   utilities you must run `flyvr-fictrac-replay` but within your normal config file you can
   also run with the follwing in your yaml config  
   `fictrac_config: 'C:/path/to/fictrac/config/180719_103_output.h5'`
+* If you do not have DAQ hardware you can create a simulated device which will allow you to
+  otherwise use the rest of the software
+  * Open NI Max, Right-click 'Devices and Interfaces', create a 
+  'Simulated NI-DAQmx device or instrument', select 'NI PCIe-6353' as the simulated
+  device type.
 
 # Credits
 
