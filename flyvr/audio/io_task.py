@@ -403,14 +403,18 @@ def io_task_loop(msg_queue: queue.Queue, flyvr_shared_state, options):
     log = logging.getLogger('flyvr.daq')
     log.info('starting DAQ process')
 
-    analog_in_channels = tuple(sorted(options.analog_in_channels))
+    if len(options.analog_in_channels) < 1:
+        log.critical('at least 1 DAQ analog channel must be read - setting to ai0 and continuing')
+        input_chans = ["ai0"]
+        input_chan_names = ["ai0"]
+    else:
+        input_chans = ["ai%s" % s for s in sorted(options.analog_in_channels)]
+        input_chan_names = [options.analog_in_channels[s] for s in sorted(options.analog_in_channels)]
+
     analog_out_channels = tuple(sorted(options.analog_out_channels))
 
     if len(analog_out_channels) > 1:
         raise NotImplementedError('only a single DAQ output channel is supported')
-
-    if len(analog_in_channels) < 1:
-        raise NotImplementedError('at least 1 DAQ analog channel must be read')
 
     daq_stim, _ = get_paylist_object(options, playlist_type='daq',
                                      paused_fallback=False,
@@ -457,8 +461,6 @@ def io_task_loop(msg_queue: queue.Queue, flyvr_shared_state, options):
                                 num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                                 shared_state=flyvr_shared_state)
 
-            input_chans = ["ai" + str(s) for s in analog_in_channels]
-            input_chan_names = [options.analog_in_channels[s] for s in analog_in_channels]
             taskAI = IOTask(cha_name=input_chans, cha_type="input",
                             rate=sr,
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
