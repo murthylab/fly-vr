@@ -69,7 +69,7 @@ def main_launcher():
     options.wait = True
 
     # save the total state
-    _opts = get_printable_options_dict(options)
+    _opts = get_printable_options_dict(options, include_experiment_and_playlist=True)
     with open(options.record_file.replace('.h5', '.config.yml'), 'wt') as f:
         yaml.safe_dump(_opts, f)
 

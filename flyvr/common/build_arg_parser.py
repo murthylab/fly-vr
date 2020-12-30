@@ -137,6 +137,13 @@ def build_argparser(savefilename=None):
     return parser
 
 
+_EXP_SUB_NAMESPACES = ('state', 'time')
+
+
+def _get_experiment_namespace(conf):
+    return conf.get('experiment', conf)
+
+
 def setup_experiment(options):
     from flyvr.control.experiment import Experiment
 
@@ -151,7 +158,7 @@ def setup_experiment(options):
 
     def _build_experiment_inline(_conf):
         __experiment = {}
-        for _exp_what in ('state', 'time'):
+        for _exp_what in _EXP_SUB_NAMESPACES:
             try:
                 __experiment[_exp_what] = _conf[_exp_what]
             except KeyError:
@@ -170,13 +177,13 @@ def setup_experiment(options):
         elif ext in ('.yaml', '.yml'):
             with open(options.experiment_file) as f:
                 dat = yaml.safe_load(f)
-            _experiment_obj = _build_experiment_inline(dat)
+            _experiment_obj = _build_experiment_inline(_get_experiment_namespace(dat))
 
             if _experiment_obj is not None:
                 _experiment_yaml = dat
 
     else:
-        _experiment_obj = _build_experiment_inline(_all_conf)
+        _experiment_obj = _build_experiment_inline(_get_experiment_namespace(_all_conf))
 
     options.experiment = _experiment_obj
 
@@ -185,18 +192,31 @@ def setup_experiment(options):
         options.experiment._set_playlist(options.playlist)
 
 
-def get_printable_options_dict(options):
-    _opts = vars(options)
+def get_printable_options_dict(options, include_experiment_and_playlist=False):
+
+    # need to keep the raw config around for the inline yaml experiment path
+    if options.config_file:
+        with open(options.config_file) as f:
+            _all_conf = yaml.safe_load(f)
+    else:
+        _all_conf = {}
+
+    _opts = dict(vars(options))
     _opts.pop('record_file', None)
     _opts.pop('config_file', None)
 
     _opts.pop('experiment', None)  # not representable as is, it's an object
-    if options.verbose:
+    if options.verbose or include_experiment_and_playlist:
         if options.experiment_file:
             _, ext = os.path.splitext(options.experiment_file)
             if ext in ('.yaml', '.yml'):
                 with open(options.experiment_file) as f:
                     _opts['experiment'] = yaml.safe_load(f)
+        else:
+            _exp = _get_experiment_namespace(_all_conf)
+            if _exp:
+                _opts['experiment'] = {k: _exp[k] for k in _EXP_SUB_NAMESPACES if k in _exp}
+
     else:
         _opts.pop('playlist', None)
 
