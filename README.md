@@ -133,6 +133,10 @@ When you have finished the playlist and experiment development and wish to run o
 * copy the contents of your tested 'myvideo.yml' playlists into 'my_upstairs_video_experiment.yml' 
 * `flyvr --config my_upstairs_audio_experiment.yml`
 
+When starting the `flyvr` program it will wait an additional `--delay` seconds, after all backends are
+ready, before starting the experiment (playing the first item on all playlists). If `--delay` is
+negative then `flyvr` will wait until the start button is pressed in the GUI.
+
 
 # Installation
 
@@ -292,6 +296,8 @@ or observing experiments in progress
 * `flyvr-experiment`  
   allows running flyvr experiments (`.yaml` or `.py`) in order to test their logic and progression. 
   often used in conjunction with `flyvr-fictrac-replay`
+* `flyvr-gui`  
+  launches the standalone GUI which shows FlyVR state (frame numbers, sample numbers, etc)
 * `flyvr-print-state`  
   prints the current flyvr state to the console
 * `flyvr-fictrac-plot`  
