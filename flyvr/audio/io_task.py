@@ -199,7 +199,7 @@ class IOTask(daq.Task):
                                                attribute_name='sample_rate')
             self.flyvr_shared_state.logger.log(self.samples_dset_name,
                                                int(self.num_samples_per_chan),
-                                               attribute_name='sample_sample_size')
+                                               attribute_name='sample_buffer_size')
 
             self.flyvr_shared_state.logger.create(self.samples_sync_dset_name,
                                                   shape=[1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
