@@ -15,6 +15,7 @@ from flyvr.fictrac.fictrac_driver import FicTracDriver
 from flyvr.fictrac.replay import FicTracDriverReplay
 from flyvr.hwio.phidget import run_phidget_io
 from flyvr.common.ipc import run_main_relay
+from flyvr.gui import run_main_state_gui
 
 
 def _get_fictrac_driver(options, log):
@@ -75,11 +76,15 @@ def main_launcher():
 
     log = logging.getLogger('flyvr.main')
 
+    flyvr_shared_state = SharedState(options=options, logger=None, where='main')
+
     # start the IPC bus first as it is needed by many subsystems
     ipc_bus = ConcurrentTask(task=run_main_relay, comms=None, taskinitargs=[])
     ipc_bus.start()
 
-    flyvr_shared_state = SharedState(options=options, logger=None, where='main')
+    # start the GUI
+    gui = ConcurrentTask(task=run_main_state_gui, comms=None, taskinitargs=[None, True])
+    gui.start()
 
     backend_wait = [BACKEND_FICTRAC]
 
@@ -134,6 +139,7 @@ def main_launcher():
             flyvr_shared_state.signal_start()
 
         while True:
+            # todo: a version of this with timeout is https://github.com/johejo/inputimeout
             input('\n---------------\nPress any key to finish\n---------------\n')
             flyvr_shared_state.signal_stop().join(timeout=5)
             break
@@ -145,7 +151,7 @@ def main_launcher():
 
     log.info('stopped')
 
-    for task in (ipc_bus, hwio, daq, video, audio):
+    for task in (ipc_bus, gui, hwio, daq, video, audio):
         if task is not None:
             log.debug('closing subprocess: %r' % task)
             task.close()

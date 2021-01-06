@@ -75,7 +75,7 @@ class SharedState(object):
                     self._backends_ready.add(msg[CommonMessages.READY])
 
     def wait_for_start(self, timeout=180):
-        if self._options.wait:
+        if (self._options is not None) and self._options.wait:
             self._log.info('waiting %ss for start signal' % timeout)
             return self._evt_start.wait(timeout=timeout)
         else:
@@ -89,6 +89,10 @@ class SharedState(object):
 
     def is_backend_ready(self, backend):
         return backend in self._backends_ready
+
+    @property
+    def backends_ready(self):
+        return tuple(sorted(self._backends_ready))
 
     def wait_for_backends(self, *backends, timeout=60):
         self._log.info('waiting %ss for %r backends' % (timeout, backends))
