@@ -1,5 +1,6 @@
 env
 *.h5
+2*.config.yml
 .coverage
 htmlcov
 venv

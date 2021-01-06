@@ -24,6 +24,7 @@ BACKEND_FICTRAC = "fictrac"
 class SHMEMFlyVRState(ctypes.Structure):
     _fields_ = [
         ('daq_output_num_samples_written', ctypes.c_int),
+        ('daq_input_num_samples_read', ctypes.c_int),
         ('sound_output_num_samples_written', ctypes.c_int),
         ('video_output_num_frames', ctypes.c_int),
     ]
@@ -138,6 +139,7 @@ class SharedState(object):
                'sound_output_num_samples_written': self._shmem_state.sound_output_num_samples_written,
                'video_output_num_frames': self._shmem_state.video_output_num_frames,
                'daq_output_num_samples_written': self._shmem_state.daq_output_num_samples_written,
+               'daq_input_num_samples_read': self._shmem_state.daq_input_num_samples_read,
                'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt}
         msg.update(extra)
         self._tx.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, identifier, **msg))
@@ -198,6 +200,15 @@ class SharedState(object):
     @DAQ_OUTPUT_NUM_SAMPLES_WRITTEN.setter
     def DAQ_OUTPUT_NUM_SAMPLES_WRITTEN(self, v):
         self._shmem_state.daq_output_num_samples_written = int(v)
+
+    @property
+    def DAQ_INPUT_NUM_SAMPLES_READ(self):
+        """ total number of samples read on the DAQ """
+        return self._shmem_state.daq_input_num_samples_read
+
+    @DAQ_INPUT_NUM_SAMPLES_READ.setter
+    def DAQ_INPUT_NUM_SAMPLES_READ(self, v):
+        self._shmem_state.daq_input_num_samples_read = int(v)
 
     @property
     def FICTRAC_FRAME_NUM(self):

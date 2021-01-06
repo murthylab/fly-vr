@@ -45,6 +45,7 @@ DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
 
 INPUT_SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
                                      'daq_output_num_samples_written',
+                                     'daq_input_num_samples_read',
                                      'sound_output_num_samples_written',
                                      'video_output_num_frames',
                                      'time_ns')
@@ -339,8 +340,10 @@ class IOTask(daq.Task):
                 if not self.digital:
 
                     self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
+                                                       # same order as SampleChunk.SYNCHRONIZATION_INFO_FIELDS
                                                        np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                                  self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                                 self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                                                                  self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                                                                  self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                                                  chunk.producer_instance_n,
@@ -380,9 +383,12 @@ class IOTask(daq.Task):
                 self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
                                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                             self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                                                              self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                                                              self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                                              tns], dtype=np.int64))
+
+                self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ += self._data.shape[0]
 
             self._newdata_event.set()
 

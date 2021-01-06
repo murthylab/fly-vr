@@ -23,6 +23,7 @@ from psychopy.visual.windowframepack import ProjectorFramePacker
 
 SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
                                'daq_output_num_samples_written',
+                               'daq_input_num_samples_read',
                                'sound_output_num_samples_written',
                                'video_output_num_frames',
                                'producer_instance_n', 'producer_playlist_n')
@@ -1005,6 +1006,7 @@ class VideoServer(object):
                 self.logger.log("/video/synchronization_info",
                                 np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                           self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                          self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                                           self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                                           self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                           active_stim.producer_instance_n,

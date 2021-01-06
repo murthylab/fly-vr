@@ -9,7 +9,8 @@ class FlyVRStateGui(QWidget):
     STATE = ['FICTRAC_FRAME_NUM',
              'SOUND_OUTPUT_NUM_SAMPLES_WRITTEN',
              'VIDEO_OUTPUT_NUM_FRAMES',
-             'DAQ_OUTPUT_NUM_SAMPLES_WRITTEN']
+             'DAQ_OUTPUT_NUM_SAMPLES_WRITTEN',
+             'DAQ_INPUT_NUM_SAMPLES_READ']
     FPS = 30
 
     def __init__(self, app, quit_app_on_stop):

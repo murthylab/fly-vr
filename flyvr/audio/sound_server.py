@@ -358,6 +358,7 @@ class SoundServer(threading.Thread):
             self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
                                                np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                          self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                                                         self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                                                          self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                                                          self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                                          chunk.producer_instance_n,

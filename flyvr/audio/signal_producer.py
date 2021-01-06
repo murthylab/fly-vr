@@ -13,6 +13,7 @@ class SampleChunk(object):
     """
     SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
                                    'daq_output_num_samples_written',
+                                   'daq_input_num_samples_read',
                                    'sound_output_num_samples_written',
                                    'video_output_num_frames',
                                    'producer_instance_n', 'chunk_n', 'producer_playlist_n',
