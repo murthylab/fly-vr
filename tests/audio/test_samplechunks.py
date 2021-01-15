@@ -268,3 +268,37 @@ def test_stim_playlist_chunker_chunks_same_sized(stimplaylist):
     assert c2.mixed_producer is False
 
     assert chunk_producers_differ(c1, c2)
+
+
+@pytest.mark.parametrize('chunksize', [100, 500, 1000, 1200])
+def test_stim_playlist_chunker_chunks_for_csv_explanation(monkeypatch, chunksize, tmpdir):
+    import pandas as pd
+
+    # reset the produce_instance to 0
+    monkeypatch.setattr(SignalProducer, 'instances_created', 0)
+
+    stimplaylist = AudioStimPlaylist.from_playlist_definition(copy.deepcopy(_STIMPLAYLIST_PL),
+                                                              basedirs=[],
+                                                              paused_fallback=False,
+                                                              default_repeat=1)
+
+    gen = chunker(stimplaylist.data_generator(), chunksize)
+
+    recs = []
+    for i, chunk in enumerate(gen):
+        if chunk is None:
+            break
+
+        recs.append({'sample_id': i,
+                     'sample': (i + 1) * chunksize,
+                     'producer_identifier': chunk.producer_identifier,
+                     'producer_instance_n': chunk.producer_instance_n,
+                     'producer_playlist_n': chunk.producer_playlist_n,
+                     'chunk_n': chunk.chunk_n,
+                     'mixed_producer': chunk.mixed_producer,
+                     'mixed_start_offset': chunk.mixed_start_offset})
+
+    _path = tmpdir.join('%d.csv' % chunksize).strpath
+    pd.DataFrame(recs).to_csv(_path, index=False)
+
+    print(_path)
