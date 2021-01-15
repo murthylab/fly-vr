@@ -372,7 +372,7 @@ class SoundServer(threading.Thread):
                 self.flyvr_shared_state.signal_new_playlist_item(chunk.producer_identifier, BACKEND_AUDIO,
                                                                  chunk_producer_instance_n=chunk.producer_instance_n,
                                                                  chunk_n=chunk.chunk_n,
-                                                                 chunk_producer_playlist_n=chunk.producer_instance_n,
+                                                                 chunk_producer_playlist_n=chunk.producer_playlist_n,
                                                                  chunk_mixed_producer=chunk.mixed_producer,
                                                                  chunk_mixed_start_offset=chunk.mixed_start_offset)
 
