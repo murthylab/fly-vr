@@ -807,6 +807,7 @@ class AudioStimPlaylist(SignalProducer):
         self.paused = paused
 
     def __iter__(self):
+        """ yield stims in the defined order, not accounting for randomisation/loop options """
         for s in self._stims:
             yield s
 
@@ -919,4 +920,19 @@ class AudioStimPlaylist(SignalProducer):
 
         return np.concatenate(arrs)
 
+    def _iter_stims_with_randomization(self, fix_repeat_forver=False):
+        _stim_map = {s.identifier: s for s in self._stims}
 
+        _new_random = None
+        if self._random.repeat_forever:
+            if fix_repeat_forver:
+                self._log.warning('previous playlist repeated forever - returning only 1 iteration this time')
+                _new_random = self._random._copy_thyself(repeat=1)
+            else:
+                self._log.warning('playlist repeats forever - will iterate forever')
+
+        if _new_random is None:
+            _new_random = self._random._copy_thyself()
+
+        for sid in _new_random.iter_items():
+            yield _stim_map[sid]
