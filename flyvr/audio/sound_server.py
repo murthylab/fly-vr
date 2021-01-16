@@ -355,18 +355,22 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
-            self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
-                                               np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
-                                                         self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
-                                                         self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
-                                                         self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
-                                                         self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
-                                                         chunk.producer_instance_n,
-                                                         chunk.chunk_n,
-                                                         chunk.producer_playlist_n,
-                                                         chunk.mixed_producer,
-                                                         chunk.mixed_start_offset], dtype=np.int64))
+            # same order as SampleChunk.SYNCHRONIZATION_INFO_FIELDS
+            row = [self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                   self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                   self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
+                   self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
+                   self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                   chunk.producer_instance_n,
+                   chunk.chunk_n,
+                   chunk.producer_playlist_n,
+                   chunk.mixed_producer,
+                   chunk.mixed_start_offset]
 
+            self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
+                                               np.array(row, dtype=np.int64))
+
+            # noinspection DuplicatedCode
             if chunk_producers_differ(self._last_chunk, chunk):
                 self._log.debug('chunk from new producer: %r' % chunk)
                 self.flyvr_shared_state.signal_new_playlist_item(chunk.producer_identifier, BACKEND_AUDIO,
@@ -374,7 +378,13 @@ class SoundServer(threading.Thread):
                                                                  chunk_n=chunk.chunk_n,
                                                                  chunk_producer_playlist_n=chunk.producer_playlist_n,
                                                                  chunk_mixed_producer=chunk.mixed_producer,
-                                                                 chunk_mixed_start_offset=chunk.mixed_start_offset)
+                                                                 chunk_mixed_start_offset=chunk.mixed_start_offset,
+                                                                 # ensure identical values to the h5 row
+                                                                 fictrac_frame_num=row[0],
+                                                                 daq_output_num_samples_written=row[1],
+                                                                 daq_input_num_samples_read=row[2],
+                                                                 sound_output_num_samples_written=row[3],
+                                                                 video_output_num_frames=row[4])
 
             if len(data) < len(outdata):
                 outdata.fill(0)
