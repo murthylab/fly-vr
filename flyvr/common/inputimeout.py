@@ -32,7 +32,8 @@ def posix_inputimeout(prompt='', timeout=DEFAULT_TIMEOUT):
         key, _ = events[0]
         return key.fileobj.readline().rstrip(LF)
     else:
-        echo(LF)
+        if prompt:
+            echo(LF)
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
         raise TimeoutOccurred
 
@@ -61,7 +62,9 @@ def win_inputimeout(prompt='', timeout=DEFAULT_TIMEOUT):
                 line += c
         time.sleep(INTERVAL)
 
-    echo(CRLF)
+    if prompt:
+        echo(CRLF)
+
     raise TimeoutOccurred
 
 
