@@ -1,5 +1,6 @@
 import time
 import logging
+import itertools
 
 import yaml
 
@@ -9,6 +10,7 @@ from flyvr.video.video_server import run_video_server
 from flyvr.audio.sound_server import run_sound_server
 from flyvr.audio.io_task import run_io
 from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO, BACKEND_HWIO
+from flyvr.common.inputimeout import inputimeout, TimeoutOccurred
 from flyvr.control.experiment import Experiment
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.fictrac.fictrac_driver import FicTracDriver
@@ -138,11 +140,15 @@ def main_launcher():
             log.info('sending start signal')
             flyvr_shared_state.signal_start()
 
-        while True:
-            # todo: a version of this with timeout is https://github.com/johejo/inputimeout
-            input('\n---------------\nPress any key to finish\n---------------\n')
-            flyvr_shared_state.signal_stop().join(timeout=5)
-            break
+        for i in itertools.count():
+            try:
+                inputimeout('\n---------------\nPress any key to finish\n---------------\n\n' if i == 0 else '', 1)
+                flyvr_shared_state.signal_stop().join(timeout=5)
+                break
+            except TimeoutOccurred:
+                if flyvr_shared_state.is_stopped():
+                    # stopped from elsewhere (gui)
+                    break
 
     else:
         log.error('not all required backends became ready - please check logs for '
