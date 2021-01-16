@@ -169,7 +169,8 @@ class VideoStimPlaylist(object):
 class VideoStim(object):
 
     NAME = None
-    NUM_VIDEO_FIELDS = 0
+
+    H5_FIELDS = ()
 
     instances_created = 0
 
@@ -183,6 +184,8 @@ class VideoStim(object):
         self._log = logging.getLogger('flyvr.video.%s' % self.__class__.__name__)
 
         self._fps = None
+
+        self._h5_log_name = "/video/stimulus/{}".format(self.NAME)
 
         self.p = Dottable(params)
         self.frame_count = 0
@@ -254,24 +257,40 @@ class VideoStim(object):
         dict.update(self.p, params)
 
     @classmethod
-    def log_name(cls):
-        return "/video/stimulus/{}".format(cls.NAME)
+    def create_h5_log(cls, logger):
+        if cls.H5_FIELDS and (cls.H5_FIELDS[0] == 'video_output_num_frames'):
+            pass
+        else:
+            raise Exception('VideoStim defines no fields or log or field_0 is not video_output_num_frames')
 
-    @classmethod
-    def create_log(cls, logger):
-        logger.create(cls.log_name(),
-                      shape=[2048, cls.NUM_VIDEO_FIELDS],
-                      maxshape=[None, cls.NUM_VIDEO_FIELDS], dtype=np.float64,
-                      chunks=(2048, cls.NUM_VIDEO_FIELDS))
+        log_name = "/video/stimulus/{}".format(cls.NAME)
+
+        n = len(cls.H5_FIELDS)
+        logger.create(log_name,
+                      shape=[2048, n],
+                      maxshape=[None, n], dtype=np.float64,
+                      chunks=(2048, n))
+
+        for cn, cname in enumerate(cls.H5_FIELDS):
+            logger.log(log_name, str(cname), attribute_name='column_%d' % cn)
+
+    def h5_log(self, logger, frame_num, *fields):
+        row = [frame_num]
+        row.extend(fields)
+
+        if len(row) != len(self.H5_FIELDS):
+            raise Exception('incorrect row %r for defined fields: %r' % (row, self.H5_FIELDS))
+
+        logger.log(self._h5_log_name, np.array(row, dtype=np.float64))
 
 
 class NoStim(VideoStim):
     NAME = 'none'
-    NUM_VIDEO_FIELDS = 1
+
+    H5_FIELDS = ('video_output_num_frames', )
 
     def update(self, win, logger, frame_num):
-        logger.log(self.log_name(),
-                   np.array([frame_num]))
+        self.h5_log(logger, frame_num)
 
     def draw(self):
         pass
@@ -279,16 +298,15 @@ class NoStim(VideoStim):
 
 class GratingStim(VideoStim):
     NAME = 'grating'
-    NUM_VIDEO_FIELDS = 7
 
-    # for now fields are:
-    # 0: frameNum
-    # 1: background color: [-1, 1]
-    # 2: object 1: 1 = grating, ...
-    # 3: object 1: size
-    # 4: object 1: phase
-    # 5: object 1: color
-    # 6: object 1: phase
+    NUM_VIDEO_FIELDS = 7
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'sf',
+                 'stim_size',
+                 'stim_color',
+                 'phase')
 
     def __init__(self, sf=50, stim_size=5, stim_color=-1, bg_color=0.5, **kwargs):
         super().__init__(sf=int(sf),
@@ -305,14 +323,13 @@ class GratingStim(VideoStim):
 
     def update(self, win, logger, frame_num):
         self.screen.setPhase(0.05, '+')
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             1,
-                             self.p.sf,
-                             self.p.stim_size,
-                             self.p.stim_color,
-                             self.screen.phase[0]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            1,
+                            self.p.sf,
+                            self.p.stim_size,
+                            self.p.stim_color,
+                            self.screen.phase[0])
 
     def draw(self):
         self.screen.draw()
@@ -320,7 +337,15 @@ class GratingStim(VideoStim):
 
 class SweepingSpotStim(VideoStim):
     NAME = 'sweeping_spot'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'radius',
+                 '?radius')
+
     # 4s OFF
     # 4s BG
     # 20s STIM
@@ -361,12 +386,11 @@ class SweepingSpotStim(VideoStim):
 
         self.screen.pos += [deg_to_px(self.p.velx)/self._fps, 0]
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.radius, self.screen.radius]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.radius, self.screen.radius)
 
     def draw(self):
         self.screen.draw()
@@ -374,7 +398,14 @@ class SweepingSpotStim(VideoStim):
 
 class AdamStim(VideoStim):
     NAME = 'adamstim'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, filename='pipStim.mat', offset=(0, 0), bg_color=0, fg_color=-1, **kwargs):
         super().__init__(offset=[float(offset[0]), float(offset[1])],
@@ -401,12 +432,11 @@ class AdamStim(VideoStim):
         self.screen.pos = self._tang[round(frame_num)] / 180 + xoffset, yoffset
         self.screen.radius = 1 / self._tdis[round(frame_num)]
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen.draw()
@@ -414,7 +444,14 @@ class AdamStim(VideoStim):
 
 class AdamStimGrating(VideoStim):
     NAME = 'adamstimgrating'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, filename='pipStim.mat', offset=(0, 0), bg_color=0, fg_color=-1, **kwargs):
         super().__init__(offset=[float(offset[0]), float(offset[1])],
@@ -446,12 +483,11 @@ class AdamStimGrating(VideoStim):
 
         self.screen2.phase += 0.01
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen2.draw()
@@ -461,7 +497,23 @@ class AdamStimGrating(VideoStim):
 class GenericStaticFixationStim(VideoStim):
 
     NAME = 'generic_fixation'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 'obj1_w',
+                 'obj1_h',
+                 'obj1_x',
+                 'obj1_y',
+                 'obj1_fg_color',
+                 'obj1_r',
+                 'obj1_visible',
+                 'obj2_w',
+                 'obj2_h',
+                 'obj2_x',
+                 'obj2_y',
+                 'obj2_fg_color',
+                 'obj2_r',
+                 'obj2_visible')
 
     def __init__(self,
                  obj1_w=0.25, obj1_h=0.25, obj1_x=-0.2, obj1_y=0.5, obj1_fg_color=1, obj1_r=0, obj1_visible=1,
@@ -515,12 +567,8 @@ class GenericStaticFixationStim(VideoStim):
         else:
             self.obj2.size = self.p.obj2_w, self.p.obj2_h
 
-        # logger.log(self.log_name(),
-        #            np.array([frame_num,
-        #                      self.p.bg_color,
-        #                      0,
-        #                      self.screen.pos[0], self.screen.pos[1],
-        #                      self.screen.size[0], self.screen.size[1]]))
+        # collect same named fields from state in the order they were defined in H5_FIELDS
+        self.h5_log(logger, frame_num, *(self.p[field] for field in self.H5_FIELDS[1:]))
 
     def draw(self):
         if self.p.obj1_visible:
@@ -531,7 +579,14 @@ class GenericStaticFixationStim(VideoStim):
 
 class MovingSquareStim(VideoStim):
     NAME = 'moving_square'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, size=(0.25, 0.25), speed=(0.01, 0), offset=(0.2, -0.5),
                  bg_color=-1, fg_color=1, **kwargs):
@@ -557,12 +612,11 @@ class MovingSquareStim(VideoStim):
             self.screen.pos[1] = -1
             self.screen.pos[1] = -1
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen.draw()
@@ -570,7 +624,14 @@ class MovingSquareStim(VideoStim):
 
 class PipStim(VideoStim):
     NAME = 'pipstim'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, filename='pipStim.mat', offset=(0.2, -0.5), bg_color=-1, fg_color=1, **kwargs):
         super().__init__(offset=[float(offset[0]), float(offset[1])],
@@ -596,12 +657,11 @@ class PipStim(VideoStim):
         self.screen.pos = self._tang[round(frame_num)] / 180 + xoffset, yoffset
         self.screen.size = 1 / self._tdis[round(frame_num)], 1 / self._tdis[round(frame_num)]
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen.draw()
@@ -610,7 +670,14 @@ class PipStim(VideoStim):
 class LoomingStim(VideoStim):
 
     NAME = 'looming'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, size_min=0.05, size_max=0.8, speed=0.01, offset=(0.2, -0.5),
                  bg_color=-1, fg_color=1, **kwargs):
@@ -632,12 +699,11 @@ class LoomingStim(VideoStim):
         if self.screen.size[0] > self.p.size_max:
             self.screen.size = (self.p.size_min, self.p.size_min)
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen.draw()
@@ -646,7 +712,14 @@ class LoomingStim(VideoStim):
 class LoomingStimCircle(VideoStim):
 
     NAME = 'loomingcircle'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'radius',
+                 '?radius')
 
     def __init__(self, size_min=0.05, size_max=0.8, rv=1, offset=(0.2, -0.5),
                  bg_color=-1, fg_color=1, **kwargs):
@@ -675,12 +748,11 @@ class LoomingStimCircle(VideoStim):
 
         self.screen.radius = deg_to_px(self.p.size_max/(np.pi/2) * np.arctan(self.p.rv / time_countdown))
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             0,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.radius, self.screen.radius]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            0,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.radius, self.screen.radius)
 
     def draw(self):
         self.screen.draw()
@@ -689,7 +761,14 @@ class LoomingStimCircle(VideoStim):
 class MayaModel(VideoStim):
 
     NAME = 'maya_model'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, bg_color=(178 / 256) * 2 - 1, frame_start=10000, offset=(0.2, -0.5), **kwargs):
         super().__init__(bg_color=float(bg_color),
@@ -729,12 +808,11 @@ class MayaModel(VideoStim):
         self.screen.size = [self._img_size[0][round(frame_num / 2)],
                             self._img_size[1][round(frame_num / 2)]]
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             2,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            2,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen.draw()
@@ -743,7 +821,14 @@ class MayaModel(VideoStim):
 class OptModel(VideoStim):
 
     NAME = 'opt_model'
-    NUM_VIDEO_FIELDS = 7
+
+    H5_FIELDS = ('video_output_num_frames',
+                 'bg_color',
+                 '?',
+                 'pos_x',
+                 'pos_y',
+                 'size_x',
+                 'size_y')
 
     def __init__(self, bg_color=(178 / 256) * 2 - 1, offset=(0.2, -0.5), **kwargs):
         super().__init__(bg_color=float(bg_color),
@@ -813,12 +898,11 @@ class OptModel(VideoStim):
         self.screen.size = [self._img_size[0][round(frame_num / 2)],
                             self._img_size[1][round(frame_num / 2)]]
 
-        logger.log(self.log_name(),
-                   np.array([frame_num,
-                             self.p.bg_color,
-                             2,
-                             self.screen.pos[0], self.screen.pos[1],
-                             self.screen.size[0], self.screen.size[1]]))
+        self.h5_log(logger, frame_num,
+                            self.p.bg_color,
+                            2,
+                            self.screen.pos[0], self.screen.pos[1],
+                            self.screen.size[0], self.screen.size[1])
 
     def draw(self):
         self.screen.draw()
@@ -882,7 +966,7 @@ class VideoServer(object):
                             attribute_name='column_%d' % cn)
 
         for stimcls in STIMS:
-            stimcls.create_log(self.logger)
+            stimcls.create_h5_log(self.logger)
 
         self.mywin = visual.Window([608, 684],
                                    monitor='DLP',
