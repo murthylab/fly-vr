@@ -134,14 +134,17 @@ class SharedState(object):
 
         sender.close()
 
+    def _build_toc_message(self, backend):
+        return {'backend': backend,
+                'sound_output_num_samples_written': self._shmem_state.sound_output_num_samples_written,
+                'video_output_num_frames': self._shmem_state.video_output_num_frames,
+                'daq_output_num_samples_written': self._shmem_state.daq_output_num_samples_written,
+                'daq_input_num_samples_read': self._shmem_state.daq_input_num_samples_read,
+                'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt,
+                'time_ns': time.time_ns()}
+
     def signal_new_playlist_item(self, identifier, backend, **extra):
-        msg = {'backend': backend,
-               'sound_output_num_samples_written': self._shmem_state.sound_output_num_samples_written,
-               'video_output_num_frames': self._shmem_state.video_output_num_frames,
-               'daq_output_num_samples_written': self._shmem_state.daq_output_num_samples_written,
-               'daq_input_num_samples_read': self._shmem_state.daq_input_num_samples_read,
-               'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt,
-               'time_ns': time.time_ns()}
+        msg = self._build_toc_message(backend)
         msg.update(extra)
         self._tx.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, identifier, **msg))
 

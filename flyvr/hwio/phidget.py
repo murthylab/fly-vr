@@ -141,6 +141,13 @@ class PhidgetIO(object):
 
         with open(options.record_file.replace('.h5', '.toc.yml'), 'wt') as f:
 
+            def _streaming_yaml_record(_msg):
+                # stream yaml records (list of dicts) to the file
+                f.write('- ')
+                f.write(json.dumps(_msg))
+                f.write('\n')
+                f.flush()
+
             while True:
                 msg = self._rx.get_next_element()
                 if msg:
@@ -152,11 +159,13 @@ class PhidgetIO(object):
                         if self._tp_enable:
                             self.next_image()
 
-                        # stream yaml records (list of dics) to the file
-                        f.write('- ')
-                        f.write(json.dumps(msg))
-                        f.write('\n')
-                        f.flush()
+                        _streaming_yaml_record(msg)
+
+                    if CommonMessages.EXPERIMENT_START in msg:
+                        # noinspection PyProtectedMember
+                        msg = flyvr_shared_state._build_toc_message('experiment')
+                        msg['identifier'] = '_start'
+                        _streaming_yaml_record(msg)
 
                     if CommonMessages.EXPERIMENT_STOP in msg:
                         break
