@@ -16,7 +16,7 @@ def test_io_a_output(tmpdir):
 
         shared_state = SharedState(None, logger=log_server.start_logging_server(tmpdir.join('test.h5').strpath))
 
-        taskAO = IOTask(cha_name=['ao1'], cha_type="output",
+        taskAO = IOTask(cha_ids=['ao1'], cha_type="output",
                         num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
                         num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                         shared_state=shared_state)

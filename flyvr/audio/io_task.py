@@ -59,7 +59,8 @@ class IOTask(daq.Task):
     output channel names.
     """
 
-    def __init__(self, dev_name="Dev1", cha_name=("ai0",), cha_type="input", limits=10.0, rate=DAQ_SAMPLE_RATE_DEFAULT,
+    def __init__(self, dev_name="Dev1", cha_ids=("ai0",), cha_type="input", cha_names=(),
+                 limits=10.0, rate=DAQ_SAMPLE_RATE_DEFAULT,
                  num_samples_per_chan=None, num_samples_per_event=None, digital=False, has_callback=True,
                  shared_state=None, done_callback=None, use_RSE=True):
         # check inputs
@@ -68,14 +69,19 @@ class IOTask(daq.Task):
         self._log = logging.getLogger('flyvr.daq.IOTask')
 
         _digital = 'digital' if digital else 'analog'
-        self._log.info(f'DAQ:{dev_name}: {_digital}{cha_type}/{cha_name} (limits: {limits}, '
+        self._log.info(f'DAQ:{dev_name}: {_digital}{cha_type}/{cha_ids} (limits: {limits}, '
                        f'SR: {rate}, nSamp/ch: {num_samples_per_chan}, '
                        f'nSamp/event: {num_samples_per_event}, RSE: {use_RSE})')
 
         self.dev_name = dev_name
 
-        if not isinstance(cha_name, list):
-            cha_name = [cha_name]
+        if not isinstance(cha_ids, (list, tuple)):
+            cha_ids = [cha_ids]
+        if not isinstance(cha_names, (list, tuple)):
+            cha_names = [cha_names]
+
+        if cha_names and cha_ids:
+            assert len(cha_names) == len(cha_ids)
 
         self.flyvr_shared_state = shared_state
         assert self.flyvr_shared_state is not None
@@ -91,9 +97,10 @@ class IOTask(daq.Task):
         self.read_float64 = daq.float64()
 
         self.limits = limits
+
         self.cha_type = cha_type
-        self.cha_name = ['%s/%s' % (dev_name, ch) for ch in cha_name]  # append device name
-        self.cha_string = ", ".join(self.cha_name)
+        _full_cha_ids = ['%s/%s' % (dev_name, ch) for ch in cha_ids]  # append device name
+        self.cha_string = ", ".join(_full_cha_ids)
 
         self.num_samples_per_chan = num_samples_per_chan
         assert self.num_samples_per_chan is not None
@@ -175,6 +182,11 @@ class IOTask(daq.Task):
             self.flyvr_shared_state.logger.log(self.samples_dset_name,
                                                int(self.num_samples_per_chan),
                                                attribute_name='sample_buffer_size')
+            if cha_names and cha_ids:
+                for cn, cname in enumerate(cha_names):
+                    self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                                       str(cname),
+                                                       attribute_name='column_%d' % cn)
 
             self.flyvr_shared_state.logger.create(self.samples_sync_dset_name,
                                                   shape=[1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
@@ -236,7 +248,7 @@ class IOTask(daq.Task):
                 self.AutoRegisterEveryNSamplesEvent(DAQmx_Val_Transferred_From_Buffer, self.num_samples_per_event, 0)
 
                 # ensures continuous output and avoids collision of old and new data in buffer
-                # self.SetAODataXferReqCond(self.cha_name[0], DAQmx_Val_OnBrdMemEmpty)
+                # self.SetAODataXferReqCond(_full_cha_identifier[0], DAQmx_Val_OnBrdMemEmpty)
                 self.SetWriteRegenMode(DAQmx_Val_DoNotAllowRegen)
                 self.CfgOutputBuffer(self.num_samples_per_chan * self.num_channels * 2)
 
@@ -469,13 +481,13 @@ def io_task_loop(msg_queue: queue.Queue, flyvr_shared_state, options):
             if is_analog_out:
                 # Get the input and output channels from the options
                 output_chans = ["ao" + str(s) for s in analog_out_channels]
-                taskAO = IOTask(cha_name=output_chans, cha_type="output",
+                taskAO = IOTask(cha_ids=output_chans, cha_type="output",
                                 rate=sr,
                                 num_samples_per_chan=DAQ_NUM_OUTPUT_SAMPLES,
                                 num_samples_per_event=DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT,
                                 shared_state=flyvr_shared_state)
 
-            taskAI = IOTask(cha_name=input_chans, cha_type="input",
+            taskAI = IOTask(cha_ids=input_chans, cha_type="input", cha_names=input_chan_names,
                             rate=sr,
                             num_samples_per_chan=DAQ_NUM_INPUT_SAMPLES,
                             num_samples_per_event=DAQ_NUM_INPUT_SAMPLES_PER_EVENT,
