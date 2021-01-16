@@ -1,4 +1,5 @@
 import uuid
+import time
 import queue
 import os.path
 import logging
@@ -149,7 +150,9 @@ class VideoStimPlaylist(object):
             if self._flyvr_shared_state is not None:
                 self._flyvr_shared_state.signal_new_playlist_item(identifier, BACKEND_VIDEO,
                                                                   producer_instance_n=producer_instance_n,
-                                                                  producer_playlist_n=self._child_playlist_n)
+                                                                  producer_playlist_n=self._child_playlist_n,
+                                                                  # and a time for replay experiments
+                                                                  time_ns=time.time_ns())
 
             self._child_playlist_n += 1
 

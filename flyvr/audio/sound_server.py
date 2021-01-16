@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import queue
 import logging
 import threading
@@ -384,7 +385,9 @@ class SoundServer(threading.Thread):
                                                                  daq_output_num_samples_written=row[1],
                                                                  daq_input_num_samples_read=row[2],
                                                                  sound_output_num_samples_written=row[3],
-                                                                 video_output_num_frames=row[4])
+                                                                 video_output_num_frames=row[4],
+                                                                 # and a time for replay experiments
+                                                                 time_ns=time.time_ns())
 
             if len(data) < len(outdata):
                 outdata.fill(0)

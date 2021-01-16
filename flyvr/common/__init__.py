@@ -140,7 +140,8 @@ class SharedState(object):
                'video_output_num_frames': self._shmem_state.video_output_num_frames,
                'daq_output_num_samples_written': self._shmem_state.daq_output_num_samples_written,
                'daq_input_num_samples_read': self._shmem_state.daq_input_num_samples_read,
-               'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt}
+               'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt,
+               'time_ns': time.time_ns()}
         msg.update(extra)
         self._tx.process(**CommonMessages.build(CommonMessages.EXPERIMENT_PLAYLIST_ITEM, identifier, **msg))
 

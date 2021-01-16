@@ -379,7 +379,9 @@ class IOTask(daq.Task):
                                                                          daq_output_num_samples_written=row[1],
                                                                          daq_input_num_samples_read=row[2],
                                                                          sound_output_num_samples_written=row[3],
-                                                                         video_output_num_frames=row[4])
+                                                                         video_output_num_frames=row[4],
+                                                                         # and a time for replay experiments
+                                                                         time_ns=tns)
 
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                         self._data, daq.byref(self.read), None)
