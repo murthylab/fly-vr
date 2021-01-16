@@ -976,6 +976,13 @@ class VideoServer(object):
         if self._fps is None:
             raise ValueError('could not determine monitor FPS')
 
+        self.flyvr_shared_state.logger.log("/video/synchronization_info",
+                                           float(self._fps),
+                                           attribute_name='sample_rate')
+        self.flyvr_shared_state.logger.log("/video/synchronization_info",
+                                           1,
+                                           attribute_name='sample_buffer_size')
+
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000
 
