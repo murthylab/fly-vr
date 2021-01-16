@@ -40,7 +40,7 @@ class FlyVRStateGui(QWidget):
             self._entries[s].setText(str(v or 0))
 
         self._lbl_backends.setText(', '.join(self.flyvr_shared_state.backends_ready))
-        self._lbl_started = str(self.flyvr_shared_state.is_started())
+        self._lbl_started.setText(str(self.flyvr_shared_state.is_started()))
 
         if self._quit_app_on_stop:
             if self.flyvr_shared_state.is_stopped():
