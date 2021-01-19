@@ -224,13 +224,13 @@ to be included in the configuration file for the rig used
   experiment the list of playlist items does not need to be duplicated in the
   experiment
 * the experiment makes use of `self.is_started()` and
-  `self.is_backend_ready(...)` to wait until FlyVR is started and and all backends are
+  `self.is_backend_ready(...)` to wait until FlyVR is started and all backends are
   ready before starting the first pair of stimuli playing
 * note that if you are using scanimage to also record 2P images then you should set
-  `remote_2P_next_disable` and simply record one stack for the entire experiment. This
-  is because FlyVR otherwise generates a new scaminage next-signal every time a new playlist
-  item is played on any backend, thus the simultaneous starting of two stimuli on both backends
-  will generate two stacks.
+  `remote_2P_next_disable` and simply record one stack (that you can break into smaller files by limiting
+  the number YY if "Frames Done XX of YY"" in scanimage) for the entire experiment. This is because 
+  FlyVR otherwise generates a new scaminage next-signal every time a new playlist item is played on
+  any backend, thus the simultaneous starting of two stimuli on both backends will generate two stacks.
 
 
 #### An example closed-loop randomized audio+optogenetic experiment
