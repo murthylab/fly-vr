@@ -11,6 +11,9 @@ triggers for synchronization (e.g., with ScanImage).
 contribute to testing the code, please contact David Deutsch (ddeutsch@princeton.edu), postdoc in the
 Murthy Lab @ the Princeton Neuroscience Institute.
 
+* For a walk-through of FlyVR's design and what experiments are possible, see [Design](DESIGN.md)
+* FlyVR's data format is described [here](https://docs.google.com/document/d/1NAuY08Yhk6uHVGp64p8_fauebuzAw_XVTo_fu1uZUH8/edit#heading=h.k1xci4u7fcsc) (wip)
+
 # Usage
 ```
 usage: flyvr [-h] [-c CONFIG_FILE] [-v] [--attenuation_file ATTENUATION_FILE]
