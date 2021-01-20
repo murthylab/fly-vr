@@ -255,7 +255,7 @@ Pre-requisites:
    stepper motor controller
 2) the stepper motor controller is connected to port 0 on the phidget
 3) FicTrac is calibrated
-4) The _Phidgets Network Server_ is enabled ([instructions here](https://www.phidgets.com/docs/Phidget_Control_Panel#Network_Server_Tab))  
+4) The _Phidgets Network Server_ is enabled and started ([instructions here](https://www.phidgets.com/docs/Phidget_Control_Panel#Network_Server_Tab), note status bar at bottom)  
    In 'normal' operation (which is lowest latency) the Phidget device is opened
    and controlled only by FlyVR (because it is used to signal scanimage).
    However, in this case, we need to also use the Phidget device to control the
