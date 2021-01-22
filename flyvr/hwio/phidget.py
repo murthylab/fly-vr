@@ -117,9 +117,10 @@ class PhidgetIO(object):
                 time.sleep(self._start_after_next_delay)
                 self._pulse(self._tp_start, high_time=0.1)
 
+                self._log.info('starting new scanimage file: %d' % self._stack)
+
             self._log.debug('pulse next: high_time=0.1, wait 0.3s, pulse start 0.1')
 
-        self._log.info('starting new scanimage file: %d' % self._stack)
         self._stack += 1
 
     def stop_scanimage(self):
