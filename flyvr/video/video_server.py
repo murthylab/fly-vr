@@ -1044,7 +1044,7 @@ class VideoServer(object):
             self.warper = Warper(self.mywin,
                                  # warp='spherical',
                                  warp='warpfile',
-                                 warpfile="calibratedBallImage.data",
+                                 warpfile=warpfile,
                                  warpGridsize=300,
                                  eyepoint=[0.5, 0.5],
                                  flipHorizontal=False,
