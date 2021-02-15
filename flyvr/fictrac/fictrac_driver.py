@@ -112,8 +112,8 @@ class FicTracDriver(object):
                         _ = flyvr_shared_state.signal_ready(BACKEND_FICTRAC)
 
                     if new_frame_count - old_frame_count != 1:
-                        self.fictrac_process.terminate()
-                        self._log.warning("frame counter jumped by more than 1 (%s vs %s)" % (
+                        # self.fictrac_process.terminate()
+                        self._log.error("frame counter jumped by more than 1 (%s vs %s)" % (
                             old_frame_count, new_frame_count))
 
                     old_frame_count = new_frame_count
