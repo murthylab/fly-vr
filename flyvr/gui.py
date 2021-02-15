@@ -1,3 +1,5 @@
+import time
+
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout
 from PyQt5.QtCore import QTimer
 
@@ -21,8 +23,13 @@ class FlyVRStateGui(QWidget):
 
         self._entries = {}
 
+        self._tick = 0
+        self._fn0 = self._t0 = 0
+
         self._lbl_backends = None
         self._lbl_started = None
+        self._lbl_fps = None
+
         self._init_ui()
 
         self.flyvr_shared_state = SharedState(options=None,
@@ -41,6 +48,16 @@ class FlyVRStateGui(QWidget):
 
         self._lbl_backends.setText(', '.join(self.flyvr_shared_state.backends_ready))
         self._lbl_started.setText(str(self.flyvr_shared_state.is_started()))
+
+        # every second-ish
+        if (self._tick % self.FPS) == 0:
+            fictrac_fps = (self.flyvr_shared_state.FICTRAC_FRAME_NUM - self._fn0) / (time.time() - self._t0)
+            self._lbl_fps.setText('%.1f' % fictrac_fps)
+
+            self._fn0 = self.flyvr_shared_state.FICTRAC_FRAME_NUM
+            self._t0 = time.time()
+
+        self._tick += 1
 
         if self._quit_app_on_stop:
             if self.flyvr_shared_state.is_stopped():
@@ -78,6 +95,9 @@ class FlyVRStateGui(QWidget):
         for s in FlyVRStateGui.STATE:
             self._entries[s] = _build_label(s, row)
             row += 1
+
+        self._lbl_fps = _build_label('FicTrac Framerate', row)
+        row += 1
 
         self._lbl_backends = _build_label('Backends Ready', row)
         row += 1
