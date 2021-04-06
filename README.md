@@ -12,7 +12,8 @@ contribute to testing the code, please contact David Deutsch (ddeutsch@princeton
 Murthy Lab @ the Princeton Neuroscience Institute.
 
 * For a walk-through of FlyVR's design and what experiments are possible, see [Design](DESIGN.md)
-* FlyVR's data format is described [here](https://docs.google.com/document/d/1NAuY08Yhk6uHVGp64p8_fauebuzAw_XVTo_fu1uZUH8/edit#heading=h.k1xci4u7fcsc) (wip)
+* FlyVR's data format is described [here](https://docs.google.com/document/d/1NAuY08Yhk6uHVGp64p8_fauebuzAw_XVTo_fu1uZUH8/edit#heading=h.k1xci4u7fcsc)
+  * this describes the format and conventions of the H5 files and how to synchronize information between them
 
 # Usage
 ```
