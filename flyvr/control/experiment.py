@@ -64,6 +64,12 @@ class _Event(object):
             self._switched = True
 
 
+class ExperimentStopEvent(_Event):
+
+    def perform(self, state, experiment):
+        experiment.stop()
+
+
 class PrintEvent(_Event):
 
     def perform(self, state, experiment):
@@ -107,10 +113,9 @@ class Experiment(object):
         for evt in self._timed:
             self.log.debug('time-based event: %r' % evt)
 
-    def start(self, uuid=None):
-        self._t0 = time.time()
-        self._ipc.process(command='start', value=uuid)
-        return uuid
+    def stop(self, timeout=5):
+        if self._shared_state:
+            self._shared_state.signal_stop().join(timeout=timeout)
 
     def _set_shared_state(self, shared_state: Optional[SharedState]):
         self._shared_state = shared_state
@@ -181,6 +186,8 @@ class Experiment(object):
         def _evt_factory(_evt_type, _evt_conf, **_kw):
             if _evt_type == 'print':
                 return PrintEvent(**_kw)
+            elif _evt_type == 'experiment_stop':
+                return ExperimentStopEvent(**_kw)
             elif _evt_type == 'playlist_item':
                 _kw.update(_evt_conf)
                 return PlaylistItemEvent(**_kw)
