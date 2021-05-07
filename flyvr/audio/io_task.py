@@ -29,7 +29,7 @@ from ctypes import byref, c_ulong
 from flyvr.audio.signal_producer import chunker, SampleChunk, chunk_producers_differ, SignalProducer
 from flyvr.audio.stimuli import AudioStim, AudioStimPlaylist, stimulus_factory
 from flyvr.audio.util import get_paylist_object
-from flyvr.common import BACKEND_DAQ
+from flyvr.common import BACKEND_DAQ, SharedState
 from flyvr.common.concurrent_task import ConcurrentTask
 from flyvr.common.plot_task import plot_task_daq
 from flyvr.common.build_arg_parser import setup_logging
@@ -83,7 +83,7 @@ class IOTask(daq.Task):
         if cha_names and cha_ids:
             assert len(cha_names) == len(cha_ids)
 
-        self.flyvr_shared_state = shared_state
+        self.flyvr_shared_state = shared_state  # type: SharedState
         assert self.flyvr_shared_state is not None
 
         # Is this a digital task
@@ -356,6 +356,7 @@ class IOTask(daq.Task):
                            self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                            self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                           self.flyvr_shared_state.TIME_NS,
                            chunk.producer_instance_n,
                            chunk.chunk_n,
                            chunk.producer_playlist_n,

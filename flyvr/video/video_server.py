@@ -27,6 +27,7 @@ SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
                                'daq_input_num_samples_read',
                                'sound_output_num_samples_written',
                                'video_output_num_frames',
+                               'time_ns',
                                'producer_instance_n', 'producer_playlist_n')
 SYNCHRONIZATION_INFO_NUM_FIELDS = len(SYNCHRONIZATION_INFO_FIELDS)
 
@@ -1103,6 +1104,7 @@ class VideoServer(object):
                                           self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                                           self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                                           self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                                          self.flyvr_shared_state.TIME_NS,
                                           active_stim.producer_instance_n,
                                           active_stim.producer_playlist_n], dtype=np.int64))
 

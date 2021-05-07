@@ -220,6 +220,10 @@ class SharedState(object):
         return self._fictrac_shmem_state.frame_cnt
 
     @property
+    def TIME_NS(self):
+        return time.time_ns()
+
+    @property
     def logger(self):
         """ an object which provides and interface for sending logging messages to the logging process """
         return self._logger

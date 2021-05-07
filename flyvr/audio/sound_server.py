@@ -362,6 +362,7 @@ class SoundServer(threading.Thread):
                    self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                    self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                    self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                   self.flyvr_shared_state.TIME_NS,
                    chunk.producer_instance_n,
                    chunk.chunk_n,
                    chunk.producer_playlist_n,

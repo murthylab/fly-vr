@@ -16,6 +16,7 @@ class SampleChunk(object):
                                    'daq_input_num_samples_read',
                                    'sound_output_num_samples_written',
                                    'video_output_num_frames',
+                                   'time_ns',
                                    'producer_instance_n', 'chunk_n', 'producer_playlist_n',
                                    'mixed_producer', 'mixed_start_offset')
     SYNCHRONIZATION_INFO_NUM_FIELDS = len(SYNCHRONIZATION_INFO_FIELDS)
