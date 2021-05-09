@@ -98,7 +98,9 @@ class Experiment(object):
     def __init__(self, events=(), timed=()):
         self._events = events
         self._timed = timed
-        self._t0 = time.time()
+
+        # just for yaml initialzed time experiments
+        self.__t0 = None
 
         self._playlist = {}
         self._ipc = PlaylistSender()
@@ -268,10 +270,20 @@ class Experiment(object):
             raise RuntimeError('experiment python file must define single variable of type Experiment')
 
     def process_state(self, state):
+        # wait until the experiment has been started
+        if self._shared_state is None:
+            return
+
+        if self.__t0 is None:
+            if self._shared_state.is_started():
+                self.__t0 = time.time()
+            else:
+                return
+
         for e in self._events:
             e.check(state, self)
 
-        dt = time.time() - self._t0
+        dt = time.time() - self.__t0
         for t in self._timed:
             t.check_dt(dt, state, self)
 
