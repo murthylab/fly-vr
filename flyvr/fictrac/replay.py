@@ -75,7 +75,14 @@ class ReplayFictrac(object):
         self._log.info('replay at %.1fhz (dt=%.2f ms%s)' % (1. / dt, ms,
                                                             ', auto calculated from file' if fps == 'auto' else ''))
 
-        t1 = MMTimer(int(ms), lambda: tick.put(None, block=True, timeout=min(0.5, 10.*dt)))
+        def _put():
+            try:
+                tick.put(None, block=True, timeout=min(0.5, 10. * dt))
+            except queue.Full:
+                self._log.warning('replay falling behind true framerate (or shutting down)')
+                pass
+
+        t1 = MMTimer(int(ms), _put)
         t1.start(True)
 
         for idx in range(len(self._ds)):
