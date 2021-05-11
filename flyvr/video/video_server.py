@@ -1,5 +1,4 @@
 import uuid
-import time
 import queue
 import os.path
 import logging
@@ -157,7 +156,7 @@ class VideoStimPlaylist(object):
                                                                   producer_instance_n=producer_instance_n,
                                                                   producer_playlist_n=self._child_playlist_n,
                                                                   # and a time for replay experiments
-                                                                  time_ns=time.time_ns())
+                                                                  time_ns=self._flyvr_shared_state.TIME_NS)
 
             self._child_playlist_n += 1
 

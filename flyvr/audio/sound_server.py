@@ -364,16 +364,27 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
-            # latch the current timing info as close to the write call (below) as possible
+            # write out data
+            tns = self.flyvr_shared_state.TIME_NS
+            if len(data) < len(outdata):
+                outdata.fill(0)
+                raise sd.CallbackStop
+            else:
+                if data.ndim == 1 and self._num_channels == 2:
+                    outdata[:, 0] = data
+                    outdata[:, 1] = data
+                else:
+                    outdata[:] = data
 
-            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
+            # latch the current timing info as close to the write call (above) as possible
+
             # same order as SampleChunk.SYNCHRONIZATION_INFO_FIELDS
             row = [self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                    self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
                    self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                    self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                    self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
-                   self.flyvr_shared_state.TIME_NS,
+                   tns,
                    chunk.producer_instance_n,
                    chunk.chunk_n,
                    chunk.producer_playlist_n,
@@ -401,17 +412,7 @@ class SoundServer(threading.Thread):
                                                                  # and a time for replay experiments
                                                                  time_ns=row[5])
 
-            if len(data) < len(outdata):
-                outdata.fill(0)
-                raise sd.CallbackStop
-            else:
-
-                if data.ndim == 1 and self._num_channels == 2:
-                    outdata[:, 0] = data
-                    outdata[:, 1] = data
-                else:
-                    outdata[:] = data
-
+            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
             self._last_chunk = chunk
 
         return callback
