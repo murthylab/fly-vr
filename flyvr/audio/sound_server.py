@@ -503,7 +503,8 @@ def main_sound_server():
     parser.add_argument('--convert-playlist', help='convert a stimulus playlist to new format')
     parser.add_argument('--paused', action='store_true', help='start paused')
     parser.add_argument('--plot', action='store_true', help='plot the stimulus playlist')
-
+    parser.add_argument('--playlist-file-directory', default=None,
+                        help='extra directory to look for playlist files (eg mat files)')
     options = parse_options(parser.parse_args(), parser)
 
     if options.plot:

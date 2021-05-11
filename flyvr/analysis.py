@@ -11,13 +11,16 @@ STRUCTURE = {
     'sound': {'ext': '.sound_server.h5',  'data': '', 'sync_info': '/audio/chunk_synchronization_info', 'base': 'sound_output_num_samples_written'},
 }
 
+BACKEND_TO_STRUCTURE = {'audio': 'sound',
+                        'daq': 'daq',
+                        'fictrac': 'fictrac'}
 
-def _get_path(toc, what):
+
+def _get_path(toc, what, ext=None):
     assert toc.endswith('.toc.yml')
     base = os.path.splitext(os.path.splitext(toc)[0])[0]
-    struct = STRUCTURE[what]
-    return base + struct['ext']
-    
+    _ext = ext or STRUCTURE[what]['ext']
+    return base + _ext
 
 
 def load_sync_info_fictrac(path):
@@ -50,9 +53,8 @@ def load_sync_info_fictrac(path):
                                    'timestamp',
                                    'seq_num'])
 
-
-        df['fictrac_frame_num'] = df['frame_cnt'].astype(int)
-        df['time_ns'] = (df['timestamp'] * 1e9).astype(int)
+        df['fictrac_frame_num'] = df['frame_cnt'].astype('int64')
+        df['time_ns'] = (df['timestamp'] * 1e9).astype('int64')
 
         return df.drop_duplicates(subset='time_ns', keep='last'), {'sample_rate': None, 'chunk_size': 1}
 
@@ -62,11 +64,15 @@ def _df_from_h5group(g):
     return pd.DataFrame(g[:], columns=cols)
 
 
-
 def load_sync_info(toc, what):
     path = _get_path(toc, what)
 
     if what == 'fictrac':
+
+        if not os.path.isfile(path):
+            # replay experiment, no fictrac
+            return None, {}
+
         return load_sync_info_fictrac(path)
 
     struct = STRUCTURE[what]
@@ -140,15 +146,22 @@ def build_timebase_converter(toc, common_base='time_ns'):
             print("no data in", what)
             continue
 
-        df.to_csv('/tmp/%s.csv' % what)
+        df['time_s'] = df['time_ns'] / 1e9
+        df.to_csv('tmp_%s.csv' % what)
 
-        # some backends, e.g. sound card can have a resolution higer than time_ns
+        # some backends, e.g. sound card can have a resolution higher than time_ns
         # so we need to remove duplicate values of time_ns
         #
         # this is a linear model so duplicates are not allowed per axis, but enough
         # observations and this will converge to a good estimate anyway
         if 'time_ns' in df.columns:
             df.drop_duplicates(subset=[common_base], keep='last', inplace=True)
+            df.to_csv('tmp_%s_clean.csv' % what)
+
+        # defensively drop the first row as at least the DAQ opto-output backend pre-fills the buffer
+        # (see IOTask.__init__ self.EveryNCallback())
+        # which can generate wrong times for the first row
+        df = df.iloc[1:]
 
         # to common
         try:
@@ -160,9 +173,8 @@ def build_timebase_converter(toc, common_base='time_ns'):
 
         y = df[STRUCTURE[what]['base']]
 
-        coef = np.polyfit(x,y,1)
-        invcoef = np.polyfit(y,x,1)
-        poly1d_fn = np.poly1d(coef)
+        coef = np.polyfit(x, y, 1)
+        invcoef = np.polyfit(y, x, 1)
 
         # todo: r2 https://stackoverflow.com/a/66090745
 
@@ -189,23 +201,76 @@ def data_to_df(toc, what):
 if __name__ == "__main__":
     import sys
     import yaml
+    import argparse
     import matplotlib.pyplot as plt
 
-    toc_path = sys.argv[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('toc_path', nargs=1, metavar='2021XXXX_XXXX.toc.yml')
+
+    parser.add_argument('--plot-audio', action='store_true',
+                        help='also plot the audio playlist')
+    parser.add_argument('--plot-daq', help='daq channel to plot', default='Copy of Sound card')
+    parser.add_argument('--audio-playlist-file-directory', default=None,
+                        help='extra directory to look for playlist files (eg mat files)')
+
+    args = parser.parse_args()
+
+    toc_path = args.toc_path[0]
     converter = build_timebase_converter(toc_path)
 
+    if args.plot_audio:
+        from flyvr.audio.stimuli import AudioStimPlaylist
+
+        cfg_path = _get_path(toc_path, what=None, ext='.config.yml')
+        with open(cfg_path, 'r') as f:
+            cfg = yaml.load(f, Loader=yaml.SafeLoader)
+
+        basedirs = [os.getcwd()]
+        if cfg.get('_config_file_path'):
+            # noinspection PyProtectedMember
+            basedirs.insert(0, os.path.dirname(cfg.get('_config_file_path')))
+        if args.audio_playlist_file_directory is not None:
+            basedirs.insert(0, os.path.abspath(args.audio_playlist_file_directory))
+
+        playlist_object = AudioStimPlaylist.from_playlist_definition(cfg['playlist']['audio'],
+                                                                     basedirs=basedirs,
+                                                                     paused_fallback=False, default_repeat=1,
+                                                                     attenuator=None)
+
+        plt.plot(playlist_object._to_array(fix_repeat_forver=True))
+
     ddf = data_to_df(toc_path, 'daq')
-    ddf.to_csv('/tmp/%s.csv' % 'daqdata')
+    ddf.to_csv('tmp_%s.csv' % 'daqdata')
 
-    print(ddf.columns)
-    ddf['Copy of Sound card'].plot()
+    f = plt.figure()
+    ax = f.add_subplot(111)
 
-    if 1:
-        with open(toc_path, 'r') as f:
-            d = yaml.load(f)
-        for i in d:
-            if i.get('backend') == 'audio':
-                print(i)
-                print(converter.convert_common_base_to_backend(int(i['time_ns'])))
+    try:
+        ax.plot(ddf[args.plot_daq])
+    except KeyError:
+        parser.error("Specify DAQ channel to plot: %s ('%s' does not exist)" % (
+            ', '.join("'%s'" % c for c in ddf.columns),
+            args.plot_daq))
+
+    with open(toc_path, 'r') as f:
+        d = yaml.load(f, Loader=yaml.SafeLoader)
+
+    for i in d:
+        if i.get('backend') == 'audio':
+
+            print(i)
+
+            if 0:
+                what = BACKEND_TO_STRUCTURE[i['backend']]
+                rt = converter.convert_between_backend_timebase(from_=what,
+                                                                to='daq',
+                                                                val=i[STRUCTURE[what]['base']],
+                                                                full=True)
+                ax.axvline(rt['daq'], color='green')
+
+            rt = converter.convert_common_base_to_backend(int(i['time_ns']))
+            ax.axvline(rt['daq'], color='red')
+
+            print(rt)
 
     plt.show()
