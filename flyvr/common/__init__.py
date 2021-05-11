@@ -21,6 +21,26 @@ BACKEND_HWIO = "hwio"
 BACKEND_FICTRAC = "fictrac"
 BACKEND_CAMERA = "camera"
 
+# noinspection PyBroadException
+try:
+    import ctypes.wintypes
+
+    prototype = ctypes.WINFUNCTYPE(ctypes.wintypes.LPVOID, ctypes.POINTER(ctypes.wintypes.FILETIME))
+    paramflags = (2, "lpSystemTimeAsFileTime"),
+    _GetSystemTimePreciseAsFileTime = prototype(("GetSystemTimePreciseAsFileTime", ctypes.windll.kernel32), paramflags)
+
+    # noinspection PyPep8Naming
+    def _GetSystemTimePreciseAsFileTime_ns():
+        t = _GetSystemTimePreciseAsFileTime()
+        large = (t.dwHighDateTime << 32) + t.dwLowDateTime
+        # convet windows to linux epoch and convert to ns
+        return (large // 10 - 11644473600000000) * 1000
+except Exception:
+
+    # noinspection PyPep8Naming
+    def _GetSystemTimePreciseAsFileTime_ns():
+        return time.time_ns()
+
 
 class SHMEMFlyVRState(ctypes.Structure):
     _fields_ = [
@@ -140,12 +160,14 @@ class SharedState(object):
 
     def _build_toc_message(self, backend):
         return {'backend': backend,
+                # for precision, these MUST be overwritten with the correct-at-the-time values at the time
+                # of being called (see **extra in signal_new_playlist_item)
                 'sound_output_num_samples_written': self._shmem_state.sound_output_num_samples_written,
                 'video_output_num_frames': self._shmem_state.video_output_num_frames,
                 'daq_output_num_samples_written': self._shmem_state.daq_output_num_samples_written,
                 'daq_input_num_samples_read': self._shmem_state.daq_input_num_samples_read,
                 'fictrac_frame_num': self._fictrac_shmem_state.frame_cnt,
-                'time_ns': time.time_ns()}
+                'time_ns': self.TIME_NS}
 
     def signal_new_playlist_item(self, identifier, backend, **extra):
         msg = self._build_toc_message(backend)
@@ -225,6 +247,8 @@ class SharedState(object):
 
     @property
     def TIME_NS(self):
+        # I tested if using a higher resolution windows timer made a difference - it did not
+        # return _GetSystemTimePreciseAsFileTime_ns
         return time.time_ns()
 
     @property
