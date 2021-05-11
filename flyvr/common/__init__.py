@@ -20,6 +20,26 @@ BACKEND_DAQ = "daq"
 BACKEND_HWIO = "hwio"
 BACKEND_FICTRAC = "fictrac"
 
+# noinspection PyBroadException
+try:
+    import ctypes.wintypes
+
+    prototype = ctypes.WINFUNCTYPE(ctypes.wintypes.LPVOID, ctypes.POINTER(ctypes.wintypes.FILETIME))
+    paramflags = (2, "lpSystemTimeAsFileTime"),
+    _GetSystemTimePreciseAsFileTime = prototype(("GetSystemTimePreciseAsFileTime", ctypes.windll.kernel32), paramflags)
+
+    # noinspection PyPep8Naming
+    def _GetSystemTimePreciseAsFileTime_ns():
+        t = _GetSystemTimePreciseAsFileTime()
+        large = (t.dwHighDateTime << 32) + t.dwLowDateTime
+        # convet windows to linux epoch and convert to ns
+        return (large // 10 - 11644473600000000) * 1000
+except Exception:
+
+    # noinspection PyPep8Naming
+    def _GetSystemTimePreciseAsFileTime_ns():
+        return time.time_ns()
+
 
 class SHMEMFlyVRState(ctypes.Structure):
     _fields_ = [
@@ -223,6 +243,8 @@ class SharedState(object):
 
     @property
     def TIME_NS(self):
+        # I tested if using a higher resolution windows timer made a difference - it did not
+        # return _GetSystemTimePreciseAsFileTime_ns
         return time.time_ns()
 
     @property
