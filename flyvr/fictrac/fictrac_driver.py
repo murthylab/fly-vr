@@ -14,6 +14,9 @@ from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_si
     SHMEMFicTracState, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
 
 
+H5_DATA_VERSION = 1
+
+
 class FicTracDriver(object):
     """
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
@@ -88,6 +91,9 @@ class FicTracDriver(object):
         flyvr_shared_state.logger.create("/fictrac/output", shape=[2048, NUM_FICTRAC_FIELDS],
                                          maxshape=[None, NUM_FICTRAC_FIELDS], dtype=np.float64,
                                          chunks=(2048, NUM_FICTRAC_FIELDS))
+        flyvr_shared_state.logger.log("/fictrac/output",
+                                      H5_DATA_VERSION,
+                                      attribute_name='__version')
 
         # Start FicTrac
         with open(self.console_output_file, "wb") as out:
