@@ -367,6 +367,11 @@ playlist, and closed-loop experiment (if defined in the yaml meta-language).
   * Open NI Max, Right-click 'Devices and Interfaces', create a 
   'Simulated NI-DAQmx device or instrument', select 'NI PCIe-6353' as the simulated
   device type.
+* It is recommended to create a sample rig config file and a fictrac replay data that you can
+  test with. For example, the following command runs a configuration and sample data which test all
+  backends are working. It is a 30s of fictract data and a audio/video experiment that stops after
+  10 seconds  
+  `$ flyvr -c tests\sample_data\v2\john_rig.yml -e experiments\stop_after_10s.yml`
 
 # Credits
 
