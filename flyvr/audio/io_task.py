@@ -346,7 +346,7 @@ class IOTask(daq.Task):
 
     def EveryNCallback(self):
         with self._data_lock:
-            tns = time.time_ns()
+            tns = None
 
             if self.cha_type is "input":
                 if not self.digital:
@@ -358,6 +358,24 @@ class IOTask(daq.Task):
                     self.ReadDigitalLines(self.num_samples_per_chan, 1.0, DAQmx_Val_GroupByScanNumber,
                                           self._data, self.num_samples_per_chan * self.num_channels,
                                           byref(self.read), byref(numBytesPerSamp), None)
+
+                # latch the current timing info as close to the read call completion as possible
+                self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ += self._data.shape[0]
+                row = [self.flyvr_shared_state.FICTRAC_FRAME_NUM,
+                       self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
+                       self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
+                       self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
+                       self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
+                       self.flyvr_shared_state.TIME_NS]
+
+                # save the data
+                self.flyvr_shared_state.logger.log(self.samples_dset_name, self._data)
+
+                # save the sync info
+                self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
+                                                   np.array(row, dtype=np.int64))
+
+                tns = row[5]
 
             elif self.cha_type is "output":
 
@@ -404,7 +422,7 @@ class IOTask(daq.Task):
                                                                          sound_output_num_samples_written=row[3],
                                                                          video_output_num_frames=row[4],
                                                                          # and a time for replay experiments
-                                                                         time_ns=tns)
+                                                                         time_ns=row[5])
 
                     self.WriteAnalogF64(self._data.shape[0], 0, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber,
                                         self._data, daq.byref(self.read), None)
@@ -412,27 +430,18 @@ class IOTask(daq.Task):
                     self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN += self._data.shape[0]
                     self._last_chunk = chunk
 
+                    tns = row[5]
                 else:
                     self.WriteDigitalLines(self._data.shape[0], False, DAQmx_Val_WaitInfinitely,
                                            DAQmx_Val_GroupByScanNumber, self._data, None, None)
+
+                    tns = time.time_ns()
 
             # send the data to a control if requested.
             if self.data_recorders is not None:
                 for data_rec in self.data_recorders:
                     if self._data is not None:
                         data_rec.send((self._data, tns))
-
-            if self.cha_type == "input":
-                self.flyvr_shared_state.logger.log(self.samples_dset_name, self._data)
-
-                self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ += self._data.shape[0]
-                self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
-                                                   np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
-                                                             self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
-                                                             self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
-                                                             self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
-                                                             self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
-                                                             tns], dtype=np.int64))
 
             self._newdata_event.set()
 

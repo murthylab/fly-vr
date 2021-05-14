@@ -364,8 +364,9 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
-            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
+            # latch the current timing info as close to the write call (below) as possible
 
+            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
             # same order as SampleChunk.SYNCHRONIZATION_INFO_FIELDS
             row = [self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                    self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
