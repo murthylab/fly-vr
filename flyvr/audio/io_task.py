@@ -42,6 +42,8 @@ DAQ_NUM_OUTPUT_SAMPLES_PER_EVENT = 250
 DAQ_NUM_INPUT_SAMPLES = 10000
 DAQ_NUM_INPUT_SAMPLES_PER_EVENT = 10000
 
+H5_SYNC_VERSION = 1
+H5_DATA_VERSION = 1
 
 INPUT_SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
                                      'daq_output_num_samples_written',
@@ -161,6 +163,9 @@ class IOTask(daq.Task):
             self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
                                                int(self.num_samples_per_event),
                                                attribute_name='sample_buffer_size')
+            self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
+                                               H5_SYNC_VERSION,
+                                               attribute_name='__version')
 
             for cn, cname in enumerate(SampleChunk.SYNCHRONIZATION_INFO_FIELDS):
                 self.flyvr_shared_state.logger.log("/daq/chunk_synchronization_info",
@@ -182,6 +187,10 @@ class IOTask(daq.Task):
             self.flyvr_shared_state.logger.log(self.samples_dset_name,
                                                int(self.num_samples_per_chan),
                                                attribute_name='sample_buffer_size')
+            self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                               H5_DATA_VERSION,
+                                               attribute_name='__version')
+
             if cha_names and cha_ids:
                 for cn, cname in enumerate(cha_names):
                     self.flyvr_shared_state.logger.log(self.samples_dset_name,
@@ -193,10 +202,15 @@ class IOTask(daq.Task):
                                                   chunks=(1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS),
                                                   maxshape=[None, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
                                                   dtype=np.int64)
+
             for cn, cname in enumerate(INPUT_SYNCHRONIZATION_INFO_FIELDS):
                 self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
                                                    str(cname),
                                                    attribute_name='column_%d' % cn)
+
+            self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
+                                               H5_SYNC_VERSION,
+                                               attribute_name='__version')
 
         elif cha_type == "input" and digital:
             self.samples_dset_name = "/daq/input/digital/samples"
@@ -213,16 +227,24 @@ class IOTask(daq.Task):
             self.flyvr_shared_state.logger.log(self.samples_dset_name,
                                                int(self.num_samples_per_chan),
                                                attribute_name='sample_buffer_size')
+            self.flyvr_shared_state.logger.log(self.samples_dset_name,
+                                               H5_DATA_VERSION,
+                                               attribute_name='__version')
 
             self.flyvr_shared_state.logger.create(self.samples_sync_dset_name,
                                                   shape=[1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
                                                   chunks=(1024, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS),
                                                   maxshape=[None, INPUT_SYNCHRONIZATION_INFO_NUM_FIELDS],
                                                   dtype=np.float64)
+
             for cn, cname in enumerate(INPUT_SYNCHRONIZATION_INFO_FIELDS):
                 self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
                                                    str(cname),
                                                    attribute_name='column_%d' % cn)
+
+            self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
+                                               H5_SYNC_VERSION,
+                                               attribute_name='__version')
 
         if not digital:
             self._data = np.zeros((self.num_samples_per_chan, self.num_channels),

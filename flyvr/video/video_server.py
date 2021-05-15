@@ -22,6 +22,10 @@ from psychopy.visual.windowwarp import Warper
 from psychopy.visual.windowframepack import ProjectorFramePacker
 
 
+H5_SYNC_VERSION = 1
+H5_DATA_VERSION = 1
+
+
 SYNCHRONIZATION_INFO_FIELDS = ('fictrac_frame_num',
                                'daq_output_num_samples_written',
                                'daq_input_num_samples_read',
@@ -277,6 +281,8 @@ class VideoStim(object):
 
         for cn, cname in enumerate(cls.H5_FIELDS):
             logger.log(log_name, str(cname), attribute_name='column_%d' % cn)
+
+        logger.log(log_name, H5_DATA_VERSION, attribute_name='__version')
 
     def h5_log(self, logger, frame_num, *fields):
         row = [frame_num]
@@ -986,6 +992,9 @@ class VideoServer(object):
         self.flyvr_shared_state.logger.log("/video/synchronization_info",
                                            1,
                                            attribute_name='sample_buffer_size')
+        self.flyvr_shared_state.logger.log("/video/synchronization_info",
+                                           H5_SYNC_VERSION,
+                                           attribute_name='__version')
 
     # This is how many records of calls to the callback function we store in memory.
     CALLBACK_TIMING_LOG_SIZE = 10000

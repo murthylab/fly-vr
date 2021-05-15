@@ -16,6 +16,10 @@ from flyvr.common import Randomizer, BACKEND_AUDIO
 from flyvr.common.build_arg_parser import setup_logging
 
 
+H5_SYNC_VERSION = 1
+H5_DATA_VERSION = 1
+
+
 _QUIT = object()
 
 
@@ -266,6 +270,10 @@ class SoundServer(threading.Thread):
             self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
                                                str(cname),
                                                attribute_name='column_%d' % cn)
+
+        self.flyvr_shared_state.logger.log("/audio/chunk_synchronization_info",
+                                           H5_SYNC_VERSION,
+                                           attribute_name='__version')
 
         # open stream using control
         self._stream = sd.OutputStream(device=self._device,
