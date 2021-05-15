@@ -1098,6 +1098,7 @@ class VideoServer(object):
                 self.samples_played += 1
                 self.sync_signal += 1
 
+                self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES = self.samples_played
                 self.logger.log("/video/synchronization_info",
                                 np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                           self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
@@ -1107,8 +1108,6 @@ class VideoServer(object):
                                           self.flyvr_shared_state.TIME_NS,
                                           active_stim.producer_instance_n,
                                           active_stim.producer_playlist_n], dtype=np.int64))
-
-                self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES = self.samples_played
 
                 if not self.stim.advance():
                     self.stim.show = False
