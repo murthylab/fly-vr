@@ -356,6 +356,8 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
+            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
+
             # same order as SampleChunk.SYNCHRONIZATION_INFO_FIELDS
             row = [self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                    self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
@@ -401,7 +403,6 @@ class SoundServer(threading.Thread):
                 else:
                     outdata[:] = data
 
-            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
             self._last_chunk = chunk
 
         return callback
