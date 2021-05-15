@@ -403,6 +403,7 @@ class IOTask(daq.Task):
             if self.cha_type == "input":
                 self.flyvr_shared_state.logger.log(self.samples_dset_name, self._data)
 
+                self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ += self._data.shape[0]
                 self.flyvr_shared_state.logger.log(self.samples_sync_dset_name,
                                                    np.array([self.flyvr_shared_state.FICTRAC_FRAME_NUM,
                                                              self.flyvr_shared_state.DAQ_OUTPUT_NUM_SAMPLES_WRITTEN,
@@ -410,8 +411,6 @@ class IOTask(daq.Task):
                                                              self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                                                              self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
                                                              tns], dtype=np.int64))
-
-                self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ += self._data.shape[0]
 
             self._newdata_event.set()
 
