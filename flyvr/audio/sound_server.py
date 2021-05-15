@@ -390,7 +390,7 @@ class SoundServer(threading.Thread):
                                                                  sound_output_num_samples_written=row[3],
                                                                  video_output_num_frames=row[4],
                                                                  # and a time for replay experiments
-                                                                 time_ns=time.time_ns())
+                                                                 time_ns=row[5])
 
             if len(data) < len(outdata):
                 outdata.fill(0)
