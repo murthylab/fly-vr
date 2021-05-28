@@ -63,7 +63,5 @@ def test_driver(tmpdir):
     # Load the output data from the dat file, this is what fictrac writes.
     dat_file_data = np.loadtxt(f'sample-{ts}.dat', delimiter=',')
 
-    driver.stub(logged_data, dat_file_data)
-
     # They better match!
     assert np.allclose(logged_data, dat_file_data[int(logged_data[0, 0]):, 0:23])

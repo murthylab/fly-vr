@@ -6,6 +6,8 @@ import logging
 
 import numpy as np
 
+from semaphore_win_ctypes import Semaphore, AcquireSemaphore, OpenSemaphore
+
 from flyvr.common import SharedState, BACKEND_FICTRAC
 from flyvr.common.build_arg_parser import setup_logging, setup_experiment
 from flyvr.common.logger import DatasetLogServer
@@ -56,6 +58,29 @@ class FicTracDriver(object):
         self.fictrac_process = None
         self.fictrac_signals = None
 
+    def _open_fictrac_semaphore(self):
+        """Open a named semaphore that FicTrac sets up, this lets us synchronize access to the shared memory region"""
+
+        # Keep trying to acquire the semaphore until its available
+        semaphore = Semaphore("FicTracStateSHMEM_SEMPH")
+
+        # Keep trying to open the semaphore, quit after a bunch of tries since that means FicTrac probably died or
+        # something.
+        num_semph_tries = 0
+        MAX_TRIES = 10000
+        while num_semph_tries < MAX_TRIES:
+            try:
+                num_semph_tries = num_semph_tries + 1
+                semaphore.open()
+                self._log.info("opened fictrac named semaphore")
+                break
+            except FileNotFoundError:
+                if num_semph_tries > MAX_TRIES:
+                    semaphore = None
+                    self._log.info("Couldn't open fictrac named semaphore. Shutting down.")
+
+        return semaphore
+
     # noinspection PyUnusedLocal
     def run(self, options=None):
         """
@@ -103,17 +128,28 @@ class FicTracDriver(object):
             self.fictrac_process = subprocess.Popen([self.fictrac_bin_fullpath, self.config_file], stdout=out,
                                                     stderr=subprocess.STDOUT)
 
+            # Setup the shared memory conneciton and peek at the frame counter
             data = new_mmap_shmem_buffer()
             first_frame_count = data.frame_cnt
             old_frame_count = data.frame_cnt
 
             running = True
             self._log.info("waiting for fictrac updates in shared memory")
-            while (self.fictrac_process.poll() is None) and running:
 
-                # Copy the current fictrac state.
-                data_copy = SHMEMFicTracState()
-                ctypes.pointer(data_copy)[0] = data
+            semaphore = self._open_fictrac_semaphore()
+
+            # Process FicTrac updates in shared memory
+            while (self.fictrac_process.poll() is None) and running and semaphore:
+
+                # Acquire the semaphore copy the current fictrac state.
+                try:
+                    semaphore.acquire(timeout_ms=1000)
+                    data_copy = SHMEMFicTracState()
+                    ctypes.pointer(data_copy)[0] = data
+                    semaphore.release()
+                except FileNotFoundError:
+                    # Semaphore is gone, lets shutdown things.
+                    break
 
                 new_frame_count = data_copy.frame_cnt
 
@@ -142,6 +178,13 @@ class FicTracDriver(object):
                 if flyvr_shared_state and flyvr_shared_state.is_stopped():
                     running = False
 
+            # Try to close up the semaphore
+            try:
+                if semaphore:
+                    semaphore.close()
+            except OSError:
+                pass
+
         self.stop()  # blocks
 
         self._log.info('fictrac process finished')
@@ -161,7 +204,3 @@ class FicTracDriver(object):
         while self.fictrac_process.poll() is None:
             self.fictrac_signals.send_close()
             time.sleep(0.2)
-
-
-    def stub(self, logged_data, dat_file_data):
-        a = 1
