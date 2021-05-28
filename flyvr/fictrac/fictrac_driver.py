@@ -150,6 +150,8 @@ class FicTracDriver(object):
                 except FileNotFoundError:
                     # Semaphore is gone, lets shutdown things.
                     break
+                except OSError:
+                    break
 
                 new_frame_count = data_copy.frame_cnt
 
