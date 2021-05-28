@@ -110,10 +110,14 @@ class FicTracDriver(object):
             running = True
             self._log.info("waiting for fictrac updates in shared memory")
             while (self.fictrac_process.poll() is None) and running:
-                new_frame_count = data.frame_cnt
+
+                # Copy the current fictrac state.
+                data_copy = SHMEMFicTracState()
+                ctypes.pointer(data_copy)[0] = data
+
+                new_frame_count = data_copy.frame_cnt
 
                 if old_frame_count != new_frame_count:
-
                     # If this is our first frame incremented, then send a signal to the
                     # that we have started processing frames
                     if old_frame_count == first_frame_count:
@@ -126,10 +130,6 @@ class FicTracDriver(object):
                             old_frame_count, new_frame_count))
 
                     old_frame_count = new_frame_count
-
-                    # Copy the current fictrac state.
-                    data_copy = SHMEMFicTracState()
-                    ctypes.pointer(data_copy)[0] = data
 
                     # Log the FicTrac data to our master log file.
                     if flyvr_shared_state:
@@ -153,6 +153,7 @@ class FicTracDriver(object):
             if flyvr_shared_state:
                 flyvr_shared_state.runtime_error(2)
 
+
     def stop(self):
         self._log.info("sending stop signal to fictrac")
 
@@ -160,3 +161,7 @@ class FicTracDriver(object):
         while self.fictrac_process.poll() is None:
             self.fictrac_signals.send_close()
             time.sleep(0.2)
+
+
+    def stub(self, logged_data, dat_file_data):
+        a = 1
