@@ -22,7 +22,10 @@ def _get_path(toc, what):
 
 def load_sync_info_fictrac(path):
     with h5py.File(path, mode='r') as f:
-        df = pd.DataFrame(f['/fictrac/output'][:],
+        ds = f['/fictrac/output']
+        assert ds.attrs['__version'] == 1
+
+        df = pd.DataFrame(ds[:],
                           columns=['frame_cnt',
                                    'del_rot_cam_vec0',
                                    'del_rot_cam_vec1',
@@ -70,6 +73,8 @@ def load_sync_info(toc, what):
 
     with h5py.File(path, mode='r') as f:
         si = f[struct['sync_info']]
+
+        assert si.attrs['__version'] == 1
 
         cols = [si.attrs['column_%d' % i].decode('utf-8') for i in range(len([ci for ci in si.attrs.keys() if ci.startswith('column_')]))]
 
@@ -154,8 +159,6 @@ def build_timebase_converter(toc, common_base='time_ns'):
             continue
 
         y = df[STRUCTURE[what]['base']]
-        if what == 'daq':
-            y += 10000
 
         coef = np.polyfit(x,y,1)
         invcoef = np.polyfit(y,x,1)
@@ -203,6 +206,6 @@ if __name__ == "__main__":
         for i in d:
             if i.get('backend') == 'audio':
                 print(i)
-                print converter.convert_common_base_to_backend(int(i['time_ns']))
+                print(converter.convert_common_base_to_backend(int(i['time_ns'])))
 
     plt.show()
