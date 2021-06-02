@@ -19,6 +19,7 @@ setup(
         'PyDAQmx==1.4.3',
         'ConfigArgParse',
         'h5py',
+        'semaphore_win_ctypes'
     ],
     tests_require=[
         'pytest==5.4.1',
