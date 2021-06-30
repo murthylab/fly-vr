@@ -70,7 +70,7 @@ class FicTracDriver(object):
         # Keep trying to open the semaphore, quit after a bunch of tries since that means FicTrac probably died or
         # something.
         num_semph_tries = 0
-        MAX_TRIES = 10000
+        MAX_TRIES = 100000
         while num_semph_tries < MAX_TRIES:
             try:
                 num_semph_tries = num_semph_tries + 1
@@ -78,9 +78,14 @@ class FicTracDriver(object):
                 self._log.info("opened fictrac named semaphore")
                 break
             except FileNotFoundError:
-                if num_semph_tries > MAX_TRIES:
+
+                # Lets sleep for a bit every 10000 tries
+                if num_semph_tries % 10000 == 0:
+                    time.sleep(0.1)
+
+                if num_semph_tries >= MAX_TRIES:
                     semaphore = None
-                    self._log.info("Couldn't open fictrac named semaphore. Shutting down.")
+                    self._log.error("Couldn't open fictrac named semaphore!")
 
         return semaphore
 
@@ -153,10 +158,11 @@ class FicTracDriver(object):
                     data_copy = SHMEMFicTracState()
                     ctypes.pointer(data_copy)[0] = data
                     semaphore.release()
-                except FileNotFoundError:
+                except FileNotFoundError as ex:
                     # Semaphore is gone, lets shutdown things.
+                    self._log.info("fictrac process semaphore is gone, time time to shutdown.")
                     break
-                except OSError:
+                except OSError as ex:
                     break
 
                 new_frame_count = data_copy.frame_cnt
