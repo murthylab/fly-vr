@@ -6,3 +6,4 @@ h5py==2.10.0
 pytest==5.4.1
 pytest-cov==2.8.1
 Phidget22==1.6.20200921
+semaphore-win-ctypes==0.1.2
