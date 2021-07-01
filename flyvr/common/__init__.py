@@ -19,6 +19,7 @@ BACKEND_DAQ = "daq"
 
 BACKEND_HWIO = "hwio"
 BACKEND_FICTRAC = "fictrac"
+BACKEND_CAMERA = "camera"
 
 
 class SHMEMFlyVRState(ctypes.Structure):
@@ -37,7 +38,7 @@ class SharedState(object):
     will be passed as an argument to all tasks. This allows us to communicate with thread safe shared variables.
     """
 
-    def __init__(self, options, logger, where='', _start_rx_thread=True):
+    def __init__(self, options, logger, where='', _start_rx_thread=True, _quit_evt=None):
         self._options = options
         self._logger = logger
 
@@ -55,7 +56,10 @@ class SharedState(object):
 
         self._backends_ready = set()
         self._evt_start = threading.Event()
-        self._evt_stop = threading.Event()
+
+        if _quit_evt is None:
+            _quit_evt = threading.Event()
+        self._evt_stop = _quit_evt
 
         self._rx = Reciever(host=RELAY_HOST, port=RELAY_RECIEVE_PORT, channel=b'')
         if _start_rx_thread:

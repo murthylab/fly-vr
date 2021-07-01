@@ -8,8 +8,10 @@ from flyvr.common.build_arg_parser import parse_arguments, get_printable_options
 
 from flyvr.video.video_server import run_video_server
 from flyvr.audio.sound_server import run_sound_server
+from flyvr.video.camera_server import run_camera_server
 from flyvr.audio.io_task import run_io
-from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO, BACKEND_HWIO
+from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO,\
+    BACKEND_HWIO, BACKEND_CAMERA
 from flyvr.common.inputimeout import inputimeout, TimeoutOccurred
 from flyvr.control.experiment import Experiment
 from flyvr.common.concurrent_task import ConcurrentTask
@@ -126,6 +128,11 @@ def main_launcher():
     else:
         audio = None
         log.info('not starting video backend (playlist empty or keepalive_video not specified)')
+
+    if options.camera_serial:
+        camera = ConcurrentTask(task=run_camera_server, comms=None, taskinitargs=[options])
+        backend_wait.append(BACKEND_CAMERA)
+        camera.start()
 
     log.info('waiting %ss for %r to be ready' % (60, backend_wait))
     if flyvr_shared_state.wait_for_backends(*backend_wait, timeout=60):
