@@ -4,6 +4,16 @@ import threading
 import cv2
 import numpy as np
 
+try:
+    import PySpin
+    _PYSPIN_ERROR = None
+except ImportError:
+    PySpin = None
+    _PYSPIN_ERROR = 'PySpin not installed'
+except Exception as _e:
+    PySpin = None
+    _PYSPIN_ERROR = 'PySpin error: %s' % _exc
+
 from imageio_ffmpeg import write_frames, get_ffmpeg_exe, get_ffmpeg_version
 
 from flyvr.common import SharedState, BACKEND_CAMERA
@@ -62,6 +72,27 @@ class _Camera(object):
     def image_size(self):
         return 640, 480
 
+    @staticmethod
+    def camera_info(nodemap_tldevice):
+        device_serial_number = device_vendor_name = device_model_name = None
+
+        node_device_serial_number = PySpin.CStringPtr(nodemap_tldevice.GetNode('DeviceSerialNumber'))
+        if PySpin.IsAvailable(node_device_serial_number) and PySpin.IsReadable(node_device_serial_number):
+            device_serial_number = node_device_serial_number.GetValue()
+
+        node_device_vendor_name = PySpin.CStringPtr(nodemap_tldevice.GetNode('DeviceVendorName'))
+        if PySpin.IsAvailable(node_device_vendor_name) and PySpin.IsReadable(node_device_vendor_name):
+            device_vendor_name = node_device_vendor_name.ToString()
+
+        node_device_model_name = PySpin.CStringPtr(nodemap_tldevice.GetNode('DeviceModelName'))
+        if PySpin.IsAvailable(node_device_model_name) and PySpin.IsReadable(node_device_model_name):
+            device_model_name = node_device_model_name.ToString()
+
+        friendly_name = '%s %s (%s)' % (device_vendor_name, device_model_name, device_serial_number)
+        serial_number = str(device_serial_number)
+
+        return serial_number, friendly_name
+
 
 def run_camera_server(options, evt=None):
     from flyvr.common import SharedState, Randomizer
@@ -109,7 +140,28 @@ def main_camera_server():
     from flyvr.common.build_arg_parser import build_argparser, parse_options
 
     parser = build_argparser()
+    parser.add_argument('--print-devices', action='store_true', help='list attached camera serial numbers')
     options = parse_options(parser.parse_args(), parser)
+
+    if options.print_devices:
+        if PySpin is None:
+            parser.error(_PYSPIN_ERROR)
+
+        print('Cameras:')
+
+        system = PySpin.System.GetInstance()
+        cam_list = system.GetCameras()
+        for cam in cam_list:
+            nm = cam.GetTLDeviceNodeMap()
+            _, desc = _Camera.camera_info(nm)
+            print('\t%s' % desc)
+            del nm
+
+        cam_list.Clear()
+        del cam_list
+
+        system.ReleaseInstance()
+        parser.exit(0)
 
     quit_evt = threading.Event()
 
