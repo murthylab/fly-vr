@@ -15,7 +15,7 @@ from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDI
 from flyvr.common.inputimeout import inputimeout, TimeoutOccurred
 from flyvr.control.experiment import Experiment
 from flyvr.common.concurrent_task import ConcurrentTask
-from flyvr.fictrac.fictrac_driver import FicTracDriver
+from flyvr.fictrac.fictrac_driver import FicTracV1Driver, FicTracV2Driver
 from flyvr.fictrac.replay import FicTracDriverReplay
 from flyvr.hwio.phidget import run_phidget_io
 from flyvr.common.ipc import run_main_relay
@@ -42,11 +42,19 @@ def _get_fictrac_driver(options, log):
                 log.fatal('fictrac console out must be provided for fictrac performance')
                 return None
 
-            drv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                pgr_enable=not options.pgr_cam_disable)
+            if options.fictrac_version == 1:
+                drv = FicTracV1Driver(options.fictrac_config, options.fictrac_console_out,
+                                      pgr_enable=not options.pgr_cam_disable)
+            elif options.fictrac_version == 2:
+                drv = FicTracV2Driver(options.fictrac_config, options.fictrac_console_out,
+                                      pgr_enable=not options.pgr_cam_disable)
+            else:
+                log.fatal('unknown fictrac version')
+                drv = None
 
-            log.info('starting fictrac%s driver with config %s' % (
-                '' if options.pgr_cam_disable else ' PGR',
+            log.info('starting fictrac v%s %sdriver with config %s' % (
+                options.fictrac_version,
+                '' if options.pgr_cam_disable else '(PGR) ',
                 options.fictrac_config)
             )
 

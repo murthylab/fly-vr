@@ -123,6 +123,8 @@ def build_argparser(savefilename=None):
     parser.add_argument("--pgr_cam_disable", action="store_true",
                         help="Disable Point Grey Camera support in FicTrac.",
                         default=False)
+    parser.add_argument("--fictrac_version", type=int, default=1, choices=(1, 2),
+                        help="Fictrac version (1 or 2).")
     parser.add_argument("--wait", action="store_true",
                         help="Wait for start signal before proceeding (default false in single process backends,  "
                              "and always true in the main launcher).",

@@ -1,4 +1,4 @@
-from flyvr.fictrac.fictrac_driver import FicTracDriver
+from flyvr.fictrac.fictrac_driver import FicTracV2Driver as FicTracDriver
 from flyvr.common.build_arg_parser import parse_arguments
 from flyvr.common.concurrent_task import ConcurrentTask
 

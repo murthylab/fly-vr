@@ -19,7 +19,7 @@ from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_si
 H5_DATA_VERSION = 1
 
 
-class FicTracDriver(object):
+class FicTracV2Driver(object):
     """
     This class drives the tracking of the fly via a separate software called FicTrac. It invokes this process and
     calls a control function once for each time the tracking state of the insect is updated.
@@ -210,7 +210,6 @@ class FicTracDriver(object):
             if flyvr_shared_state:
                 flyvr_shared_state.runtime_error(2)
 
-
     def stop(self):
         self._log.info("sending stop signal to fictrac")
 
@@ -218,3 +217,23 @@ class FicTracDriver(object):
         while self.fictrac_process.poll() is None:
             self.fictrac_signals.send_close()
             time.sleep(0.2)
+
+
+class FicTracV1Driver(FicTracV2Driver):
+
+    class _FakeSemaphore(object):
+
+        def __bool__(self):
+            return True
+
+        def acquire(self, timeout_ms):
+            pass
+
+        def release(self):
+            pass
+
+        def close(self):
+            pass
+
+    def _open_fictrac_semaphore(self):
+        return FicTracV1Driver._FakeSemaphore()
