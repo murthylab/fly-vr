@@ -386,6 +386,8 @@ class _Camera(object):
             raise _GrabError('Image incomplete with image status %d ...' % image_result.GetImageStatus())
 
         frame = image_result.GetNDArray()
+        assert frame.ndim == 2
+
         fn = image_result.GetFrameID()
         ts = image_result.GetTimeStamp() / 1e9
         image_result.Release()
@@ -393,7 +395,7 @@ class _Camera(object):
         self._t1 = self._t1 or ts
         t = ts - self._t1 + self._t0
 
-        return fn, frame
+        return fn, cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
     def _node_cmd(self, cam_node_str, cam_method_str, cam_node_arg=None, pyspin_mode_str=None):
         """ Performs method on input cam node with optional access mode check """
@@ -405,10 +407,9 @@ class _Camera(object):
                                              log=self._log)
 
     def start(self, **camera_options):
-        self._cam.BeginAcquisition()
-        self._t0 = time.time()
-
+        # this lower level acq stop command works in more cases than EndAcquisition
         self._node_cmd('AcquisitionStop', 'Execute', None, None)
+        # always go to mono for simplicity (dont have to convert pixel formats/bayer)
         self._node_cmd('PixelFormat', 'SetValue', 'PySpin.PixelFormat_Mono8', None)
 
         reset = camera_options.pop('ResetFactoryDefaults', False)
@@ -424,7 +425,13 @@ class _Camera(object):
             except Exception:
                 self._log.error("error setting property '%s'" % k, exc_info=True)
 
+        self._log.info('starting acquisition')
+        self._cam.BeginAcquisition()
+        self._t0 = time.time()
+
     def close(self):
+        self._log.info('stopping acquisition')
+        self._cam.EndAcquisition()
         self._cam.DeInit()
         self.properties._cam = None
         del self._cam
@@ -514,15 +521,20 @@ def run_camera_server(options, evt=None):
         writer.send(None)
 
         while True:
-            fn, img = cam.next_frame()
-            writer.send(img)
+            try:
+                fn, img = cam.next_frame()
+                writer.send(img)
 
-            if state.is_stopped():
+                if state.is_stopped():
+                    break
+
+                if options.camera_show and ((int(fn) % options.camera_show) == 0):
+                    cv2.imshow(repr(cam), img)
+                    cv2.waitKey(1)
+            except KeyboardInterrupt:
                 break
-
-            if options.camera_show and ((int(fn) % options.camera_show) == 0):
-                cv2.imshow(repr(cam), img)
-                cv2.waitKey(1)
+            except Exception:
+                log.error('error getting / writing frame', exc_info=True)
 
         writer.close()
 
@@ -533,6 +545,9 @@ def run_camera_server(options, evt=None):
         try:
             system.ReleaseInstance()
         except KeyboardInterrupt:
+            pass
+        except Exception:
+            # ignore references errors at shutdown (see other comment)
             pass
 
 
@@ -561,7 +576,13 @@ def main_camera_server():
         cam_list.Clear()
         del cam_list
 
-        system.ReleaseInstance()
+        try:
+            system.ReleaseInstance()
+        except Exception:
+            # spinnaker is picky about unclosed references at shutdown, but
+            # we are shutting down anyway, so its not a problem
+            pass
+
         parser.exit(0)
 
     quit_evt = threading.Event()
