@@ -125,7 +125,7 @@ def main_launcher():
         audio.start()
     else:
         audio = None
-        log.info('not starting video backend (playlist empty or keepalive_video not specified)')
+        log.info('not starting audiio backend (playlist empty or keepalive_audio not specified)')
 
     log.info('waiting %ss for %r to be ready' % (60, backend_wait))
     if flyvr_shared_state.wait_for_backends(*backend_wait, timeout=60):
@@ -163,3 +163,7 @@ def main_launcher():
             task.close()
 
     log.info('finished')
+
+
+if __name__ == '__main__':
+    main_launcher()
