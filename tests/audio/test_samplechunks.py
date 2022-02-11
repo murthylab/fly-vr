@@ -318,26 +318,31 @@ def test_play_item_produces_new_instance_chunk(stimplaylist):
     # array in a loop, aka from the same chunk producer
     ca0 = next(a)
     assert ca0.producer_identifier == 'sin10hz'
+    assert ca0.producer_playlist_n == 0
     assert ca0.data.shape == (1200,)
     ca1 = next(a)
     assert ca1.data.shape == (1200,)
     assert ca1.producer_identifier == 'sin10hz'
+    assert ca1.producer_playlist_n == 0
     assert not chunk_producers_differ(ca0, ca1)
     ca2 = next(a)
     assert ca2.data.shape == (1200,)
     assert ca2.producer_identifier == 'sin10hz'
+    assert ca2.producer_playlist_n == 0
     assert not chunk_producers_differ(ca0, ca2)
 
     # first chunk on different AudioStim from the previous play_item
     cb0 = next(b)
     assert cb0.data.shape == (1200,)
     assert cb0.producer_identifier == 'constant1'
+    assert cb0.producer_playlist_n == 1
     assert chunk_producers_differ(ca0, cb0)
 
     # first chunk on same AudioStim from the first sin10hz
     cc0 = next(c)
     assert cc0.data.shape == (1200,)
     assert cc0.producer_identifier == 'sin10hz'
+    assert cc0.producer_playlist_n == 0
     assert chunk_producers_differ(ca0, cc0)
 
 
@@ -348,20 +353,24 @@ def test_play_item_produces_new_instance_chunk_chunker(stimplaylist):
 
     ca0 = next(a)
     assert ca0.producer_identifier == 'sin10hz'
+    assert ca0.producer_playlist_n == 0
     assert ca0.data.shape == (600,)
     ca1 = next(a)
     assert ca1.producer_identifier == 'sin10hz'
+    assert ca1.producer_playlist_n == 0
     assert ca1.data.shape == (600,)
     assert not chunk_producers_differ(ca0, ca1)
     # loops back round to the start
     ca2 = next(a)
     assert ca2.producer_identifier == 'sin10hz'
+    assert ca2.producer_playlist_n == 0
     assert ca2.data.shape == (600,)
     assert not chunk_producers_differ(ca1, ca2)
     assert not chunk_producers_differ(ca0, ca2)
 
     cb0 = next(b)
     assert cb0.producer_identifier == 'constant1'
+    assert cb0.producer_playlist_n == 1
     assert cb0.data.shape == (600,)
 
     assert chunk_producers_differ(ca0, cb0)
@@ -369,14 +378,17 @@ def test_play_item_produces_new_instance_chunk_chunker(stimplaylist):
 
     cc0 = next(c)
     assert cc0.producer_identifier == 'sin10hz'
+    assert cc0.producer_playlist_n == 0
     assert cc0.data.shape == (600,)
     cc1 = next(c)
     assert cc1.producer_identifier == 'sin10hz'
+    assert cc1.producer_playlist_n == 0
     assert cc1.data.shape == (600,)
     assert not chunk_producers_differ(cc0, cc1)
     # loops back round to the start
     cc2 = next(c)
     assert cc2.producer_identifier == 'sin10hz'
+    assert cc2.producer_playlist_n == 0
     assert cc2.data.shape == (600,)
     assert not chunk_producers_differ(cc1, cc2)
     assert not chunk_producers_differ(cc0, cc2)

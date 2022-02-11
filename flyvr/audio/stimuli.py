@@ -150,7 +150,7 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
                 'max_value': self.__max_value,
                 'min_value': self.__min_value}
 
-    def data_generator(self, producer_instance_n_override=None) -> Iterator[Optional[SampleChunk]]:
+    def data_generator(self, producer_instance_n_override=None, producer_playlist_n_override=None) -> Iterator[Optional[SampleChunk]]:
         """
         Return a generator that yields the data member when next is called on it. Simply provides another interface to
         the same data stored in the data member.
@@ -158,7 +158,9 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
         while True:
             self.num_samples_generated = self.num_samples_generated + self.data.shape[0]
             chunk = SampleChunk(data=self.data, producer_identifier=self.identifier,
-                                producer_instance_n=producer_instance_n_override or self.producer_instance_n)
+                                producer_instance_n=producer_instance_n_override if producer_instance_n_override is not None else self.producer_instance_n,
+                                producer_playlist_n=producer_playlist_n_override if producer_playlist_n_override is not None else -1)
+
             self.trigger_next_callback(chunk)
             yield chunk
 
@@ -865,16 +867,17 @@ class AudioStimPlaylist(SignalProducer):
                              attenuator=attenuator)
 
     def play_item(self, identifier):
-        for stim in self._stims:
+        for n, stim in enumerate(self._stims):
             if stim.identifier == identifier:
                 SignalProducer.instances_created += 1
-                return stim.data_generator(-100 - SignalProducer.instances_created)
+                return stim.data_generator(producer_instance_n_override=-100 - SignalProducer.instances_created,
+                                           producer_playlist_n_override=n)
         raise ValueError('%s not found' % identifier)
 
     def play_pause(self, pause):
         self.paused = pause
 
-    def data_generator(self, producer_instance_n_override=None) -> Iterator[Optional[SampleChunk]]:
+    def data_generator(self) -> Iterator[Optional[SampleChunk]]:
         """
         Return a generator that yields each AudioStim in the playlist in succession. If shuffle_playback is set to true
         then we will get a non-repeating randomized sequence of all stimuli, then they will be shuffled, and the process
