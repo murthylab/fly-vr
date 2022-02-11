@@ -1,6 +1,7 @@
 import pytest
 
 import copy
+import itertools
 
 from flyvr.audio.stimuli import stimulus_factory, AudioStimPlaylist
 from flyvr.audio.signal_producer import chunker, SampleChunk, chunk_producers_differ, SignalProducer
@@ -302,3 +303,85 @@ def test_stim_playlist_chunker_chunks_for_csv_explanation(monkeypatch, chunksize
     pd.DataFrame(recs).to_csv(_path, index=False)
 
     print(_path)
+
+def test_play_item_produces_new_instance_chunk(stimplaylist):
+    # test new data generator instance
+    a = stimplaylist.play_item('sin10hz')
+    b = stimplaylist.play_item('constant1')
+    assert a != b
+    assert hash(a) != hash(b)
+    c = stimplaylist.play_item('sin10hz')
+    assert a != c
+    assert hash(a) != hash(c)
+
+    # next() on an individual AudioStim without a chunker will just return the entire
+    # array in a loop, aka from the same chunk producer
+    ca0 = next(a)
+    assert ca0.producer_identifier == 'sin10hz'
+    assert ca0.data.shape == (1200,)
+    ca1 = next(a)
+    assert ca1.data.shape == (1200,)
+    assert ca1.producer_identifier == 'sin10hz'
+    assert not chunk_producers_differ(ca0, ca1)
+    ca2 = next(a)
+    assert ca2.data.shape == (1200,)
+    assert ca2.producer_identifier == 'sin10hz'
+    assert not chunk_producers_differ(ca0, ca2)
+
+    # first chunk on different AudioStim from the previous play_item
+    cb0 = next(b)
+    assert cb0.data.shape == (1200,)
+    assert cb0.producer_identifier == 'constant1'
+    assert chunk_producers_differ(ca0, cb0)
+
+    # first chunk on same AudioStim from the first sin10hz
+    cc0 = next(c)
+    assert cc0.data.shape == (1200,)
+    assert cc0.producer_identifier == 'sin10hz'
+    assert chunk_producers_differ(ca0, cc0)
+
+
+def test_play_item_produces_new_instance_chunk_chunker(stimplaylist):
+    a = chunker(stimplaylist.play_item('sin10hz'), 600)
+    b = chunker(stimplaylist.play_item('constant1'), 600)
+    c = chunker(stimplaylist.play_item('sin10hz'), 600)
+
+    ca0 = next(a)
+    assert ca0.producer_identifier == 'sin10hz'
+    assert ca0.data.shape == (600,)
+    ca1 = next(a)
+    assert ca1.producer_identifier == 'sin10hz'
+    assert ca1.data.shape == (600,)
+    assert not chunk_producers_differ(ca0, ca1)
+    # loops back round to the start
+    ca2 = next(a)
+    assert ca2.producer_identifier == 'sin10hz'
+    assert ca2.data.shape == (600,)
+    assert not chunk_producers_differ(ca1, ca2)
+    assert not chunk_producers_differ(ca0, ca2)
+
+    cb0 = next(b)
+    assert cb0.producer_identifier == 'constant1'
+    assert cb0.data.shape == (600,)
+
+    assert chunk_producers_differ(ca0, cb0)
+    assert chunk_producers_differ(ca2, cb0)
+
+    cc0 = next(c)
+    assert cc0.producer_identifier == 'sin10hz'
+    assert cc0.data.shape == (600,)
+    cc1 = next(c)
+    assert cc1.producer_identifier == 'sin10hz'
+    assert cc1.data.shape == (600,)
+    assert not chunk_producers_differ(cc0, cc1)
+    # loops back round to the start
+    cc2 = next(c)
+    assert cc2.producer_identifier == 'sin10hz'
+    assert cc2.data.shape == (600,)
+    assert not chunk_producers_differ(cc1, cc2)
+    assert not chunk_producers_differ(cc0, cc2)
+
+    # all chunks on same AudioStim differ
+    for a,c in itertools.product((ca0,ca1,ca2), (cc0,cc1,cc2)):
+        chunk_producers_differ(a, c)
+

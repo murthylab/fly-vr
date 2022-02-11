@@ -62,7 +62,9 @@ class SampleChunk(object):
 def chunk_producers_differ(prev: Optional[SampleChunk], this: Optional[SampleChunk]):
     if (prev is not None) and (this is not None):
         return this.mixed_producer or (prev.producer_identifier,
+                                       prev.producer_instance_n,
                                        prev.producer_playlist_n) != (this.producer_identifier,
+                                                                     this.producer_instance_n,
                                                                      this.producer_playlist_n)
     elif (prev is None) and (this is not None):
         return True
@@ -265,7 +267,7 @@ class MixedSignal(SignalProducer):
 
         self._data = np.zeros((self.chunk_size, self.chunk_width), dtype=self.dtype)
 
-    def data_generator(self) -> Iterator[Optional[SampleChunk]]:
+    def data_generator(self, producer_instance_n_override=None) -> Iterator[Optional[SampleChunk]]:
         """
         Create a data generator for this signal. Each signal passed to the constructor will be yielded as a separate
         column of the data chunk returned by this generator.
@@ -273,7 +275,7 @@ class MixedSignal(SignalProducer):
 
         # Initialize data generators for these signals in the play list.
         # Wrap each generator in a chunker with the same size.
-        data_gens = [chunker(s.data_generator(), self.chunk_size) for s in self._stims]
+        data_gens = [chunker(s.data_generator(producer_instance_n_override), self.chunk_size) for s in self._stims]
 
         while True:
 
