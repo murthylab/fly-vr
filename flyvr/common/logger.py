@@ -157,7 +157,10 @@ class DatasetLogServer(object):
         while run:
 
             # Get the message
-            msg = frame_queue.get()
+            try:
+                msg = frame_queue.get()
+            except EOFError:
+                break
 
             # If we get a None msg, its a shutdown signal
             if msg is None:

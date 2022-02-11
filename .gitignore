@@ -1,5 +1,6 @@
 env
 *.h5
+*.mp4
 2*.config.yml
 .coverage
 htmlcov

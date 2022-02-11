@@ -19,6 +19,7 @@ setup(
         'PyDAQmx==1.4.3',
         'ConfigArgParse',
         'h5py',
+        'semaphore_win_ctypes'
     ],
     tests_require=[
         'pytest==5.4.1',
@@ -34,6 +35,7 @@ setup(
             'flyvr-print-state = flyvr.common:main_print_state',
             'flyvr-audio = flyvr.audio.sound_server:main_sound_server',
             'flyvr-video = flyvr.video.video_server:main_video_server',
+            'flyvr-camera = flyvr.video.camera_server:main_camera_server',
             'flyvr-experiment = flyvr.control.experiment:main_experiment',
             'flyvr-ipc-send = flyvr.common.ipc:main_ipc_send',
             'flyvr-ipc-relay = flyvr.common.ipc:main_relay',

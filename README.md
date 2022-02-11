@@ -181,7 +181,7 @@ need to use conda specific commands to create and activate the conda environment
 * Activate the virtual environment  
   `venv\Scrips\activate.bat`
 * ensure python packaging and built utilities are up to date  
-  `python -m pip install -U pip setuptools wheel`
+  `python -m pip install -U pip 'setuptools<58' wheel`
 * install dependencies  
   `python -m pip install -r requirements.txt`
 * Install flyvr
@@ -196,6 +196,8 @@ need to use conda specific commands to create and activate the conda environment
       (skips both DAQ AND soundcard tests)
     * `python -m pytest -m "not use_daq"`  
       (skips DAQ tests)
+* Test the whole software with sample data  
+  `flyvr -c tests\sample_data\v2\john_rig.yml -e experiments\stop_after_10s.yml`
 
 ## fictrac
 
