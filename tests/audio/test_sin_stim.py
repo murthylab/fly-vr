@@ -60,7 +60,7 @@ def test_callbacks(stim):
 
     stim = SinStim(frequency=230, amplitude=2.0, phase=0.0, sample_rate=40000,
                    duration=200, intensity=1.0, pre_silence=0, post_silence=0,
-                   attenuator=None, next_event_callbacks=my_callback_mock)
+                   attenuator=None, next_event_callback=my_callback_mock)
 
     data_gen = stim.data_generator()
 

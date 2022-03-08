@@ -1078,7 +1078,6 @@ class VideoServer(object):
             try:
                 msg = self._q.get_nowait()
                 if isinstance(msg, (VideoStim, VideoStimPlaylist, str, tuple)):
-                    print(msg)
                     self._play(msg)
                 elif msg is not None:
                     self._log.error('unsupported message: %r' % (msg,))
