@@ -150,7 +150,7 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
                 'max_value': self.__max_value,
                 'min_value': self.__min_value}
 
-    def data_generator(self) -> Iterator[Optional[SampleChunk]]:
+    def data_generator(self, producer_instance_n_override=None, producer_playlist_n_override=None) -> Iterator[Optional[SampleChunk]]:
         """
         Return a generator that yields the data member when next is called on it. Simply provides another interface to
         the same data stored in the data member.
@@ -158,7 +158,9 @@ class AudioStim(SignalProducer, metaclass=abc.ABCMeta):
         while True:
             self.num_samples_generated = self.num_samples_generated + self.data.shape[0]
             chunk = SampleChunk(data=self.data, producer_identifier=self.identifier,
-                                producer_instance_n=self.producer_instance_n)
+                                producer_instance_n=producer_instance_n_override if producer_instance_n_override is not None else self.producer_instance_n,
+                                producer_playlist_n=producer_playlist_n_override if producer_playlist_n_override is not None else -1)
+
             self.trigger_next_callback(chunk)
             yield chunk
 
@@ -761,9 +763,14 @@ def legacy_factory(lines, basedirs, attenuator=None):
         intensities = _parse_list(intensity)
 
         chans = []
-        for chan_idx, chan_name in enumerate(stimFileName.split(';')):
+        for chan_idx, _chan_name in enumerate(stimFileName.split(';')):
+            _cnl = _chan_name.lower().strip()
+            if _cnl in {'optooff', 'optoon', 'square', 'sin', ''}:
+                chan_name = _chan_name.lower()
+            else:
+                chan_name = _chan_name
 
-            chan = _legacy_factory(chan_name=chan_name.lower(),
+            chan = _legacy_factory(chan_name=chan_name,
                                    rate=int(rate),
                                    silencePre=int(silencePre),
                                    silencePost=int(silencePost),
@@ -860,10 +867,11 @@ class AudioStimPlaylist(SignalProducer):
                              attenuator=attenuator)
 
     def play_item(self, identifier):
-        # it's actually debatable if it's best do it this way or explicitly reset a global+sticky next_id
-        for stim in self._stims:
+        for n, stim in enumerate(self._stims):
             if stim.identifier == identifier:
-                return stim.data_generator()
+                SignalProducer.instances_created += 1
+                return stim.data_generator(producer_instance_n_override=-100 - SignalProducer.instances_created,
+                                           producer_playlist_n_override=n)
         raise ValueError('%s not found' % identifier)
 
     def play_pause(self, pause):

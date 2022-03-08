@@ -7,7 +7,8 @@ configuration:
   analog_out_channels:
     0: 'Opto'
   projector_disable: true
-  fictrac_config: 'C:/Users/John Stowers/Downloads/Dudi_ShareWithJohn_flyVR/DSX_VR2P_IPIshort_2018/180719_103/180719_103_output.h5'
+  camera_serial: FAKE
+  fictrac_config: 'tests/sample_data/v2/DSX_VR2P_IPIshort_2018_180719_103_output.trimmed_30s.h5'
   delay: 3
 playlist:
   daq:

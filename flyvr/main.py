@@ -8,12 +8,14 @@ from flyvr.common.build_arg_parser import parse_arguments, get_printable_options
 
 from flyvr.video.video_server import run_video_server
 from flyvr.audio.sound_server import run_sound_server
+from flyvr.video.camera_server import run_camera_server
 from flyvr.audio.io_task import run_io
-from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO, BACKEND_HWIO
+from flyvr.common import SharedState, BACKEND_FICTRAC, BACKEND_DAQ, BACKEND_AUDIO, BACKEND_VIDEO,\
+    BACKEND_HWIO, BACKEND_CAMERA
 from flyvr.common.inputimeout import inputimeout, TimeoutOccurred
 from flyvr.control.experiment import Experiment
 from flyvr.common.concurrent_task import ConcurrentTask
-from flyvr.fictrac.fictrac_driver import FicTracDriver
+from flyvr.fictrac.fictrac_driver import FicTracV1Driver, FicTracV2Driver
 from flyvr.fictrac.replay import FicTracDriverReplay
 from flyvr.hwio.phidget import run_phidget_io
 from flyvr.common.ipc import run_main_relay
@@ -40,11 +42,19 @@ def _get_fictrac_driver(options, log):
                 log.fatal('fictrac console out must be provided for fictrac performance')
                 return None
 
-            drv = FicTracDriver(options.fictrac_config, options.fictrac_console_out,
-                                pgr_enable=not options.pgr_cam_disable)
+            if options.fictrac_version == 1:
+                drv = FicTracV1Driver(options.fictrac_config, options.fictrac_console_out,
+                                      pgr_enable=not options.pgr_cam_disable)
+            elif options.fictrac_version == 2:
+                drv = FicTracV2Driver(options.fictrac_config, options.fictrac_console_out,
+                                      pgr_enable=not options.pgr_cam_disable)
+            else:
+                log.fatal('unknown fictrac version')
+                drv = None
 
-            log.info('starting fictrac%s driver with config %s' % (
-                '' if options.pgr_cam_disable else ' PGR',
+            log.info('starting fictrac v%s %sdriver with config %s' % (
+                options.fictrac_version,
+                '' if options.pgr_cam_disable else '(PGR) ',
                 options.fictrac_config)
             )
 
@@ -126,6 +136,11 @@ def main_launcher():
     else:
         audio = None
         log.info('not starting audio backend (playlist empty or keepalive_audio not specified)')
+
+    if options.camera_serial:
+        camera = ConcurrentTask(task=run_camera_server, comms=None, taskinitargs=[options])
+        backend_wait.append(BACKEND_CAMERA)
+        camera.start()
 
     log.info('waiting %ss for %r to be ready' % (60, backend_wait))
     if flyvr_shared_state.wait_for_backends(*backend_wait, timeout=60):

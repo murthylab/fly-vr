@@ -364,7 +364,19 @@ class SoundServer(threading.Thread):
                                 exc_info=True)
                 raise sd.CallbackAbort
 
-            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
+            # write out data
+            tns = self.flyvr_shared_state.TIME_NS
+            if len(data) < len(outdata):
+                outdata.fill(0)
+                raise sd.CallbackStop
+            else:
+                if data.ndim == 1 and self._num_channels == 2:
+                    outdata[:, 0] = data
+                    outdata[:, 1] = data
+                else:
+                    outdata[:] = data
+
+            # latch the current timing info as close to the write call (above) as possible
 
             # same order as SampleChunk.SYNCHRONIZATION_INFO_FIELDS
             row = [self.flyvr_shared_state.FICTRAC_FRAME_NUM,
@@ -372,7 +384,7 @@ class SoundServer(threading.Thread):
                    self.flyvr_shared_state.DAQ_INPUT_NUM_SAMPLES_READ,
                    self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN,
                    self.flyvr_shared_state.VIDEO_OUTPUT_NUM_FRAMES,
-                   self.flyvr_shared_state.TIME_NS,
+                   tns,
                    chunk.producer_instance_n,
                    chunk.chunk_n,
                    chunk.producer_playlist_n,
@@ -400,17 +412,7 @@ class SoundServer(threading.Thread):
                                                                  # and a time for replay experiments
                                                                  time_ns=row[5])
 
-            if len(data) < len(outdata):
-                outdata.fill(0)
-                raise sd.CallbackStop
-            else:
-
-                if data.ndim == 1 and self._num_channels == 2:
-                    outdata[:, 0] = data
-                    outdata[:, 1] = data
-                else:
-                    outdata[:] = data
-
+            self.flyvr_shared_state.SOUND_OUTPUT_NUM_SAMPLES_WRITTEN += frames
             self._last_chunk = chunk
 
         return callback
@@ -502,7 +504,8 @@ def main_sound_server():
     parser.add_argument('--convert-playlist', help='convert a stimulus playlist to new format')
     parser.add_argument('--paused', action='store_true', help='start paused')
     parser.add_argument('--plot', action='store_true', help='plot the stimulus playlist')
-
+    parser.add_argument('--playlist-file-directory', default=None,
+                        help='extra directory to look for playlist files (eg mat files)')
     options = parse_options(parser.parse_args(), parser)
 
     if options.plot:
