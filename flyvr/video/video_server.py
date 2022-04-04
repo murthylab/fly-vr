@@ -5,6 +5,7 @@ import logging
 import threading
 import collections
 import pkg_resources
+import time
 
 import h5py
 import numpy as np
@@ -69,8 +70,9 @@ class VideoStimPlaylist(object):
         self._log = logging.getLogger('flyvr.video.VideoStimPlaylist')
 
         self._stims = collections.OrderedDict()
-        for s in stims:
+        for i, s in enumerate(stims):
             s.show = False
+            s.producer_playlist_n = i
             self._stims[s.identifier] = s
 
         self._paused = paused
@@ -116,6 +118,7 @@ class VideoStimPlaylist(object):
         for s in self._stims.values():
             if s.show:
                 if s.is_finished:
+                    self._log.info('finished: %s' % s.identifier)
                     try:
                         next_id = next(self._playlist_iter)
                     except StopIteration:
@@ -136,16 +139,24 @@ class VideoStimPlaylist(object):
 
     def play_item(self, identifier):
         producer_instance_n = None
+        producer_playlist_n = None
 
         for sid, s in self._stims.items():
             if sid == identifier:
                 s.show = True
-                s.producer_playlist_n = self._child_playlist_n
-                producer_instance_n = s.producer_instance_n
+                # producer_instance_n = s.producer_instance_n
+                producer_playlist_n = s.producer_playlist_n
+
+                # Create a new unique integer id for this stimulus because it is being played
+                # explicitly by an invocation of play_item.
+                VideoStim.instances_created += 1
+                producer_instance_n = -100 - VideoStim.instances_created
+
             else:
                 s.show = False
-                s.producer_playlist_n = -1
 
+
+        self._log.info(f"play_item: {identifier}, produce_instance_n={producer_instance_n}, state={self._flyvr_shared_state}")
         if producer_instance_n is not None:
             # we found the item
             self._log.info('playing item: %s (and un-pausing)' % identifier)
@@ -154,7 +165,7 @@ class VideoStimPlaylist(object):
             if self._flyvr_shared_state is not None:
                 self._flyvr_shared_state.signal_new_playlist_item(identifier, BACKEND_VIDEO,
                                                                   producer_instance_n=producer_instance_n,
-                                                                  producer_playlist_n=self._child_playlist_n,
+                                                                  producer_playlist_n=producer_playlist_n,
                                                                   # and a time for replay experiments
                                                                   time_ns=self._flyvr_shared_state.TIME_NS)
 
@@ -981,7 +992,18 @@ class VideoServer(object):
                                    monitor='DLP',
                                    screen=1 if self.use_lightcrafter else 0,
                                    useFBO=True, color=0)
-        self._fps = self.mywin.getActualFrameRate()
+
+        # Try to get the FPS from the monitor a few times
+        i = 0
+        self._fps = None
+        while self._fps is None and i < 3:
+            self._fps = self.mywin.getActualFrameRate()
+
+            if self._fps is None:
+                self._log.warning("Could not get FPS from monitor, trying again")
+                i += 1
+                time.sleep(2)
+
         if self._fps is None:
             raise ValueError('could not determine monitor FPS')
 
