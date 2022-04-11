@@ -138,25 +138,25 @@ class VideoStimPlaylist(object):
         self._stims[identifier].update_params(**params)
 
     def play_item(self, identifier):
-        producer_instance_n = None
-        producer_playlist_n = None
+
+        stim_to_play = None
 
         for sid, s in self._stims.items():
             if sid == identifier:
-                s.show = True
-                # producer_instance_n = s.producer_instance_n
-                producer_playlist_n = s.producer_playlist_n
+                stim_to_play = s
+                stim_to_play.show = True
 
                 # Create a new unique integer id for this stimulus because it is being played
                 # explicitly by an invocation of play_item.
                 VideoStim.instances_created += 1
-                producer_instance_n = -100 - VideoStim.instances_created
-
+                stim_to_play.producer_instance_n = -100 - VideoStim.instances_created
             else:
                 s.show = False
 
+        producer_instance_n = stim_to_play.producer_instance_n if stim_to_play else None
+        producer_playlist_n = stim_to_play.producer_playlist_n if stim_to_play else None
 
-        self._log.info(f"play_item: {identifier}, produce_instance_n={producer_instance_n}, state={self._flyvr_shared_state}")
+        self._log.info(f"play_item: {identifier}, producer_instance_n={producer_instance_n}, state={self._flyvr_shared_state}")
         if producer_instance_n is not None:
             # we found the item
             self._log.info('playing item: %s (and un-pausing)' % identifier)
