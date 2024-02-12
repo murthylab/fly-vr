@@ -206,8 +206,7 @@ Copy FlyCapture2_C.dll from the Point Grey directory (it is in the bin folder - 
 `C:\Program Files\Point Grey Research\FlyCapture2\bin64`) and place it in your FicTrac directory. If it is named
 `FlyCapture2_C_v100.dll` rename it. I have included this version in the fictrac_calibration folder of the repo for now.
 
-For closed loop, or general purpose tracking, FicTrac needs to be installed. In order to do this, first download
-the pre-built binaries available [here (private bucket)](https://bucket.pni.princeton.edu/murthy/FicTrac).
+For closed loop, or general purpose tracking, FicTrac needs to be installed. FlyVR requires the version 2.1.1+0.1.1 of fictrac (https://github.com/murthylab/fictrac/releases/tag/v2.1.1%2B0.1.1), which includes shared memory commands.
 Please always download this file as you might have an identically named old version.
 
 For configuring FicTrac, a few files are needed:
