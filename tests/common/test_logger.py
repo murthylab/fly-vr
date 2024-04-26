@@ -79,7 +79,7 @@ def test_logger(tmpdir):
 
     # Check if the second dataset exists and is equal
     assert ('/deeper/test2/data1' in f)
-    assert (f['/deeper/test2/data1'].value == test2_dataset['data1'].encode())
+    assert (f['/deeper/test2/data1'][()] == test2_dataset['data1'].encode())
     assert ('/deeper/test2/data2' in f and np.array_equal(f['/deeper/test2/data2'], test2_dataset['data2']))
 
     # Check if we saved attributes correctly
@@ -119,5 +119,5 @@ def test_logger_task(tmpdir, task_cls):
     assert ('test1' in f)
     assert (np.array_equal(f['test1'], test1_dataset))
     assert ('/deeper/test2/data1' in f)
-    assert (f['/deeper/test2/data1'].value == test2_dataset['data1'].encode())
+    assert (f['/deeper/test2/data1'][()] == test2_dataset['data1'].encode())
     assert ('/deeper/test2/data2' in f and np.array_equal(f['/deeper/test2/data2'], test2_dataset['data2']))

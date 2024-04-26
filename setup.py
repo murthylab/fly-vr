@@ -15,15 +15,20 @@ setup(
     version='0.1.0',
     packages=find_packages(),
     install_requires=[
-        'PsychoPy==2020.1.2',
-        'PyDAQmx==1.4.3',
+        'pyglet',
+        'PsychoPy',
+        'PyDAQmx',
         'ConfigArgParse',
         'h5py',
-        'semaphore_win_ctypes'
+        'pytest',
+        'pytest-cov',
+        'Phidget22',
+        'semaphore-win-ctypes',
+        'sounddevice',
     ],
     tests_require=[
-        'pytest==5.4.1',
-        'pytest-cov==2.8.1',
+        'pytest',
+        'pytest-cov',
     ],
     entry_points={
         'console_scripts': [

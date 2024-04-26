@@ -33,7 +33,7 @@ def stim3():
 @pytest.fixture
 def stimlibraryplaylist():
     with open('tests/test_data/stimuli_library.yml') as f:
-        conf = yaml.load(f)
+        conf = yaml.safe_load(f)
     return AudioStimPlaylist.from_playlist_definition(conf['playlist']['audio'],
                                                       basedirs=[],
                                                       paused_fallback=False,
@@ -182,7 +182,7 @@ def test_opto_convert_manual():
 
     def _from_yaml(_path):
         with open(_path) as f:
-            conf = yaml.load(f)
+            conf = yaml.safe_load(f)
 
         return AudioStimPlaylist.from_playlist_definition(conf['playlist']['audio'],
                                                           basedirs=['tests/test_data/nivedita_vr1/'],
