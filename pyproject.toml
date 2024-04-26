@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flyvr"
+version = "0.1.0"
+description = "experimental virtual reality setup for flies"
+authors = [
+    {name = "David Deutsch", email = "ddeutsch@princeton.edu"},
+    {name = "Adam Calhoun", email = "adam.calhoun@gmail.com"},
+    {name = "John Stowers", email = "john@loopbio.com"},
+    {name = "David Turner", email = "dmturner@princeton.edu"},
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+dependencies = [
+    "pyglet",
+    "PsychoPy",
+    "PyDAQmx",
+    "ConfigArgParse",
+    "h5py",
+    "pytest",
+    "pytest-cov",
+    "Phidget22",
+    "semaphore-win-ctypes",
+    "sounddevice"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov"
+]
+
+[project.scripts]
+flyvr = "flyvr.main:main_launcher"
+flyvr-fictrac-replay = "flyvr.fictrac.replay:main_replay"
+flyvr-fictrac-plot = "flyvr.fictrac.plot_task:main_plot_fictrac"
+flyvr-fictrac = "flyvr.main:main_fictrac"
+flyvr-daq = "flyvr.audio.io_task:main_io"
+flyvr-print-state = "flyvr.common:main_print_state"
+flyvr-audio = "flyvr.audio.sound_server:main_sound_server"
+flyvr-video = "flyvr.video.video_server:main_video_server"
+flyvr-camera = "flyvr.video.camera_server:main_camera_server"
+flyvr-experiment = "flyvr.control.experiment:main_experiment"
+flyvr-ipc-send = "flyvr.common.ipc:main_ipc_send"
+flyvr-ipc-relay = "flyvr.common.ipc:main_relay"
+flyvr-hwio = "flyvr.hwio.phidget:main_phidget"
+flyvr-gui = "flyvr.gui:main_phidget"
