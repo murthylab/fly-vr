@@ -216,7 +216,7 @@ class SoundServer(threading.Thread):
     def start_stream(self,
                      device=DEVICE_DEFAULT, num_channels=DEVICE_OUTPUT_NUM_CHANNELS,
                      dtype=DEVICE_OUTPUT_DTYPE, sample_rate=DEVICE_SAMPLE_RATE,
-                     frames_per_buffer=0):
+                     frames_per_buffer=DEFAULT_CHUNK_SIZE):
         """
         Start a stream of audio data for playback to the device
 
