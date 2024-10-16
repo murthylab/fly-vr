@@ -144,7 +144,7 @@ negative then `flyvr` will wait until the start button is pressed in the GUI.
 
 # Installation
 
-You need to be running an up-to-date Windows 10 installation.
+You need to be running an up-to-date Windows installation.
 
 This requires a NI DAQ (PCI-X series). To begin, install NI-DAQmx 19.6.X (from https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html#333268).
 The NI-DAQmx installer offers a number of options. You must install at least the following components
@@ -173,19 +173,15 @@ install
 virtual environments, NOT conda/miniconda. If you wish to use conda/miniconda then you will
 need to use conda specific commands to create and activate the conda environment)
 
-* Install Python 3.7.X
+* Install Python 3.11.X
 * Create a virtual environment (in checkout dir, named env)
   `C:\Path\To\python.exe -m venv env`  
   * if you installed python only to your user, the path is
-    `"C:\Users\XXX\AppData\Local\Programs\Python\Python37\python.exe"`
+    `"C:\Users\XXX\AppData\Local\Programs\Python\Python311\python.exe"`
 * Activate the virtual environment  
   `venv\Scrips\activate.bat`
-* ensure python packaging and built utilities are up to date  
-  `python -m pip install -U pip 'setuptools<58' wheel`
-* install dependencies  
-  `python -m pip install -r requirements.txt`
 * Install flyvr
-  * `python -m pip install -e .` to install in development mode (recommended)
+  * `python -m pip install -e ".[test]"` to install in development mode (recommended)
   * `python -m pip install .` to install a release version
 * Run the tests  
   `python -m pytest`
