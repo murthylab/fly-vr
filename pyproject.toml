@@ -20,8 +20,6 @@ dependencies = [
     "PyDAQmx",
     "ConfigArgParse",
     "h5py",
-    "pytest",
-    "pytest-cov",
     "Phidget22",
     "semaphore-win-ctypes",
     "sounddevice"
