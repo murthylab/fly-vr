@@ -165,6 +165,10 @@ class SoundServer(threading.Thread):
     def queue(self):
         return self._q
 
+    def silence(self):
+        """Turn off the audio playback"""
+        self._q.put('silence')
+
     def _play(self, stim):
         """
         Play an audio stimulus through the sound card. This method invokes the data generator of the stimulus to
@@ -191,7 +195,7 @@ class SoundServer(threading.Thread):
             stim.initialize(BACKEND_AUDIO)
             self.data_generator = stim.data_generator()
             self._stim_playlist = stim
-        elif stim is None:
+        elif stim is None or stim == 'silence':
             self._log.info('playing nothing')
             self.data_generator = None
         elif isinstance(stim, str) and (self._stim_playlist is not None):
