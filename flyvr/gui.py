@@ -39,7 +39,7 @@ class FlyVRStateGui(QWidget):
         self._timer = QTimer()
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self._update_state)
-        self._timer.start(1000 / FlyVRStateGui.FPS)
+        self._timer.start(int(1000 / FlyVRStateGui.FPS))
 
     def _update_state(self):
         for s in FlyVRStateGui.STATE:

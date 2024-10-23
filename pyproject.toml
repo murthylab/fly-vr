@@ -22,7 +22,9 @@ dependencies = [
     "h5py",
     "Phidget22",
     "semaphore-win-ctypes",
-    "sounddevice"
+    "sounddevice",
+    "opencv-python",
+    "PyQt5",
 ]
 
 [project.optional-dependencies]

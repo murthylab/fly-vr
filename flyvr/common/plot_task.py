@@ -26,11 +26,13 @@ def plot_task_daq(disp_queue, channel_names, chunk_size, limit, num_chunks_histo
     data_history = deque([np.zeros((chunk_size, num_channels)) for i in range(num_chunks_history)],
                          maxlen=num_chunks_history)
 
-    warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
+    if hasattr(matplotlib.cbook, 'mplDeprecation'):
+        warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
+
     plt.ion()
 
     fig = plt.figure()
-    fig.canvas.set_window_title('traces: daq')
+    fig.canvas.manager.set_window_title('traces: daq')
 
     plot_data = np.zeros((num_chunks_history * chunk_size, num_channels))
 

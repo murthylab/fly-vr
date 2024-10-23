@@ -45,13 +45,14 @@ def plot_task_fictrac(disp_queue, flyvr_state,
     """
 
     import matplotlib.cbook
-    warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
+    if hasattr(matplotlib.cbook, 'mplDeprecation'):
+        warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
 
     # see note below about MPL finnicky
     # plt.ion()
 
     fig = plt.figure() if fig is None else fig
-    fig.canvas.set_window_title('traces: fictrac')
+    fig.canvas.manager.set_window_title('traces: fictrac')
 
     # Number of fields to display
     num_channels = len(fictrac_state_fields)
