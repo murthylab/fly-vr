@@ -15,7 +15,13 @@ from flyvr.common.tools import which
 from flyvr.fictrac.shmem_transfer_data import new_mmap_shmem_buffer, new_mmap_signals_buffer, \
     SHMEMFicTracState, fictrac_state_to_vec, NUM_FICTRAC_FIELDS
 
-from ni845x import NI845x
+
+
+try:
+    from flyvr.fictrac.ni845x import NI845x
+except FileNotFoundError:
+    logging.warning('NI845x not found, disabling SICommunicator')
+    NI845x = None
 
 H5_DATA_VERSION = 1
 
@@ -187,7 +193,10 @@ class FicTracV2Driver(object):
 
             semaphore = self._open_fictrac_semaphore()
 
-            self.sic = SICommunicator(self.fictrac_process)
+            if NI845x:
+                self.sic = SICommunicator(self.fictrac_process)
+            else:
+                self.sic = None
 
             # Process FicTrac updates in shared memory
             while (self.fictrac_process.poll() is None) and running and semaphore:
@@ -208,8 +217,9 @@ class FicTracV2Driver(object):
                 new_frame_count = data_copy.frame_cnt
 
                 num = str(new_frame_count)
-                
-                self.sic.i2c(num)#new_frame_count
+
+                if self.sic:
+                    self.sic.i2c(num) # new_frame_count
 
                 if old_frame_count != new_frame_count:
                     # If this is  our first frame incremented, then send a signal to the
