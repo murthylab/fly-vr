@@ -1,0 +1,4 @@
+playlist:
+  audio:
+    - sin800hz: {name: 'sin', duration: 1000, frequency: 800, amplitude: 1.0}
+    - sin400hz: {name: 'sin', duration: 1000, frequency: 400, amplitude: 1.0}
