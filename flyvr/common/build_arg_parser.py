@@ -138,6 +138,7 @@ def build_argparser(savefilename=None):
     parser.add_argument('--samplerate_daq', default=10000, type=int,
                         help='DAQ sample rate (advanced option, do not change)')
     parser.add_argument('--print-defaults', help='Print default config values', action='store_true')
+    parser.add_argument("--audio_device", default=None, help="The name of the sound card audio device to use.", type=str)
 
     return parser
 

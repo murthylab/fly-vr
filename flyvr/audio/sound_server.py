@@ -484,8 +484,10 @@ def run_sound_server(options, quit_evt=None):
                                target=_ipc_main, args=(sound_server.queue, basedirs))
         ipc.start()
 
+        audio_device = SoundServer.DEVICE_DEFAULT if options.audio_device is None else options.audio_device
+
         # starts the thread
-        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE)
+        sound_server.start_stream(frames_per_buffer=SoundServer.DEFAULT_CHUNK_SIZE, device=audio_device)
 
         if quit_evt is not None:
             # the single process launcher
