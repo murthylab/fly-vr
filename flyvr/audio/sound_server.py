@@ -199,16 +199,25 @@ class SoundServer(threading.Thread):
             stim.initialize(BACKEND_AUDIO)
             self.data_generator = stim.data_generator()
             self._stim_playlist = stim
-        elif stim is None or stim == 'silence':
-            self._log.info('playing nothing')
-            self.data_generator = None
         elif isinstance(stim, str) and (self._stim_playlist is not None):
             if stim in {'play', 'pause'}:
                 self._log.info('changing status to %s' % stim)
                 self._stim_playlist.play_pause(pause=stim == 'pause')
             else:
                 self._log.info('playing playlist item identifier: %s' % stim)
-                self.data_generator = self._stim_playlist.play_item(stim)
+                try:
+                    self.data_generator = self._stim_playlist.play_item(stim)
+                except ValueError as ex:
+                    # If the playlist item is not found, check if it is a special action silence
+                    if stim == 'silence':
+                        self.data_generator = None
+                    else:
+                        self._log.error('could not play playlist item: %s' % stim)
+        elif isinstance(stim, str) and stim == 'silence':
+            self.data_generator = None
+        elif stim is None:
+            self._log.info('playing nothing')
+            self.data_generator = None
         else:
             raise ValueError("you must play an AudioStim (or derived),"
                              "the name of a playlist item, or an action 'play', 'pause'")

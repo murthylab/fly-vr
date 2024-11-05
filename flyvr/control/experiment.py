@@ -168,6 +168,10 @@ class Experiment(object):
         assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
         self._ipc.process(**{backend: conf})
 
+    def audio_silence(self):
+        """Clear the data generators on the audio backend."""
+        self.play_playlist_item(Experiment.BACKEND_AUDIO, 'silence')
+
     def backend_action(self, backend, action):
         assert backend in (Experiment.BACKEND_VIDEO, Experiment.BACKEND_AUDIO, Experiment.BACKEND_DAQ)
         self._ipc.process(**{'%s_action' % backend: action})

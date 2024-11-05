@@ -43,7 +43,7 @@ class _StimpackExample(Experiment):
     def process_state(self, state):
         dt = time.time() - self._t
         if dt > 7 and self.is_started_and_ready_audio_daq:
-            astim = random.choice(('sin400hz', 'sin800hz'))
+            astim = random.choice(('silence', 'sin800hz'))
 
             if astim == 'sin800hz':
                 vis_stim = 0
