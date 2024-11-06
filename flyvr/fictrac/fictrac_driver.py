@@ -194,6 +194,7 @@ class FicTracV2Driver(object):
             semaphore = self._open_fictrac_semaphore()
 
             if NI845x:
+                #self.sic = None #debug mode
                 self.sic = SICommunicator(self.fictrac_process)
             else:
                 self.sic = None
